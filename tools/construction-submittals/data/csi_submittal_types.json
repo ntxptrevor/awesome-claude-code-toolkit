@@ -1,0 +1,260 @@
+{
+  "submittal_types": {
+    "SD": {"name": "Shop Drawings", "description": "Fabrication/installation drawings from manufacturer or subcontractor"},
+    "PD": {"name": "Product Data", "description": "Catalog cuts, specifications, performance data, MSDS/SDS"},
+    "SS": {"name": "Samples", "description": "Physical or color samples for approval"},
+    "CP": {"name": "Certificates/Permits", "description": "Manufacturer certifications, test reports, permits"},
+    "DI": {"name": "Design Information", "description": "Calculations, mix designs, engineering data"},
+    "MO": {"name": "Mockups", "description": "Full-scale assemblies for quality standard review"},
+    "QC": {"name": "Quality Control", "description": "Test reports, inspection reports, third-party testing"},
+    "CL": {"name": "Closeout", "description": "O&M manuals, warranties, as-builts, attic stock"},
+    "WP": {"name": "Work Plan", "description": "Method statements, safety plans, schedules"},
+    "SR": {"name": "Sustainable/LEED", "description": "Environmental product declarations, recycled content docs"}
+  },
+  "statuses": [
+    "Not Started",
+    "In Preparation",
+    "Submitted",
+    "Under Review",
+    "Approved",
+    "Approved as Noted",
+    "Revise & Resubmit",
+    "Rejected",
+    "For Record Only",
+    "Closed"
+  ],
+  "divisions": {
+    "01": {
+      "name": "General Requirements",
+      "trade": "General Contractor",
+      "common_submittals": [
+        {"description": "Construction Schedule", "type": "WP", "lead_weeks": 2},
+        {"description": "Safety Plan / HASP", "type": "WP", "lead_weeks": 2},
+        {"description": "Quality Control Plan", "type": "QC", "lead_weeks": 2},
+        {"description": "Waste Management Plan", "type": "WP", "lead_weeks": 2},
+        {"description": "Schedule of Values", "type": "PD", "lead_weeks": 1}
+      ]
+    },
+    "02": {
+      "name": "Existing Conditions",
+      "trade": "Demolition / Abatement",
+      "common_submittals": [
+        {"description": "Hazmat Abatement Plan", "type": "WP", "lead_weeks": 3},
+        {"description": "Demolition Plan", "type": "WP", "lead_weeks": 2},
+        {"description": "Abatement Contractor Certifications", "type": "CP", "lead_weeks": 2}
+      ]
+    },
+    "03": {
+      "name": "Concrete",
+      "trade": "Concrete Contractor",
+      "common_submittals": [
+        {"description": "Concrete Mix Designs", "type": "DI", "lead_weeks": 3},
+        {"description": "Reinforcing Steel Shop Drawings", "type": "SD", "lead_weeks": 4},
+        {"description": "Formwork Drawings", "type": "SD", "lead_weeks": 3},
+        {"description": "Concrete Admixtures Product Data", "type": "PD", "lead_weeks": 2},
+        {"description": "Curing Compounds", "type": "PD", "lead_weeks": 2},
+        {"description": "Concrete Test Reports", "type": "QC", "lead_weeks": 1}
+      ]
+    },
+    "04": {
+      "name": "Masonry",
+      "trade": "Mason",
+      "common_submittals": [
+        {"description": "CMU Product Data", "type": "PD", "lead_weeks": 3},
+        {"description": "CMU Samples", "type": "SS", "lead_weeks": 4},
+        {"description": "Mortar and Grout Mix Designs", "type": "DI", "lead_weeks": 2},
+        {"description": "Stone Samples", "type": "SS", "lead_weeks": 6},
+        {"description": "Masonry Reinforcement", "type": "PD", "lead_weeks": 2}
+      ]
+    },
+    "05": {
+      "name": "Metals",
+      "trade": "Structural Steel / Misc. Metals",
+      "common_submittals": [
+        {"description": "Structural Steel Shop Drawings", "type": "SD", "lead_weeks": 8},
+        {"description": "Steel Connection Details", "type": "SD", "lead_weeks": 6},
+        {"description": "Metal Deck Product Data", "type": "PD", "lead_weeks": 5},
+        {"description": "Miscellaneous Metals Shop Drawings", "type": "SD", "lead_weeks": 5},
+        {"description": "Welding Certifications", "type": "CP", "lead_weeks": 2},
+        {"description": "Mill Certificates", "type": "CP", "lead_weeks": 2},
+        {"description": "Steel Joist Shop Drawings", "type": "SD", "lead_weeks": 7}
+      ]
+    },
+    "06": {
+      "name": "Wood, Plastics, Composites",
+      "trade": "Carpentry",
+      "common_submittals": [
+        {"description": "Engineered Wood Product Data", "type": "PD", "lead_weeks": 3},
+        {"description": "Architectural Woodwork Shop Drawings", "type": "SD", "lead_weeks": 8},
+        {"description": "Casework Shop Drawings", "type": "SD", "lead_weeks": 7},
+        {"description": "Finish Samples", "type": "SS", "lead_weeks": 4}
+      ]
+    },
+    "07": {
+      "name": "Thermal & Moisture Protection",
+      "trade": "Roofing / Waterproofing",
+      "common_submittals": [
+        {"description": "Roofing System Product Data", "type": "PD", "lead_weeks": 3},
+        {"description": "Roofing Warranty Documentation", "type": "CP", "lead_weeks": 3},
+        {"description": "Waterproofing Product Data", "type": "PD", "lead_weeks": 3},
+        {"description": "Insulation Product Data", "type": "PD", "lead_weeks": 2},
+        {"description": "Metal Wall Panels Shop Drawings", "type": "SD", "lead_weeks": 10},
+        {"description": "Joint Sealant Product Data", "type": "PD", "lead_weeks": 2},
+        {"description": "Fireproofing Product Data", "type": "PD", "lead_weeks": 2}
+      ]
+    },
+    "08": {
+      "name": "Openings",
+      "trade": "Door / Window / Glazing",
+      "common_submittals": [
+        {"description": "Hollow Metal Door & Frame Shop Drawings", "type": "SD", "lead_weeks": 8},
+        {"description": "Wood Door Product Data & Samples", "type": "PD", "lead_weeks": 7},
+        {"description": "Door Hardware Schedule & Product Data", "type": "PD", "lead_weeks": 11},
+        {"description": "Aluminum Storefront/Curtain Wall Shop Drawings", "type": "SD", "lead_weeks": 10},
+        {"description": "Glass & Glazing Product Data", "type": "PD", "lead_weeks": 8},
+        {"description": "Door Hardware Keying Schedule", "type": "PD", "lead_weeks": 4}
+      ]
+    },
+    "09": {
+      "name": "Finishes",
+      "trade": "Drywall / Painter / Flooring / Tile",
+      "common_submittals": [
+        {"description": "Gypsum Board Assemblies", "type": "PD", "lead_weeks": 2},
+        {"description": "Tile Product Data & Samples", "type": "PD", "lead_weeks": 6},
+        {"description": "Acoustical Ceiling Product Data", "type": "PD", "lead_weeks": 4},
+        {"description": "Resilient Flooring Product Data & Samples", "type": "PD", "lead_weeks": 5},
+        {"description": "Carpet Product Data & Samples", "type": "PD", "lead_weeks": 5},
+        {"description": "Paint/Coating Product Data & Color Samples", "type": "PD", "lead_weeks": 2},
+        {"description": "Epoxy Flooring Product Data", "type": "PD", "lead_weeks": 3}
+      ]
+    },
+    "10": {
+      "name": "Specialties",
+      "trade": "Specialty Contractor",
+      "common_submittals": [
+        {"description": "Toilet Partitions & Accessories", "type": "PD", "lead_weeks": 6},
+        {"description": "Signage Shop Drawings", "type": "SD", "lead_weeks": 5},
+        {"description": "Fire Extinguisher Cabinets", "type": "PD", "lead_weeks": 4},
+        {"description": "Lockers Product Data", "type": "PD", "lead_weeks": 7}
+      ]
+    },
+    "11": {
+      "name": "Equipment",
+      "trade": "Equipment Supplier",
+      "common_submittals": [
+        {"description": "Kitchen Equipment Shop Drawings & Data", "type": "SD", "lead_weeks": 11},
+        {"description": "Laundry Equipment Product Data", "type": "PD", "lead_weeks": 8},
+        {"description": "Lab Equipment Shop Drawings & Data", "type": "SD", "lead_weeks": 10}
+      ]
+    },
+    "12": {
+      "name": "Furnishings",
+      "trade": "Furnishings Supplier",
+      "common_submittals": [
+        {"description": "Window Treatments Product Data & Samples", "type": "PD", "lead_weeks": 6},
+        {"description": "Furniture Product Data", "type": "PD", "lead_weeks": 9},
+        {"description": "Countertops Product Data & Samples", "type": "PD", "lead_weeks": 5}
+      ]
+    },
+    "14": {
+      "name": "Conveying Equipment",
+      "trade": "Elevator Contractor",
+      "common_submittals": [
+        {"description": "Elevator Shop Drawings", "type": "SD", "lead_weeks": 16},
+        {"description": "Elevator Product Data", "type": "PD", "lead_weeks": 12},
+        {"description": "Cab Finish Samples", "type": "SS", "lead_weeks": 8}
+      ]
+    },
+    "21": {
+      "name": "Fire Suppression",
+      "trade": "Fire Protection",
+      "common_submittals": [
+        {"description": "Sprinkler System Shop Drawings", "type": "SD", "lead_weeks": 4},
+        {"description": "Fire Pump Product Data", "type": "PD", "lead_weeks": 8},
+        {"description": "Sprinkler Head Product Data", "type": "PD", "lead_weeks": 3}
+      ]
+    },
+    "22": {
+      "name": "Plumbing",
+      "trade": "Plumber",
+      "common_submittals": [
+        {"description": "Plumbing Fixture Product Data", "type": "PD", "lead_weeks": 6},
+        {"description": "Piping Shop Drawings", "type": "SD", "lead_weeks": 4},
+        {"description": "Water Heater Product Data", "type": "PD", "lead_weeks": 5},
+        {"description": "Domestic Water Booster Pump", "type": "PD", "lead_weeks": 7}
+      ]
+    },
+    "23": {
+      "name": "HVAC",
+      "trade": "Mechanical / HVAC",
+      "common_submittals": [
+        {"description": "HVAC Equipment Product Data (AHU, RTU, Chillers, Boilers)", "type": "PD", "lead_weeks": 12},
+        {"description": "Ductwork Shop Drawings", "type": "SD", "lead_weeks": 4},
+        {"description": "Controls/BAS Submittals", "type": "SD", "lead_weeks": 6},
+        {"description": "TAB Plan", "type": "WP", "lead_weeks": 3},
+        {"description": "Diffusers, Grilles, Registers", "type": "PD", "lead_weeks": 4},
+        {"description": "Variable Frequency Drives", "type": "PD", "lead_weeks": 8},
+        {"description": "Refrigerant Piping Product Data", "type": "PD", "lead_weeks": 3}
+      ]
+    },
+    "26": {
+      "name": "Electrical",
+      "trade": "Electrician",
+      "common_submittals": [
+        {"description": "Panelboard/Switchgear Shop Drawings", "type": "SD", "lead_weeks": 15},
+        {"description": "Lighting Fixture Product Data", "type": "PD", "lead_weeks": 6},
+        {"description": "Lighting Controls", "type": "PD", "lead_weeks": 5},
+        {"description": "Generator Product Data", "type": "PD", "lead_weeks": 16},
+        {"description": "Conduit & Wire Product Data", "type": "PD", "lead_weeks": 2},
+        {"description": "Fire Alarm System Shop Drawings", "type": "SD", "lead_weeks": 6}
+      ]
+    },
+    "27": {
+      "name": "Communications",
+      "trade": "Low Voltage / Telecom",
+      "common_submittals": [
+        {"description": "Structured Cabling Product Data", "type": "PD", "lead_weeks": 4},
+        {"description": "AV Equipment Product Data", "type": "PD", "lead_weeks": 8},
+        {"description": "Access Control/Security Shop Drawings", "type": "SD", "lead_weeks": 8}
+      ]
+    },
+    "28": {
+      "name": "Electronic Safety & Security",
+      "trade": "Security / Fire Alarm",
+      "common_submittals": [
+        {"description": "Fire Alarm Shop Drawings", "type": "SD", "lead_weeks": 6},
+        {"description": "CCTV/Surveillance Product Data", "type": "PD", "lead_weeks": 6}
+      ]
+    },
+    "31": {
+      "name": "Earthwork",
+      "trade": "Sitework / Excavation",
+      "common_submittals": [
+        {"description": "Geotechnical Report", "type": "DI", "lead_weeks": 2},
+        {"description": "Soil Compaction Test Results", "type": "QC", "lead_weeks": 1},
+        {"description": "Erosion Control Plan", "type": "WP", "lead_weeks": 2},
+        {"description": "Shoring/Excavation Support Plan", "type": "SD", "lead_weeks": 3}
+      ]
+    },
+    "32": {
+      "name": "Exterior Improvements",
+      "trade": "Paving / Landscape",
+      "common_submittals": [
+        {"description": "Asphalt/Concrete Paving Mix Designs", "type": "DI", "lead_weeks": 3},
+        {"description": "Pavement Marking Product Data", "type": "PD", "lead_weeks": 2},
+        {"description": "Fencing Shop Drawings", "type": "SD", "lead_weeks": 5},
+        {"description": "Landscape/Planting Plan", "type": "SD", "lead_weeks": 3},
+        {"description": "Irrigation System Shop Drawings", "type": "SD", "lead_weeks": 3}
+      ]
+    },
+    "33": {
+      "name": "Utilities",
+      "trade": "Utilities / Underground",
+      "common_submittals": [
+        {"description": "Pipe Product Data", "type": "PD", "lead_weeks": 6},
+        {"description": "Manhole/Structure Shop Drawings", "type": "SD", "lead_weeks": 5},
+        {"description": "Utility Trench Details", "type": "SD", "lead_weeks": 3}
+      ]
+    }
+  }
+}
