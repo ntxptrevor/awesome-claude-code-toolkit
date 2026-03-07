@@ -1,0 +1,33 @@
+name: Deploy Submittal Tracker to Hostinger
+
+on:
+  push:
+    branches: [main, claude/construction-capabilities-doc-wIG7b]
+    paths:
+      - 'deploy/submittal-tracker/**'
+      - 'tools/construction-submittals/submittal_tracker.html'
+      - '.github/workflows/deploy-hostinger.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: FTP Deploy to Hostinger
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare deploy folder
+        run: |
+          cp tools/construction-submittals/submittal_tracker.html deploy/submittal-tracker/index.html
+
+      - name: Deploy to Hostinger via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./deploy/submittal-tracker/
+          server-dir: ./public_html/submittal-tracker/
+          dangerous-clean-slate: false
