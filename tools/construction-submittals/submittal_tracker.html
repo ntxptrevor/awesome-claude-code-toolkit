@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Construction Submittal Tracker</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #242836;
+  --border: #2e3345;
+  --text: #e4e6f0;
+  --text2: #8b8fa3;
+  --accent: #5b8af5;
+  --accent2: #3d6ae0;
+  --green: #34d399;
+  --yellow: #fbbf24;
+  --orange: #f97316;
+  --red: #ef4444;
+  --purple: #a78bfa;
+  --cyan: #22d3ee;
+  --radius: 8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+a{color:var(--accent);text-decoration:none;}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--surface);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--text2);}
+
+.app{display:flex;min-height:100vh;}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:10;transition:width .2s;}
+.main{margin-left:220px;flex:1;padding:24px 32px;min-height:100vh;max-width:1200px;}
+
+.sidebar-brand{padding:16px;border-bottom:1px solid var(--border);}
+.sidebar-brand h1{font-size:13px;font-weight:700;color:var(--accent);letter-spacing:.3px;}
+.sidebar-brand span{display:block;font-size:10px;color:var(--text2);font-weight:400;margin-top:2px;}
+.nav-group{padding:8px 0;}
+.nav-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text2);padding:12px 16px 4px;opacity:.5;}
+.nav-item{padding:9px 16px;cursor:pointer;font-size:12.5px;color:var(--text2);display:flex;align-items:center;gap:10px;transition:all .12s;border-left:3px solid transparent;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:rgba(91,138,245,.08);color:var(--accent);border-left-color:var(--accent);font-weight:600;}
+.nav-icon{width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.sidebar-footer{margin-top:auto;padding:12px 16px;border-top:1px solid var(--border);font-size:10px;color:var(--text2);}
+
+.page-header{margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
+.page-header h2{font-size:20px;font-weight:600;}
+.page-header p{font-size:12px;color:var(--text2);margin-top:2px;}
+.header-actions{display:flex;gap:8px;}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+.card .label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:2px;}
+.card .value{font-size:26px;font-weight:700;line-height:1.2;}
+.card .sub{font-size:10px;color:var(--text2);margin-top:1px;}
+.card.green .value{color:var(--green);}
+.card.yellow .value{color:var(--yellow);}
+.card.orange .value{color:var(--orange);}
+.card.red .value{color:var(--red);}
+.card.blue .value{color:var(--accent);}
+.card.purple .value{color:var(--purple);}
+.card.cyan .value{color:var(--cyan);}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;overflow:hidden;}
+.panel-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+.panel-header h3{font-size:13px;font-weight:600;}
+.panel-body{padding:16px;}
+
+.toolbar{padding:10px 16px;display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.toolbar input,.toolbar select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--text);outline:none;}
+.toolbar input:focus,.toolbar select:focus{border-color:var(--accent);}
+.toolbar input[type=text],.toolbar input[type=search]{width:200px;}
+
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead{background:var(--surface2);}
+th{padding:8px 10px;text-align:left;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);white-space:nowrap;position:sticky;top:0;background:var(--surface2);z-index:1;}
+td{padding:8px 10px;border-top:1px solid var(--border);vertical-align:middle;}
+tr:hover td{background:rgba(91,138,245,.03);}
+.mono{font-family:'SF Mono',Consolas,'Courier New',monospace;font-size:11px;}
+.truncate{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.table-scroll{max-height:65vh;overflow-y:auto;}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;white-space:nowrap;}
+.badge-ns{background:rgba(139,143,163,.12);color:var(--text2);}
+.badge-ip{background:rgba(251,191,36,.12);color:var(--yellow);}
+.badge-su{background:rgba(91,138,245,.12);color:var(--accent);}
+.badge-ur{background:rgba(167,139,250,.12);color:var(--purple);}
+.badge-ap{background:rgba(52,211,153,.12);color:var(--green);}
+.badge-an{background:rgba(52,211,153,.08);color:#6ee7b7;}
+.badge-rr{background:rgba(249,115,22,.12);color:var(--orange);}
+.badge-rj{background:rgba(239,68,68,.12);color:var(--red);}
+.badge-fr{background:rgba(139,143,163,.08);color:var(--text2);}
+.badge-cl{background:rgba(52,211,153,.06);color:#6ee7b7;}
+
+.lead-wrap{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.lead-bar{width:60px;height:5px;border-radius:3px;background:var(--surface2);overflow:hidden;}
+.lead-fill{height:100%;border-radius:3px;transition:width .3s;}
+.lead-g .lead-fill{background:var(--green);}
+.lead-y .lead-fill{background:var(--yellow);}
+.lead-o .lead-fill{background:var(--orange);}
+.lead-r .lead-fill{background:var(--red);}
+
+.btn{padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text);transition:all .12s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+.btn:hover{background:var(--border);}
+.btn-p{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-p:hover{background:var(--accent2);}
+.btn-s{background:var(--green);border-color:var(--green);color:#000;}
+.btn-d{background:var(--red);border-color:var(--red);color:#fff;}
+.btn-sm{padding:3px 8px;font-size:10px;}
+.btn-icon{padding:4px 6px;font-size:14px;line-height:1;}
+
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:100;display:none;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;animation:modalIn .15s ease;}
+@keyframes modalIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.modal-h{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.modal-h h3{font-size:14px;}
+.modal-x{background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:2px 6px;border-radius:4px;}
+.modal-x:hover{background:var(--surface2);}
+.modal-b{padding:18px;}
+.modal-f{padding:10px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+
+.fg{margin-bottom:12px;}
+.fg label{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:3px;}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--text);outline:none;font-family:inherit;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--accent);}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+.chart-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.chart-lbl{width:130px;font-size:11px;color:var(--text2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
+.chart-bar{height:20px;border-radius:4px;min-width:4px;display:flex;align-items:center;padding:0 6px;transition:width .3s;}
+.chart-bar span{font-size:9px;font-weight:700;color:#fff;}
+
+.ring{position:relative;width:90px;height:90px;margin:0 auto 6px;}
+.ring svg{transform:rotate(-90deg);}
+.ring circle{fill:none;stroke-width:7;}
+.ring .bg{stroke:var(--surface2);}
+.ring .fg{stroke:var(--green);stroke-linecap:round;transition:stroke-dashoffset .5s;}
+.ring-pct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;font-weight:700;}
+
+.div-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;margin:10px 0 16px;}
+.div-chk{display:flex;align-items:center;gap:6px;font-size:11px;padding:5px 8px;background:var(--surface2);border-radius:6px;cursor:pointer;transition:background .12s;}
+.div-chk:hover{background:var(--border);}
+.div-chk input{accent-color:var(--accent);}
+
+.setup-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:540px;margin:40px auto;}
+.setup-box h2{font-size:18px;margin-bottom:4px;}
+.setup-box>p{color:var(--text2);font-size:12px;margin-bottom:16px;}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:#000;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;z-index:200;opacity:0;transition:opacity .25s;pointer-events:none;}
+.toast.show{opacity:1;}
+
+.empty{text-align:center;padding:40px 20px;color:var(--text2);}
+.empty h3{font-size:16px;color:var(--text);margin-bottom:6px;}
+
+@media(max-width:768px){
+  .sidebar{width:52px;}
+  .sidebar-brand h1,.nav-item span,.nav-label,.sidebar-footer{display:none;}
+  .nav-item{justify-content:center;padding:10px;}
+  .main{margin-left:52px;padding:14px;}
+  .cards{grid-template-columns:repeat(2,1fr);}
+  .toolbar input[type=text],.toolbar input[type=search]{width:140px;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <h1>Submittal Tracker<span>JOC / Public Construction</span></h1>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Main</div>
+      <div class="nav-item active" data-p="dashboard" onclick="go('dashboard')"><div class="nav-icon">&#9632;</div><span>Dashboard</span></div>
+      <div class="nav-item" data-p="register" onclick="go('register')"><div class="nav-icon">&#9776;</div><span>Register</span></div>
+      <div class="nav-item" data-p="critical" onclick="go('critical')"><div class="nav-icon">&#9888;</div><span>Critical Path</span></div>
+      <div class="nav-label">Actions</div>
+      <div class="nav-item" data-p="add" onclick="go('add')"><div class="nav-icon">+</div><span>Add Submittal</span></div>
+      <div class="nav-item" data-p="generate" onclick="go('generate')"><div class="nav-icon">&#9881;</div><span>Generate</span></div>
+      <div class="nav-item" data-p="scan" onclick="go('scan')"><div class="nav-icon">&#8981;</div><span>Scan Specs</span></div>
+      <div class="nav-label">Project</div>
+      <div class="nav-item" data-p="settings" onclick="go('settings')"><div class="nav-icon">&#9998;</div><span>Settings</span></div>
+      <div class="nav-item" onclick="exportCSV()"><div class="nav-icon">&#8615;</div><span>Export CSV</span></div>
+      <div class="nav-item" data-p="help" onclick="go('help')"><div class="nav-icon">?</div><span>Help</span></div>
+    </div>
+    <div class="sidebar-footer">Data saved in browser</div>
+  </nav>
+  <div class="main" id="root"></div>
+</div>
+
+<div class="overlay" id="modal"><div class="modal"><div class="modal-h"><h3 id="mTitle">Edit</h3><button class="modal-x" onclick="closeModal()">&times;</button></div><div class="modal-b" id="mBody"></div><div class="modal-f" id="mFoot"></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA — CSI MasterFormat Divisions & Reference Submittals
+// ═══════════════════════════════════════════════════════════════════════════════
+const TYPES={SD:{n:"Shop Drawings",c:"#5b8af5"},PD:{n:"Product Data",c:"#a78bfa"},SS:{n:"Samples",c:"#f97316"},CP:{n:"Certificates/Permits",c:"#fbbf24"},DI:{n:"Design Information",c:"#22d3ee"},MO:{n:"Mockups",c:"#ec4899"},QC:{n:"Quality Control",c:"#34d399"},CL:{n:"Closeout",c:"#6ee7b7"},WP:{n:"Work Plan",c:"#f472b6"},SR:{n:"Sustainable/LEED",c:"#a3e635"}};
+const STATUSES=["Not Started","In Preparation","Submitted","Under Review","Approved","Approved as Noted","Revise & Resubmit","Rejected","For Record Only","Closed"];
+const ST_CLS={"Not Started":"ns","In Preparation":"ip","Submitted":"su","Under Review":"ur","Approved":"ap","Approved as Noted":"an","Revise & Resubmit":"rr","Rejected":"rj","For Record Only":"fr","Closed":"cl"};
+const ST_CLR={"Not Started":"#6b7280","In Preparation":"#fbbf24","Submitted":"#5b8af5","Under Review":"#a78bfa","Approved":"#34d399","Approved as Noted":"#6ee7b7","Revise & Resubmit":"#f97316","Rejected":"#ef4444","For Record Only":"#6b7280","Closed":"#34d399"};
+
+const CSI={
+"01":{n:"General Requirements",t:"General Contractor",s:[{d:"Construction Schedule",y:"WP",l:2},{d:"Safety Plan / HASP",y:"WP",l:2},{d:"Quality Control Plan",y:"QC",l:2},{d:"Waste Management Plan",y:"WP",l:2},{d:"Schedule of Values",y:"PD",l:1}]},
+"02":{n:"Existing Conditions",t:"Demolition / Abatement",s:[{d:"Hazmat Abatement Plan",y:"WP",l:3},{d:"Demolition Plan",y:"WP",l:2},{d:"Abatement Contractor Certifications",y:"CP",l:2}]},
+"03":{n:"Concrete",t:"Concrete Contractor",s:[{d:"Concrete Mix Designs",y:"DI",l:3},{d:"Reinforcing Steel Shop Drawings",y:"SD",l:4},{d:"Formwork Drawings",y:"SD",l:3},{d:"Concrete Admixtures Product Data",y:"PD",l:2},{d:"Curing Compounds",y:"PD",l:2},{d:"Concrete Test Reports",y:"QC",l:1}]},
+"04":{n:"Masonry",t:"Mason",s:[{d:"CMU Product Data",y:"PD",l:3},{d:"CMU Samples",y:"SS",l:4},{d:"Mortar & Grout Mix Designs",y:"DI",l:2},{d:"Stone Samples",y:"SS",l:6},{d:"Masonry Reinforcement",y:"PD",l:2}]},
+"05":{n:"Metals",t:"Structural Steel / Misc. Metals",s:[{d:"Structural Steel Shop Drawings",y:"SD",l:8},{d:"Steel Connection Details",y:"SD",l:6},{d:"Metal Deck Product Data",y:"PD",l:5},{d:"Misc. Metals Shop Drawings",y:"SD",l:5},{d:"Welding Certifications",y:"CP",l:2},{d:"Mill Certificates",y:"CP",l:2},{d:"Steel Joist Shop Drawings",y:"SD",l:7}]},
+"06":{n:"Wood / Plastics / Composites",t:"Carpentry",s:[{d:"Engineered Wood Product Data",y:"PD",l:3},{d:"Architectural Woodwork Shop Drawings",y:"SD",l:8},{d:"Casework Shop Drawings",y:"SD",l:7},{d:"Finish Samples",y:"SS",l:4}]},
+"07":{n:"Thermal & Moisture Protection",t:"Roofing / Waterproofing",s:[{d:"Roofing System Product Data",y:"PD",l:3},{d:"Roofing Warranty Documentation",y:"CP",l:3},{d:"Waterproofing Product Data",y:"PD",l:3},{d:"Insulation Product Data",y:"PD",l:2},{d:"Metal Wall Panels Shop Drawings",y:"SD",l:10},{d:"Joint Sealant Product Data",y:"PD",l:2},{d:"Fireproofing Product Data",y:"PD",l:2}]},
+"08":{n:"Openings",t:"Door / Window / Glazing",s:[{d:"Hollow Metal Door & Frame Shop Drawings",y:"SD",l:8},{d:"Wood Door Product Data & Samples",y:"PD",l:7},{d:"Door Hardware Schedule & Product Data",y:"PD",l:11},{d:"Aluminum Storefront/Curtain Wall Shop Drawings",y:"SD",l:10},{d:"Glass & Glazing Product Data",y:"PD",l:8},{d:"Door Hardware Keying Schedule",y:"PD",l:4}]},
+"09":{n:"Finishes",t:"Drywall / Painter / Flooring / Tile",s:[{d:"Gypsum Board Assemblies",y:"PD",l:2},{d:"Tile Product Data & Samples",y:"PD",l:6},{d:"Acoustical Ceiling Product Data",y:"PD",l:4},{d:"Resilient Flooring Product Data & Samples",y:"PD",l:5},{d:"Carpet Product Data & Samples",y:"PD",l:5},{d:"Paint/Coating Product Data & Color Samples",y:"PD",l:2},{d:"Epoxy Flooring Product Data",y:"PD",l:3}]},
+"10":{n:"Specialties",t:"Specialty Contractor",s:[{d:"Toilet Partitions & Accessories",y:"PD",l:6},{d:"Signage Shop Drawings",y:"SD",l:5},{d:"Fire Extinguisher Cabinets",y:"PD",l:4},{d:"Lockers Product Data",y:"PD",l:7}]},
+"11":{n:"Equipment",t:"Equipment Supplier",s:[{d:"Kitchen Equipment Shop Drawings & Data",y:"SD",l:11},{d:"Laundry Equipment Product Data",y:"PD",l:8},{d:"Lab Equipment Shop Drawings & Data",y:"SD",l:10}]},
+"12":{n:"Furnishings",t:"Furnishings Supplier",s:[{d:"Window Treatments Product Data & Samples",y:"PD",l:6},{d:"Furniture Product Data",y:"PD",l:9},{d:"Countertops Product Data & Samples",y:"PD",l:5}]},
+"14":{n:"Conveying Equipment",t:"Elevator Contractor",s:[{d:"Elevator Shop Drawings",y:"SD",l:16},{d:"Elevator Product Data",y:"PD",l:12},{d:"Cab Finish Samples",y:"SS",l:8}]},
+"21":{n:"Fire Suppression",t:"Fire Protection",s:[{d:"Sprinkler System Shop Drawings",y:"SD",l:4},{d:"Fire Pump Product Data",y:"PD",l:8},{d:"Sprinkler Head Product Data",y:"PD",l:3}]},
+"22":{n:"Plumbing",t:"Plumber",s:[{d:"Plumbing Fixture Product Data",y:"PD",l:6},{d:"Piping Shop Drawings",y:"SD",l:4},{d:"Water Heater Product Data",y:"PD",l:5},{d:"Domestic Water Booster Pump",y:"PD",l:7}]},
+"23":{n:"HVAC",t:"Mechanical / HVAC",s:[{d:"HVAC Equipment Product Data (AHU, RTU, Chillers, Boilers)",y:"PD",l:12},{d:"Ductwork Shop Drawings",y:"SD",l:4},{d:"Controls / BAS Submittals",y:"SD",l:6},{d:"TAB Plan",y:"WP",l:3},{d:"Diffusers, Grilles, Registers",y:"PD",l:4},{d:"Variable Frequency Drives",y:"PD",l:8},{d:"Refrigerant Piping Product Data",y:"PD",l:3}]},
+"26":{n:"Electrical",t:"Electrician",s:[{d:"Panelboard / Switchgear Shop Drawings",y:"SD",l:15},{d:"Lighting Fixture Product Data",y:"PD",l:6},{d:"Lighting Controls",y:"PD",l:5},{d:"Generator Product Data",y:"PD",l:16},{d:"Conduit & Wire Product Data",y:"PD",l:2},{d:"Fire Alarm System Shop Drawings",y:"SD",l:6}]},
+"27":{n:"Communications",t:"Low Voltage / Telecom",s:[{d:"Structured Cabling Product Data",y:"PD",l:4},{d:"AV Equipment Product Data",y:"PD",l:8},{d:"Access Control / Security Shop Drawings",y:"SD",l:8}]},
+"28":{n:"Electronic Safety & Security",t:"Security / Fire Alarm",s:[{d:"Fire Alarm Shop Drawings",y:"SD",l:6},{d:"CCTV / Surveillance Product Data",y:"PD",l:6}]},
+"31":{n:"Earthwork",t:"Sitework / Excavation",s:[{d:"Geotechnical Report",y:"DI",l:2},{d:"Soil Compaction Test Results",y:"QC",l:1},{d:"Erosion Control Plan",y:"WP",l:2},{d:"Shoring / Excavation Support Plan",y:"SD",l:3}]},
+"32":{n:"Exterior Improvements",t:"Paving / Landscape",s:[{d:"Asphalt / Concrete Paving Mix Designs",y:"DI",l:3},{d:"Pavement Marking Product Data",y:"PD",l:2},{d:"Fencing Shop Drawings",y:"SD",l:5},{d:"Landscape / Planting Plan",y:"SD",l:3},{d:"Irrigation System Shop Drawings",y:"SD",l:3}]},
+"33":{n:"Utilities",t:"Utilities / Underground",s:[{d:"Pipe Product Data",y:"PD",l:6},{d:"Manhole / Structure Shop Drawings",y:"SD",l:5},{d:"Utility Trench Details",y:"SD",l:3}]}
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE — localStorage persistence
+// ═══════════════════════════════════════════════════════════════════════════════
+const STORAGE_KEY = "cst_data_v1";
+let DB = loadDB();
+let PAGE = "dashboard";
+let _scanItems = [];
+
+function loadDB(){
+  try{ const d=JSON.parse(localStorage.getItem(STORAGE_KEY)); if(d&&d.submittals) return d; } catch(e){}
+  return {project:null, submittals:[], nextId:1};
+}
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); }
+function nextNum(div){ const c=DB.submittals.filter(s=>s.div===div).length+1; return div+"-"+String(c).padStart(3,"0"); }
+function now(){ return new Date().toISOString().slice(0,10); }
+function toast(m){ const e=document.getElementById("toast"); e.textContent=m; e.classList.add("show"); setTimeout(()=>e.classList.remove("show"),2200); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════════════
+function go(p){ PAGE=p; document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active",n.dataset.p===p)); render(); }
+function render(){ document.getElementById("root").innerHTML=({dashboard:pgDash,register:pgReg,critical:pgCrit,add:pgAdd,generate:pgGen,scan:pgScan,settings:pgSet,help:pgHelp}[PAGE]||pgDash)(); }
+
+function badge(st){ return `<span class="badge badge-${ST_CLS[st]||'ns'}">${st}</span>`; }
+function lead(w){
+  const p=Math.min(w/20*100,100);
+  const c=w>=12?"r":w>=8?"o":w>=4?"y":"g";
+  return `<div class="lead-wrap"><div class="lead-bar lead-${c}"><div class="lead-fill" style="width:${p}%"></div></div><span>${w}wk</span></div>`;
+}
+function typeTag(code){ return `<span title="${TYPES[code]?.n||code}" style="color:${TYPES[code]?.c||'#fff'}">${code}</span>`; }
+function esc(s){ return s?String(s).replace(/</g,"&lt;").replace(/>/g,"&gt;"):""; }
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+function pgDash(){
+  if(!DB.project) return pgSet();
+  const S=DB.submittals, T=S.length;
+  if(!T) return `<div class="page-header"><h2>Dashboard</h2><p>${esc(DB.project.name)}</p></div><div class="empty"><h3>No submittals yet</h3><p>Generate from CSI reference data or add manually.</p><br><button class="btn btn-p" onclick="go('generate')">Generate Submittals</button></div>`;
+
+  const ap=S.filter(x=>["Approved","Approved as Noted","Closed","For Record Only"].includes(x.st)).length;
+  const pn=S.filter(x=>["Not Started","In Preparation"].includes(x.st)).length;
+  const ir=S.filter(x=>["Submitted","Under Review"].includes(x.st)).length;
+  const ac=S.filter(x=>["Revise & Resubmit","Rejected"].includes(x.st)).length;
+  const cr=S.filter(x=>x.lw>=8&&!["Approved","Approved as Noted","Closed","For Record Only"].includes(x.st)).length;
+  const pct=Math.round(ap/T*100);
+  const circ=2*Math.PI*38, off=circ-(pct/100)*circ;
+
+  // status counts
+  const sc={}; S.forEach(x=>sc[x.st]=(sc[x.st]||0)+1);
+  // division counts
+  const dc={}; S.forEach(x=>{const k=x.div+" "+x.divN; dc[k]=(dc[k]||0)+1;});
+
+  let h=`<div class="page-header"><h2>Dashboard</h2><p>${esc(DB.project.name)}${DB.project.contract?" — "+esc(DB.project.contract):""}</p></div>
+  <div class="cards">
+    <div class="card blue"><div class="label">Total</div><div class="value">${T}</div></div>
+    <div class="card green"><div class="label">Approved / Closed</div><div class="value">${ap}</div><div class="sub">${pct}% complete</div></div>
+    <div class="card yellow"><div class="label">Pending</div><div class="value">${pn}</div></div>
+    <div class="card purple"><div class="label">In Review</div><div class="value">${ir}</div></div>
+    <div class="card orange"><div class="label">Action Required</div><div class="value">${ac}</div></div>
+    <div class="card red"><div class="label">Critical Path</div><div class="value">${cr}</div><div class="sub">Lead &ge; 8 wk</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:14px;margin-bottom:20px;">
+    <div class="panel"><div class="panel-header"><h3>Completion</h3></div><div class="panel-body" style="text-align:center;">
+      <div class="ring"><svg width="90" height="90"><circle class="bg" cx="45" cy="45" r="38"/><circle class="fg" cx="45" cy="45" r="38" stroke-dasharray="${circ}" stroke-dashoffset="${off}"/></svg><div class="ring-pct">${pct}%</div></div>
+      <div style="font-size:11px;color:var(--text2);">${ap} of ${T} submittals</div>
+    </div></div>
+    <div class="panel"><div class="panel-header"><h3>By Status</h3></div><div class="panel-body">
+      ${Object.entries(sc).sort((a,b)=>b[1]-a[1]).map(([st,cnt])=>`<div class="chart-row"><div class="chart-lbl">${st}</div><div class="chart-bar" style="width:${Math.max(cnt/T*220,10)}px;background:${ST_CLR[st]||'#6b7280'}"><span>${cnt}</span></div></div>`).join("")}
+    </div></div>
+  </div>
+  <div class="panel"><div class="panel-header"><h3>By Division</h3></div><div class="panel-body">
+    ${Object.entries(dc).sort((a,b)=>a[0].localeCompare(b[0])).map(([d,c])=>`<div class="chart-row"><div class="chart-lbl">${d}</div><div class="chart-bar" style="width:${Math.max(c/T*280,10)}px;background:var(--accent)"><span>${c}</span></div></div>`).join("")}
+  </div></div>`;
+
+  // Action required
+  const ais=S.filter(x=>["Revise & Resubmit","Rejected"].includes(x.st));
+  if(ais.length){
+    h+=`<div class="panel" style="border-color:var(--orange);"><div class="panel-header" style="background:rgba(249,115,22,.04);"><h3 style="color:var(--orange);">&#9888; Action Required (${ais.length})</h3></div>
+    <table><thead><tr><th>Number</th><th>Trade</th><th>Description</th><th>Status</th><th></th></tr></thead><tbody>
+    ${ais.map(x=>`<tr><td class="mono">${x.num}</td><td>${esc(x.trade)}</td><td class="truncate">${esc(x.desc)}</td><td>${badge(x.st)}</td><td><button class="btn btn-sm" onclick="openEdit(${x.id})">Update</button></td></tr>`).join("")}
+    </tbody></table></div>`;
+  }
+  return h;
+}
+
+// ─── Register ─────────────────────────────────────────────────────────────────
+function pgReg(){
+  const S=DB.submittals;
+  const divOpts=[...new Set(S.map(x=>x.div))].sort();
+  const tradeOpts=[...new Set(S.map(x=>x.trade))].sort();
+  return `<div class="page-header"><h2>Submittal Register</h2><p>${S.length} submittals</p><div class="header-actions"><button class="btn btn-p" onclick="go('add')">+ Add</button></div></div>
+  <div class="panel">
+    <div class="toolbar">
+      <input type="search" id="fSearch" placeholder="Search..." oninput="filterReg()">
+      <select id="fSt" onchange="filterReg()"><option value="">All Statuses</option>${STATUSES.map(s=>`<option>${s}</option>`).join("")}</select>
+      <select id="fDiv" onchange="filterReg()"><option value="">All Divisions</option>${divOpts.map(d=>`<option value="${d}">${d} - ${CSI[d]?.n||""}</option>`).join("")}</select>
+      <select id="fType" onchange="filterReg()"><option value="">All Types</option>${Object.keys(TYPES).map(t=>`<option value="${t}">${t} - ${TYPES[t].n}</option>`).join("")}</select>
+    </div>
+    <div class="table-scroll"><table><thead><tr><th>No.</th><th>Spec</th><th>Div</th><th>Trade</th><th>Type</th><th>Description</th><th>Status</th><th>Lead</th><th></th></tr></thead>
+    <tbody id="regTbody">${S.map(regRow).join("")}</tbody></table></div>
+  </div>`;
+}
+function regRow(x){
+  return `<tr data-id="${x.id}" data-st="${x.st}" data-div="${x.div}" data-ty="${x.ty}" data-q="${(x.desc+" "+x.trade+" "+x.num).toLowerCase()}">
+  <td class="mono">${x.num}</td><td class="mono">${x.spec||""}</td><td>${x.div}</td><td style="max-width:140px;" class="truncate">${esc(x.trade)}</td>
+  <td>${typeTag(x.ty)}</td><td class="truncate">${esc(x.desc)}</td><td>${badge(x.st)}</td><td>${lead(x.lw)}</td>
+  <td><button class="btn btn-sm" onclick="openEdit(${x.id})">Edit</button></td></tr>`;
+}
+function filterReg(){
+  const q=(document.getElementById("fSearch")?.value||"").toLowerCase();
+  const st=document.getElementById("fSt")?.value||"";
+  const dv=document.getElementById("fDiv")?.value||"";
+  const ty=document.getElementById("fType")?.value||"";
+  document.querySelectorAll("#regTbody tr").forEach(r=>{
+    let ok=true;
+    if(q&&!r.dataset.q.includes(q)) ok=false;
+    if(st&&r.dataset.st!==st) ok=false;
+    if(dv&&r.dataset.div!==dv) ok=false;
+    if(ty&&r.dataset.ty!==ty) ok=false;
+    r.style.display=ok?"":"none";
+  });
+}
+
+// ─── Critical Path ────────────────────────────────────────────────────────────
+function pgCrit(){
+  const done=["Approved","Approved as Noted","Closed","For Record Only"];
+  const cr=DB.submittals.filter(x=>x.lw>=8&&!done.includes(x.st)).sort((a,b)=>b.lw-a.lw);
+  let h=`<div class="page-header"><h2>Critical Path Items</h2><p>Lead time &ge; 8 weeks, not yet approved</p></div>`;
+  if(!cr.length) return h+`<div class="empty"><h3>All clear</h3><p>No critical long-lead items pending.</p></div>`;
+  h+=`<div class="cards"><div class="card red"><div class="label">Critical Items</div><div class="value">${cr.length}</div></div>
+  <div class="card orange"><div class="label">Longest Lead</div><div class="value">${cr[0].lw}wk</div><div class="sub">${esc(cr[0].desc)}</div></div></div>`;
+  h+=`<div class="panel"><div class="table-scroll"><table><thead><tr><th>No.</th><th>Lead</th><th>Status</th><th>Trade</th><th>Description</th><th>Division</th><th></th></tr></thead><tbody>
+  ${cr.map(x=>`<tr><td class="mono">${x.num}</td><td>${lead(x.lw)}</td><td>${badge(x.st)}</td><td>${esc(x.trade)}</td><td class="truncate">${esc(x.desc)}</td><td>${x.div} - ${esc(x.divN)}</td><td><button class="btn btn-sm" onclick="openEdit(${x.id})">Update</button></td></tr>`).join("")}
+  </tbody></table></div></div>`;
+  return h;
+}
+
+// ─── Add ──────────────────────────────────────────────────────────────────────
+function pgAdd(){
+  const dOpts=Object.entries(CSI).map(([c,d])=>`<option value="${c}">${c} - ${d.n} (${d.t})</option>`).join("");
+  const tOpts=Object.keys(TYPES).map(t=>`<option value="${t}">${t} - ${TYPES[t].n}</option>`).join("");
+  return `<div class="page-header"><h2>Add Submittal</h2></div>
+  <div class="setup-box" style="margin:0;max-width:600px;">
+    <div class="fr"><div class="fg"><label>Division</label><select id="aDiv" onchange="aFillTrade()">${dOpts}</select></div>
+    <div class="fg"><label>Type</label><select id="aType">${tOpts}</select></div></div>
+    <div class="fg"><label>Description *</label><input id="aDesc" placeholder="e.g., Structural Steel Shop Drawings"></div>
+    <div class="fr"><div class="fg"><label>Spec Section</label><input id="aSpec" placeholder="e.g., 05 12 00"></div>
+    <div class="fg"><label>Trade</label><input id="aTrade"></div></div>
+    <div class="fr"><div class="fg"><label>Lead Time (weeks)</label><input id="aLead" type="number" value="4" min="1" max="52"></div>
+    <div class="fg"><label>Date Required</label><input id="aDateReq" type="date"></div></div>
+    <div class="fg"><label>Notes</label><textarea id="aNotes" rows="2"></textarea></div>
+    <button class="btn btn-p" onclick="doAdd()">Add Submittal</button>
+  </div>`;
+}
+function aFillTrade(){ const d=document.getElementById("aDiv").value; if(CSI[d]) document.getElementById("aTrade").value=CSI[d].t; }
+function doAdd(){
+  const div=document.getElementById("aDiv").value;
+  const desc=document.getElementById("aDesc").value.trim();
+  if(!desc){alert("Description required.");return;}
+  const di=CSI[div]||{};
+  DB.submittals.push({
+    id:DB.nextId++, num:nextNum(div), div, divN:di.n||"Div "+div,
+    trade:document.getElementById("aTrade").value||di.t||"TBD",
+    desc, ty:document.getElementById("aType").value,
+    spec:document.getElementById("aSpec").value,
+    st:"Not Started", lw:parseInt(document.getElementById("aLead").value)||4,
+    dateReq:document.getElementById("aDateReq").value||"",
+    dateSub:"", dateRet:"", disp:"", resub:0,
+    notes:document.getElementById("aNotes").value||"",
+    created:now(), updated:now()
+  });
+  save(); toast("Submittal added"); go("register");
+}
+
+// ─── Generate ─────────────────────────────────────────────────────────────────
+function pgGen(){
+  return `<div class="page-header"><h2>Generate from CSI Reference</h2><p>Populate standard submittals with typical lead times</p></div>
+  <div class="setup-box" style="margin:0;max-width:700px;">
+    <div style="margin-bottom:10px;display:flex;gap:6px;">
+      <button class="btn btn-sm" onclick="togDivs(true)">Select All</button>
+      <button class="btn btn-sm" onclick="togDivs(false)">Deselect All</button>
+    </div>
+    <div class="div-grid">${Object.entries(CSI).map(([c,d])=>`<label class="div-chk"><input type="checkbox" class="gc" value="${c}" checked> ${c} - ${d.n}</label>`).join("")}</div>
+    <button class="btn btn-p" onclick="doGen()">Generate Submittals</button>
+  </div>`;
+}
+function togDivs(v){ document.querySelectorAll(".gc").forEach(c=>c.checked=v); }
+function doGen(){
+  const divs=[...document.querySelectorAll(".gc:checked")].map(c=>c.value);
+  if(!divs.length){alert("Select at least one division.");return;}
+  let cnt=0;
+  divs.forEach(dc=>{
+    if(!CSI[dc]) return;
+    CSI[dc].s.forEach(item=>{
+      DB.submittals.push({
+        id:DB.nextId++, num:nextNum(dc), div:dc, divN:CSI[dc].n,
+        trade:CSI[dc].t, desc:item.d, ty:item.y,
+        spec:dc+" 00 00", st:"Not Started", lw:item.l,
+        dateReq:"", dateSub:"", dateRet:"", disp:"", resub:0, notes:"",
+        created:now(), updated:now()
+      });
+      cnt++;
+    });
+  });
+  save(); toast(`Generated ${cnt} submittals`); go("dashboard");
+}
+
+// ─── Scan ─────────────────────────────────────────────────────────────────────
+function pgScan(){
+  return `<div class="page-header"><h2>Scan Specifications</h2><p>Paste spec text or upload a file to extract submittal requirements</p></div>
+  <div class="setup-box" style="margin:0;max-width:700px;">
+    <div class="fg"><label>Upload Text/TXT File</label><input type="file" id="scanFile" accept=".txt,.text,.spec" onchange="loadScanFile()" style="padding:8px;"></div>
+    <div class="fg"><label>Or Paste Specification Text</label><textarea id="scanText" rows="12" placeholder="Paste specification text here...&#10;&#10;The scanner looks for submittal requirements like:&#10;- Submit shop drawings&#10;- Provide product data&#10;- Furnish samples&#10;- Submit certificates&#10;- Mix designs, warranties, test reports, etc."></textarea></div>
+    <button class="btn btn-p" onclick="doScan()">Scan for Submittals</button>
+    <div id="scanOut" style="margin-top:14px;"></div>
+  </div>`;
+}
+function loadScanFile(){
+  const f=document.getElementById("scanFile").files[0];
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=e=>document.getElementById("scanText").value=e.target.result;
+  r.readAsText(f);
+}
+function doScan(){
+  const text=document.getElementById("scanText").value;
+  if(!text.trim()){alert("Paste spec text first.");return;}
+  const items=scanText(text);
+  _scanItems=items;
+  const el=document.getElementById("scanOut");
+  if(!items.length){ el.innerHTML='<p style="color:var(--yellow);">No submittal requirements found. Try a larger section.</p>'; return; }
+  el.innerHTML=`<div class="panel"><div class="panel-header"><h3>${items.length} submittals found</h3></div>
+  <table><thead><tr><th>Type</th><th>Div</th><th>Trade</th><th>Description</th><th>Lead</th></tr></thead><tbody>
+  ${items.map(x=>`<tr><td>${typeTag(x.ty)}</td><td>${x.div}</td><td>${esc(x.trade)}</td><td class="truncate">${esc(x.desc)}</td><td>${x.lw}wk</td></tr>`).join("")}
+  </tbody></table></div>
+  <button class="btn btn-s" onclick="importScan()" style="margin-top:10px;">Import All to Register</button>`;
+}
+function scanText(text){
+  const items=[];
+  const lines=text.split("\n");
+  let curSec="", curDiv="01", inSub=false;
+  for(const line of lines){
+    const sm=line.match(/(?:SECTION\s+)?(\d{2})\s*(\d{2})\s*(\d{2})/i);
+    if(sm){ curSec=sm[1]+" "+sm[2]+" "+sm[3]; curDiv=sm[1]; }
+    if(/SUBMITTALS|SUBMITTAL\s+REQUIREMENTS/i.test(line)){ inSub=true; continue; }
+    if(inSub && /^\s*(PART\s+[23]|\d+\.\d+\s+(?!SUBMITTALS))/i.test(line)){ inSub=false; }
+    if(inSub || /(submit|furnish|provide)\s+(the\s+following\s+)?(shop|product|sample|certif|test|mix|warrant|mock|manua|as.built|closeout|design|work\s+plan|safety)/i.test(line)){
+      const pats=[[/shop\s+drawings?/i,"SD"],[/product\s+data/i,"PD"],[/samples?/i,"SS"],[/certificates?/i,"CP"],[/test\s+reports?/i,"QC"],[/mix\s+designs?/i,"DI"],[/mock.?ups?/i,"MO"],[/o\s*&\s*m\s+manuals?/i,"CL"],[/warran(?:ty|tee|ties)/i,"CL"],[/as.?built/i,"CL"],[/work\s+plan|method\s+statement/i,"WP"],[/safety\s+plan|HASP/i,"WP"],[/design\s+(?:data|calc)/i,"DI"]];
+      for(const [re,ty] of pats){
+        if(re.test(line)){
+          let d=line.trim().replace(/^[A-Z]\.\s*/,"").replace(/^\d+\.\s*/,"").replace(/^[-•]\s*/,"").trim();
+          if(d.length>10){
+            const di=CSI[curDiv]||{};
+            let lw=4;
+            for(const ref of (di.s||[])){ if(ref.y===ty){lw=ref.l;break;} }
+            items.push({desc:d.slice(0,120),ty,spec:curSec,div:curDiv,divN:di.n||"Div "+curDiv,trade:di.t||"TBD",lw});
+          }
+          break;
+        }
+      }
+    }
+  }
+  return items;
+}
+function importScan(){
+  if(!_scanItems.length) return;
+  _scanItems.forEach(x=>{
+    DB.submittals.push({
+      id:DB.nextId++, num:nextNum(x.div), div:x.div, divN:x.divN,
+      trade:x.trade, desc:x.desc, ty:x.ty, spec:x.spec,
+      st:"Not Started", lw:x.lw,
+      dateReq:"", dateSub:"", dateRet:"", disp:"", resub:0,
+      notes:"Imported from spec scan", created:now(), updated:now()
+    });
+  });
+  save(); toast(`Imported ${_scanItems.length} submittals`); _scanItems=[]; go("register");
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+function pgSet(){
+  const p=DB.project||{};
+  return `<div class="setup-box">
+    <h2>${DB.project?"Project Settings":"Create Project"}</h2>
+    <p>${DB.project?"Update project details":"Set up your project to get started"}</p>
+    <div class="fg"><label>Project Name *</label><input id="sName" value="${esc(p.name||"")}"></div>
+    <div class="fr"><div class="fg"><label>Contract Number</label><input id="sContract" value="${esc(p.contract||"")}"></div>
+    <div class="fg"><label>JOC Task Order</label><input id="sTask" value="${esc(p.task||"")}"></div></div>
+    <div class="fr"><div class="fg"><label>Owner / Agency</label><input id="sOwner" value="${esc(p.owner||"")}"></div>
+    <div class="fg"><label>A/E Firm</label><input id="sAE" value="${esc(p.ae||"")}"></div></div>
+    <div class="fg"><label>General Contractor</label><input id="sGC" value="${esc(p.gc||"")}"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn btn-p" onclick="saveSet()">${DB.project?"Save":"Create Project"}</button>
+      ${DB.project?'<button class="btn btn-d" onclick="if(confirm(\'Delete ALL project data? This cannot be undone.\')){DB={project:null,submittals:[],nextId:1};save();go(\'settings\');}">Reset All Data</button>':""}
+    </div>
+  </div>`;
+}
+function saveSet(){
+  const n=document.getElementById("sName").value.trim();
+  if(!n){alert("Name required.");return;}
+  DB.project={name:n,contract:document.getElementById("sContract").value,task:document.getElementById("sTask").value,owner:document.getElementById("sOwner").value,ae:document.getElementById("sAE").value,gc:document.getElementById("sGC").value};
+  save(); toast("Project saved"); go("dashboard");
+}
+
+// ─── Help ─────────────────────────────────────────────────────────────────────
+function pgHelp(){
+  return `<div class="page-header"><h2>Help & Reference</h2></div>
+  <div class="panel"><div class="panel-header"><h3>Workflow</h3></div><div class="panel-body" style="font-size:12px;line-height:1.7;color:var(--text2);">
+    <strong style="color:var(--text);">1. Create Project</strong> — Go to Settings, enter project name and contract info.<br>
+    <strong style="color:var(--text);">2. Generate Submittals</strong> — Use Generate to populate from CSI reference data, or Scan Specs to extract from spec text, or Add manually.<br>
+    <strong style="color:var(--text);">3. Track Status</strong> — Click Edit on any submittal to update status, lead time, and dates.<br>
+    <strong style="color:var(--text);">4. Monitor</strong> — Dashboard shows overall progress. Critical Path surfaces long-lead items needing attention.<br>
+    <strong style="color:var(--text);">5. Export</strong> — Use Export CSV in the sidebar for spreadsheet use.
+  </div></div>
+  <div class="panel"><div class="panel-header"><h3>Submittal Statuses</h3></div><div class="panel-body">
+    <table><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody>
+    ${STATUSES.map(s=>`<tr><td>${badge(s)}</td><td style="font-size:12px;">${{
+      "Not Started":"Identified, not yet in preparation",
+      "In Preparation":"Trade/sub preparing the submittal",
+      "Submitted":"Sent to A/E for review",
+      "Under Review":"A/E actively reviewing",
+      "Approved":"No exceptions, proceed",
+      "Approved as Noted":"Approved with minor comments",
+      "Revise & Resubmit":"Corrections required, resubmit",
+      "Rejected":"Not acceptable",
+      "For Record Only":"Informational, no approval needed",
+      "Closed":"Final disposition complete"
+    }[s]||""}</td></tr>`).join("")}
+    </tbody></table>
+  </div></div>
+  <div class="panel"><div class="panel-header"><h3>Submittal Types</h3></div><div class="panel-body">
+    <table><thead><tr><th>Code</th><th>Type</th></tr></thead><tbody>
+    ${Object.entries(TYPES).map(([c,t])=>`<tr><td>${typeTag(c)} <strong>${c}</strong></td><td style="font-size:12px;">${t.n}</td></tr>`).join("")}
+    </tbody></table>
+  </div></div>
+  <div class="panel"><div class="panel-header"><h3>CSI Divisions Covered (${Object.keys(CSI).length})</h3></div><div class="panel-body">
+    <table><thead><tr><th>Div</th><th>Name</th><th>Trade</th><th>Submittals</th></tr></thead><tbody>
+    ${Object.entries(CSI).map(([c,d])=>`<tr><td class="mono">${c}</td><td>${d.n}</td><td>${d.t}</td><td>${d.s.length}</td></tr>`).join("")}
+    </tbody></table>
+  </div></div>
+  <div style="font-size:11px;color:var(--text2);margin-top:12px;">Data is stored in your browser's localStorage. No server required.</div>`;
+}
+
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
+let _editId=null;
+function openEdit(id){
+  _editId=id;
+  const x=DB.submittals.find(s=>s.id===id);
+  if(!x) return;
+  document.getElementById("mTitle").textContent=`${x.num}: ${x.desc}`;
+  document.getElementById("mBody").innerHTML=`
+    <div class="fr"><div class="fg"><label>Status</label><select id="eSt">${STATUSES.map(s=>`<option${s===x.st?" selected":""}>${s}</option>`).join("")}</select></div>
+    <div class="fg"><label>Lead Time (weeks)</label><input id="eLw" type="number" value="${x.lw}" min="1" max="52"></div></div>
+    <div class="fr"><div class="fg"><label>Date Submitted</label><input id="eDS" type="date" value="${x.dateSub||""}"></div>
+    <div class="fg"><label>Date Returned</label><input id="eDR" type="date" value="${x.dateRet||""}"></div></div>
+    <div class="fg"><label>Date Required on Site</label><input id="eDQ" type="date" value="${x.dateReq||""}"></div>
+    <div class="fg"><label>Notes</label><textarea id="eN" rows="3">${esc(x.notes||"")}</textarea></div>`;
+  document.getElementById("mFoot").innerHTML=`<button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-d btn-sm" onclick="delSubmittal()">Delete</button><button class="btn btn-p" onclick="saveEdit()">Save</button>`;
+  document.getElementById("modal").classList.add("open");
+}
+function closeModal(){ document.getElementById("modal").classList.remove("open"); _editId=null; }
+function saveEdit(){
+  const x=DB.submittals.find(s=>s.id===_editId);
+  if(!x) return;
+  const oldSt=x.st;
+  x.st=document.getElementById("eSt").value;
+  x.disp=x.st;
+  if(x.st==="Revise & Resubmit"&&oldSt!=="Revise & Resubmit") x.resub=(x.resub||0)+1;
+  x.lw=parseInt(document.getElementById("eLw").value)||x.lw;
+  x.dateSub=document.getElementById("eDS").value;
+  x.dateRet=document.getElementById("eDR").value;
+  x.dateReq=document.getElementById("eDQ").value;
+  x.notes=document.getElementById("eN").value;
+  x.updated=now();
+  save(); closeModal(); toast("Updated"); render();
+}
+function delSubmittal(){
+  if(!confirm("Delete this submittal?")) return;
+  DB.submittals=DB.submittals.filter(s=>s.id!==_editId);
+  save(); closeModal(); toast("Deleted"); render();
+}
+
+// ─── CSV Export ───────────────────────────────────────────────────────────────
+function exportCSV(){
+  const S=DB.submittals;
+  if(!S.length){toast("No data to export");return;}
+  const h=["Number","Spec Section","Division","Division Name","Trade","Type","Description","Status","Lead Weeks","Date Required","Date Submitted","Date Returned","Disposition","Resubmittals","Notes"];
+  const rows=S.map(x=>[x.num,x.spec,x.div,x.divN,x.trade,x.ty,x.desc,x.st,x.lw,x.dateReq,x.dateSub,x.dateRet,x.disp,x.resub,x.notes]);
+  let csv=h.join(",")+"\n"+rows.map(r=>r.map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download=`submittal_register_${now()}.csv`;
+  a.click(); toast("CSV exported");
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+if(!DB.project) PAGE="settings";
+render();
+</script>
+</body>
+</html>
