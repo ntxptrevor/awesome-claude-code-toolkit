@@ -1,91 +1,123 @@
-# Deploy Submittal Tracker to ntxpllc.com (Hostinger)
+# Deploy Submittal Tracker to submittals.ntxpllc.com
 
-## One-Time Setup (10 minutes)
+## Hostinger Node.js Git Auto-Deploy
 
-### Step 1: Get Your Hostinger FTP Credentials
+### Prerequisites
+- Subdomain `submittals.ntxpllc.com` created in Hostinger hPanel
+- GitHub repo: `ntxptrevor/awesome-claude-code-toolkit`
 
-1. Log in to **hPanel** at https://hpanel.hostinger.com
-2. Go to **Files** > **FTP Accounts**
-3. Note your existing FTP credentials, or create a new FTP account:
-   - **FTP Server**: Usually `ftp.ntxpllc.com` or shown in the FTP details page
-   - **FTP Username**: Usually `u123456789` or your custom username
-   - **FTP Password**: The password you set
-4. If unsure, check **Files** > **FTP Accounts** > your main account
+---
 
-### Step 2: Add FTP Secrets to GitHub
+### Step 1: Set Up Node.js in hPanel
 
-1. Go to your GitHub repo: `https://github.com/ntxptrevor/awesome-claude-code-toolkit`
-2. Click **Settings** > **Secrets and variables** > **Actions**
-3. Click **New repository secret** and add these three secrets:
+1. Log in to **hPanel** → https://hpanel.hostinger.com
+2. Go to **Websites** → select `ntxpllc.com`
+3. Go to **Advanced** → **Node.js**
+4. Click **Create new application** and fill in:
 
-| Secret Name    | Value                                         |
-|----------------|-----------------------------------------------|
-| `FTP_SERVER`   | Your FTP server (e.g., `ftp.ntxpllc.com`)     |
-| `FTP_USERNAME` | Your FTP username (e.g., `u123456789`)         |
-| `FTP_PASSWORD` | Your FTP password                              |
+| Field | Value |
+|-------|-------|
+| **Node.js version** | `18.x` (or latest LTS available) |
+| **Application root** | `deploy/submittal-tracker` |
+| **Application startup file** | `server.js` |
+| **Application URL** | Select `submittals.ntxpllc.com` from dropdown |
 
-### Step 3: Create the Target Directory on Hostinger
+5. Click **Create**
 
-1. In hPanel, go to **Files** > **File Manager**
-2. Navigate to `public_html/`
-3. Create a new folder called `submittal-tracker`
+---
 
-### Step 4: Trigger the Deploy
+### Step 2: Connect Git Repository
 
-Push to the repo or manually trigger:
+1. Still in hPanel, go to **Advanced** → **Git**
+2. Click **Create new repository** and fill in:
 
-1. Go to your GitHub repo > **Actions** tab
-2. Select **Deploy Submittal Tracker to Hostinger**
-3. Click **Run workflow**
+| Field | Value |
+|-------|-------|
+| **Repository URL** | `https://github.com/ntxptrevor/awesome-claude-code-toolkit.git` |
+| **Branch** | `main` |
+| **Repository path** | `/home/u[YOUR_ID]/domains/ntxpllc.com/public_html/submittals.ntxpllc.com` (or wherever Hostinger points the subdomain — check in **Subdomains** settings) |
+| **Auto deploy** | **Enable** |
 
-### Step 5: Access Your App
+3. Click **Create**
 
-Your app will be live at:
+> **Note**: If Hostinger asks for authentication, you may need to generate a GitHub Personal Access Token:
+> - Go to GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+> - Generate a token with `repo` scope
+> - Use your GitHub username and the token as the password
+
+---
+
+### Step 3: Set Auto-Deploy Webhook (optional but recommended)
+
+To make Hostinger pull automatically on every push:
+
+1. In hPanel **Git** section, copy the **Webhook URL** shown for your repo
+2. Go to GitHub repo → **Settings** → **Webhooks** → **Add webhook**
+3. Paste the webhook URL
+4. Content type: `application/json`
+5. Select **Just the push event**
+6. Click **Add webhook**
+
+---
+
+### Step 4: Verify
+
+1. In hPanel → **Node.js**, click **Restart** on your application
+2. Visit: **https://submittals.ntxpllc.com**
+3. You should see the Submittal Tracker app
+
+---
+
+## Folder Structure on Hostinger
+
+After Git pulls the repo, Hostinger runs `npm install` in the application root and starts `server.js`:
 
 ```
-https://ntxpllc.com/submittal-tracker/
+your-repo/
+├── deploy/
+│   └── submittal-tracker/     ← Application root
+│       ├── server.js          ← Entry point (Node.js HTTP server)
+│       ├── index.html         ← The full app (single file)
+│       ├── package.json       ← Node config
+│       └── .htaccess          ← HTTPS redirect & headers
 ```
 
----
-
-## How Auto-Deploy Works
-
-The GitHub Actions workflow (`.github/workflows/deploy-hostinger.yml`) runs automatically when:
-
-- You push changes to the `main` branch that touch the app files
-- You manually trigger it from the Actions tab
-
-It copies `submittal_tracker.html` as `index.html` and FTPs it to `public_html/submittal-tracker/` on Hostinger.
+The `server.js` reads `index.html` and serves it on the port Hostinger assigns via `process.env.PORT`.
 
 ---
 
-## Alternative: Manual Deploy (if you prefer)
+## Updating the App
 
-If you'd rather not use GitHub Actions:
+After the Git auto-deploy is connected:
 
-1. Download `tools/construction-submittals/submittal_tracker.html`
-2. Log in to Hostinger hPanel
-3. Go to **Files** > **File Manager**
-4. Navigate to `public_html/submittal-tracker/` (create the folder if needed)
-5. Upload the file and rename it to `index.html`
-6. Visit `https://ntxpllc.com/submittal-tracker/`
+1. Make changes to `tools/construction-submittals/submittal_tracker.html`
+2. Copy it to `deploy/submittal-tracker/index.html`
+3. Commit and push to `main`
+4. Hostinger auto-pulls and restarts the Node.js app
 
----
-
-## Optional: Deploy to Root Domain
-
-If you want the app at `https://ntxpllc.com/` instead of a subdirectory:
-
-1. Change `server-dir` in the workflow from `./public_html/submittal-tracker/` to `./public_html/`
-2. Or manually upload `index.html` to `public_html/` in File Manager
+Or just push — the GitHub Actions workflow auto-syncs the HTML to the deploy folder.
 
 ---
 
-## Optional: Add a Subdomain
+## Troubleshooting
 
-To host at something like `submittals.ntxpllc.com`:
+| Problem | Fix |
+|---------|-----|
+| 502 Bad Gateway | In hPanel → Node.js, click **Restart**. Check that startup file is `server.js` |
+| App not updating | Check hPanel → Git → click **Pull** manually. Verify branch is `main` |
+| Git auth fails | Add a GitHub Personal Access Token (see Step 2 note above) |
+| SSL not working | hPanel → SSL → ensure auto-SSL is enabled for the subdomain |
+| Wrong directory | Check hPanel → Subdomains → verify document root path matches Git repo path |
+| Port errors | `server.js` uses `process.env.PORT` which Hostinger sets automatically — do not hardcode |
 
-1. In hPanel, go to **Domains** > **Subdomains**
-2. Create subdomain `submittals`
-3. Point its document root to `public_html/submittal-tracker`
-4. SSL will auto-provision via Hostinger
+---
+
+## Health Check
+
+Test the server is running:
+
+```
+curl https://submittals.ntxpllc.com/health
+```
+
+Should return: `{"status":"ok","app":"submittal-tracker"}`

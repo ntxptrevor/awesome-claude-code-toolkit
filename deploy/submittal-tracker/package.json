@@ -1,0 +1,15 @@
+{
+  "name": "submittal-tracker",
+  "version": "1.0.0",
+  "description": "Construction Submittal Tracker for JOC & Public Works — submittals.ntxpllc.com",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "echo 'No build step — static app'"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": ["construction", "submittals", "JOC"],
+  "license": "Apache-2.0"
+}
