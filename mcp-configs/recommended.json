@@ -93,6 +93,11 @@
         "FIRECRAWL_API_KEY": "<your-firecrawl-api-key>"
       },
       "description": "Crawl, scrape, and extract structured data from websites."
+    },
+    "apify": {
+      "type": "http",
+      "url": "https://mcp.apify.com/",
+      "description": "Access Apify's platform of web scraping, crawling, and automation actors via HTTP transport."
     }
   }
 }

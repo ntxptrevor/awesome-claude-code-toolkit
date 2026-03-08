@@ -655,7 +655,7 @@ Six curated Model Context Protocol server configurations.
 
 | Config | File | Servers Included |
 |--------|------|-----------------|
-| Recommended | [`recommended.json`](mcp-configs/recommended.json) | 14 essential servers for general development |
+| Recommended | [`recommended.json`](mcp-configs/recommended.json) | 15 essential servers for general development |
 | Full Stack | [`fullstack.json`](mcp-configs/fullstack.json) | Filesystem, GitHub, Postgres, Redis, Puppeteer |
 | Kubernetes | [`kubernetes.json`](mcp-configs/kubernetes.json) | kubectl-mcp-server, Docker, GitHub |
 | Data Science | [`data-science.json`](mcp-configs/data-science.json) | Jupyter, SQLite, PostgreSQL, Filesystem |
