@@ -440,6 +440,7 @@ Thirty-five curated skill modules included in this repo, with access to **15,000
 | Skill | Install | What It Teaches |
 |-------|---------|------------------|
 | [Reepl - LinkedIn Content Creation](https://github.com/reepl-io/skills) | `npx skillkit@latest install reepl-io/skills` | 18 tools for LinkedIn content management: drafts, publishing, scheduling, voice profiles, contacts, collections, templates, and AI image generation |
+| [Hindsight - Agent Memory Docs](https://github.com/vectorize-io/hindsight) | `npx skills add https://github.com/vectorize-io/hindsight --skill hindsight-docs` | Instant access to Hindsight agent memory system documentation: retain/recall/reflect operations, biomimetic memory architecture, multi-strategy retrieval, and LLM integration |
 
 ### Installing Skills
 
