@@ -23,3 +23,7 @@ yarn.lock
 .cache/
 tmp/
 temp/
+
+# Archon cloned repo (keep only our streamlit_ui.py)
+archon/*
+!archon/streamlit_ui.py
