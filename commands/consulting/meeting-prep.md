@@ -2,8 +2,8 @@ Prepare for a TIPS consulting meeting with a potential vendor or public entity m
 
 Given the entity name in `$ARGUMENTS`, run an exhaustive data gathering and analysis workflow to produce two deliverables:
 
-1. **Pitch Deck** — a slide-ready Markdown document explaining why TIPS can help this entity
-2. **Background Intelligence Report** — a scored assessment grading the entity on their likelihood of being a high-value target TIPS could quickly help
+1. **Pitch Deck (.pptx)** — a team-presentable PowerPoint slide deck explaining why TIPS can help this entity
+2. **Background Intelligence Report (.docx)** — an executive-ready Word document grading the entity on their likelihood of being a high-value target TIPS could quickly help
 
 ## Workflow
 
@@ -28,9 +28,15 @@ Given the entity name in `$ARGUMENTS`, run an exhaustive data gathering and anal
 
 ## Output
 
-Save two files to the current directory:
-- `pitch-deck-<entity-name>.md` — structured slide deck
-- `background-report-<entity-name>.md` — full intelligence report with High-Value Target Score (0-100%)
+Install `python-pptx` and `python-docx` via pip, then generate and save these files to the current directory:
+
+### Downloadable Files (team-presentable):
+- `pitch-deck-<entity-name>.pptx` — PowerPoint slide deck (16:9, branded, Calibri fonts, navy/blue theme)
+- `background-report-<entity-name>.docx` — Word report (cover page, TOC, branded headings, score table, 10 sections)
+
+### Markdown Reference Copies:
+- `pitch-deck-<entity-name>.md` — slide content in Markdown
+- `background-report-<entity-name>.md` — full report in Markdown
 
 ### Scoring Categories (each 0-20 points):
 | Category | What it measures |

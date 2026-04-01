@@ -115,119 +115,209 @@ Identify the top 5 opportunities for TIPS:
 - Pricing or fee structure comparisons where available
 - Unique TIPS advantages for this specific entity
 
-## Deliverable 1 — Pitch Deck
+## Deliverable 1 — Pitch Deck (PowerPoint .pptx)
 
-Generate a structured pitch deck (Markdown format suitable for conversion to PDF/slides) with:
+Generate a professional PowerPoint slide deck using `python-pptx`. The deck must be team-presentable with consistent branding, clean layouts, and readable fonts.
 
-```
-# TIPS Consulting — [Entity Name]
-## Meeting Date: [Date]
+### Slide Structure
 
----
+| Slide | Title | Content |
+|-------|-------|---------|
+| 1 | Title Slide | "TIPS Consulting — [Entity Name]", meeting date, prepared by |
+| 2 | About TIPS | Brief overview of TIPS cooperative purchasing, national reach, contract portfolio, no-cost membership |
+| 3 | Why [Entity Name] + TIPS | Tailored value proposition, specific pain points TIPS solves, dollar savings estimates |
+| 4 | Relevant TIPS Contracts | Top 5-10 contracts most relevant to this entity — vendor names, categories, highlights |
+| 5 | Success Stories | 2-3 comparable entities that benefited from TIPS with quantified results |
+| 6 | Current Relationship Summary | History with TIPS (if any), recent activity, open opportunities |
+| 7 | Recommended Next Steps | Specific actionable items, timeline, follow-up plan, key introductions |
+| 8 | Appendix — Entity Profile | Summary of financial, purchasing, and organizational data |
 
-### Slide 1: About TIPS
-- Brief overview of TIPS cooperative purchasing
-- National reach, contract portfolio, no-cost membership
+### PowerPoint Formatting Requirements
 
-### Slide 2: Why [Entity Name] + TIPS
-- Tailored value proposition based on research
-- Specific pain points TIPS solves for them
-- Dollar savings estimates where possible
+- **Slide dimensions**: Widescreen 16:9 (13.333" × 7.5")
+- **Title font**: Calibri Bold, 28-32pt, dark navy (#1B2A4A)
+- **Body font**: Calibri, 16-18pt, dark gray (#333333)
+- **Accent color**: TIPS brand blue (#0066CC) for headers and divider lines
+- **Background**: White (#FFFFFF) with subtle footer containing "CONFIDENTIAL — Prepared for [Entity Name]"
+- **Bullet points**: Use shaped bullets, left-aligned, with 1.2x line spacing
+- **Tables**: Use light blue header row (#0066CC with white text), alternating row shading
+- **Title slide**: Larger centered text, include date and "Prepared by TIPS Consulting"
 
-### Slide 3: Relevant TIPS Contracts
-- Top 5-10 contracts most relevant to this entity
-- Vendor names, categories, contract highlights
+### Generation Code Pattern
 
-### Slide 4: Success Stories
-- 2-3 comparable entities that benefited from TIPS
-- Quantified results (time saved, money saved, compliance achieved)
+```python
+from pptx import Presentation
+from pptx.util import Inches, Pt, Emu
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.shapes import MSO_SHAPE
 
-### Slide 5: Current Relationship Summary
-- History with TIPS (if any)
-- Recent activity and engagement
-- Open opportunities
+prs = Presentation()
+prs.slide_width = Inches(13.333)
+prs.slide_height = Inches(7.5)
 
-### Slide 6: Recommended Next Steps
-- Specific actionable items for the meeting
-- Timeline and follow-up plan
-- Key contacts and introductions to make
+# Define brand colors
+NAVY = RGBColor(0x1B, 0x2A, 0x4A)
+BRAND_BLUE = RGBColor(0x00, 0x66, 0xCC)
+DARK_GRAY = RGBColor(0x33, 0x33, 0x33)
+WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 
-### Slide 7: Appendix — Entity Profile
-- Summary of financial, purchasing, and organizational data
-```
+# Add slides with proper layouts, content, formatting...
+# Each slide: add title shape, body text boxes, tables as needed
+# Add footer to each slide
 
-Save this as `pitch-deck-[entity-name].md` in the current working directory.
-
-## Deliverable 2 — Background Intelligence Report & Score
-
-Generate a comprehensive report with a **High-Value Target Score** (0-100%):
-
-```
-# Background Intelligence Report
-## [Entity Name]
-## Prepared: [Date] | Analyst: Claude AI
-
----
-
-## HIGH-VALUE TARGET SCORE: [X]%
-
-### Scoring Breakdown (each category 0-20 points):
-
-| Category | Score | Rationale |
-|----------|-------|-----------|
-| Purchasing Volume Potential | X/20 | Based on budget size, growth, capital plans |
-| Speed to Close | X/20 | Based on procurement rules, decision-maker access, urgency |
-| Relationship Strength | X/20 | Based on existing history, CRM engagement, champion presence |
-| Strategic Fit | X/20 | Based on alignment with TIPS contract portfolio and growth goals |
-| Competitive Position | X/20 | Based on competitor presence, switching costs, TIPS advantages |
-
-### Grade: [A+ / A / B+ / B / C+ / C / D / F]
-- 90-100: Tier 1 — Immediate high-priority pursuit
-- 80-89: Tier 2 — Strong opportunity, prioritize
-- 70-79: Tier 3 — Good opportunity, standard pursuit
-- 60-69: Tier 4 — Moderate opportunity, nurture
-- Below 60: Tier 5 — Long-term cultivation needed
-
----
-
-## 1. Entity Overview
-[Full profile from Steps 1-2]
-
-## 2. Financial Analysis
-[Revenue/budget details from Step 2]
-
-## 3. Contracts & Procurement
-[Details from Step 3]
-
-## 4. Relationship History
-[Details from Step 4]
-
-## 5. Budget & Spending Deep Dive
-[Details from Step 5]
-
-## 6. Challenges & Opportunities
-[Details from Step 6]
-
-## 7. Shared Vendors / Members
-[Details from Step 7]
-
-## 8. Competitive Landscape
-[Details from Step 8]
-
-## 9. Recommended Strategy
-- Primary approach angle
-- Key talking points for the meeting
-- Objection handling (anticipated pushback and responses)
-- 30/60/90 day follow-up plan
-
-## 10. Risk Factors
-- Anything that could derail the engagement
-- Political considerations
-- Budget cycle timing concerns
-- Compliance or legal considerations
+prs.save('pitch-deck-[entity-name].pptx')
 ```
 
-Save this as `background-report-[entity-name].md` in the current working directory.
+Save as `pitch-deck-[entity-name].pptx` in the current working directory.
+
+Also save `pitch-deck-[entity-name].md` as a Markdown reference copy.
+
+## Deliverable 2 — Background Intelligence Report & Score (Word .docx)
+
+Generate a professional Word document using `python-docx`. The report must be polished enough to share with executives and team members.
+
+### Report Content Structure
+
+```
+COVER PAGE:
+  "Background Intelligence Report"
+  [Entity Name]
+  Prepared: [Date] | Analyst: Claude AI
+  CONFIDENTIAL
+
+EXECUTIVE SUMMARY (1 page):
+  HIGH-VALUE TARGET SCORE: [X]%
+  Grade: [A+ through F]
+  Scoring Breakdown Table:
+  | Category                    | Score | Rationale                                          |
+  | Purchasing Volume Potential | X/20  | Based on budget size, growth, capital plans         |
+  | Speed to Close              | X/20  | Based on procurement rules, decision-maker access   |
+  | Relationship Strength       | X/20  | Based on existing history, CRM engagement           |
+  | Strategic Fit               | X/20  | Based on alignment with TIPS contract portfolio     |
+  | Competitive Position        | X/20  | Based on competitor presence, switching costs        |
+
+  Tier Classification:
+  - 90-100: Tier 1 — Immediate high-priority pursuit
+  - 80-89:  Tier 2 — Strong opportunity, prioritize
+  - 70-79:  Tier 3 — Good opportunity, standard pursuit
+  - 60-69:  Tier 4 — Moderate opportunity, nurture
+  - Below 60: Tier 5 — Long-term cultivation needed
+
+SECTION 1: Entity Overview
+  [Full profile from Steps 1-2]
+
+SECTION 2: Financial Analysis
+  [Revenue/budget details from Step 2]
+
+SECTION 3: Contracts & Procurement
+  [Details from Step 3]
+
+SECTION 4: Relationship History
+  [Details from Step 4]
+
+SECTION 5: Budget & Spending Deep Dive
+  [Details from Step 5]
+
+SECTION 6: Challenges & Opportunities
+  [Top 5 challenges and top 5 opportunities from Step 6]
+
+SECTION 7: Shared Vendors / Members
+  [Overlap analysis from Step 7]
+
+SECTION 8: Competitive Landscape
+  [Details from Step 8]
+
+SECTION 9: Recommended Strategy
+  - Primary approach angle
+  - Key talking points for the meeting
+  - Objection handling (anticipated pushback and responses)
+  - 30/60/90 day follow-up plan
+
+SECTION 10: Risk Factors
+  - Anything that could derail the engagement
+  - Political considerations
+  - Budget cycle timing concerns
+  - Compliance or legal considerations
+```
+
+### Word Document Formatting Requirements
+
+- **Page size**: Letter (8.5" × 11"), 1" margins
+- **Title page**: Centered, entity name in 28pt Calibri Bold navy (#1B2A4A), "CONFIDENTIAL" watermark
+- **Heading 1**: Calibri Bold, 22pt, navy (#1B2A4A), with a blue (#0066CC) bottom border
+- **Heading 2**: Calibri Bold, 16pt, dark gray (#333333)
+- **Body text**: Calibri, 11pt, dark gray (#333333), 1.15 line spacing
+- **Tables**: Professional style with navy header row, alternating light gray/white rows, 10pt font
+- **Score display**: The HIGH-VALUE TARGET SCORE should be prominently displayed — large bold font with color coding (green for 80+, yellow for 60-79, red for below 60)
+- **Headers/Footers**: Page numbers bottom-right, "CONFIDENTIAL" top-right, entity name top-left
+- **Table of Contents**: Auto-generated from heading styles
+- **Page breaks**: Before each major section
+
+### Generation Code Pattern
+
+```python
+from docx import Document
+from docx.shared import Inches, Pt, RGBColor, Cm
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.section import WD_ORIENT
+
+doc = Document()
+
+# Set default font
+style = doc.styles['Normal']
+font = style.font
+font.name = 'Calibri'
+font.size = Pt(11)
+font.color.rgb = RGBColor(0x33, 0x33, 0x33)
+
+# Configure heading styles with brand colors
+for level, size in [(1, 22), (2, 16), (3, 13)]:
+    heading_style = doc.styles[f'Heading {level}']
+    heading_style.font.name = 'Calibri'
+    heading_style.font.size = Pt(size)
+    heading_style.font.bold = True
+    heading_style.font.color.rgb = RGBColor(0x1B, 0x2A, 0x4A)
+
+# Add cover page, TOC, sections, tables, score display...
+# Add headers and footers
+# Add page breaks between sections
+
+doc.save('background-report-[entity-name].docx')
+```
+
+Save as `background-report-[entity-name].docx` in the current working directory.
+
+Also save `background-report-[entity-name].md` as a Markdown reference copy.
+
+## Export Dependencies
+
+Before generating the files, ensure required Python packages are installed:
+
+```bash
+pip install python-pptx python-docx
+```
+
+If `pip install` fails (e.g., no network access), fall back to Markdown-only output and notify the user that the .pptx and .docx files require `python-pptx` and `python-docx` to be installed.
+
+## Final Output Summary
+
+After generation, present the user with a summary of all files created:
+
+```
+✅ Meeting Prep Complete for [Entity Name]
+
+Downloadable Files:
+  📊 pitch-deck-[entity-name].pptx    — PowerPoint slide deck (team-presentable)
+  📄 background-report-[entity-name].docx — Word intelligence report (executive-ready)
+
+Reference Copies:
+  📝 pitch-deck-[entity-name].md       — Markdown slide content
+  📝 background-report-[entity-name].md — Markdown report content
+
+High-Value Target Score: [X]% ([Grade])
+```
 
 ## Data Sources Priority
 
@@ -248,6 +338,8 @@ Use these tools in order of reliability:
 - If a data source is unavailable or returns no results, note the gap and proceed with what is available
 - Do NOT fabricate financial figures — use "Not Available" and explain where to find the data
 - Flag any data that appears stale (older than 12 months) with a freshness warning
-- Both deliverables must be saved as downloadable Markdown files
+- Both deliverables must be saved as downloadable Office files (.pptx and .docx) plus Markdown reference copies
+- Always install `python-pptx` and `python-docx` via pip before generating files
+- If Office file generation fails, save Markdown versions and clearly inform the user
 - Ask the user to confirm the entity name before beginning research if there is any ambiguity
 - Total preparation time target: produce both deliverables in a single workflow run
