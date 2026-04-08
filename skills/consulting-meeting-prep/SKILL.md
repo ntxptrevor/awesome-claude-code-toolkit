@@ -143,6 +143,28 @@ Generate a professional PowerPoint slide deck using `python-pptx`. The deck must
 - **Tables**: Use light blue header row (#0066CC with white text), alternating row shading
 - **Title slide**: Larger centered text, include date and "Prepared by TIPS Consulting"
 
+### Filename Sanitization
+
+All output filenames use a sanitized slug derived from the entity name. This prevents invalid characters, path traversal, and filesystem issues.
+
+```python
+import re
+
+def sanitize_entity_name(name: str) -> str:
+    """Convert entity name to a filesystem-safe slug.
+
+    Rules: lowercase, replace spaces/special chars with hyphens,
+    keep only alphanumeric and hyphens, collapse consecutive hyphens,
+    strip leading/trailing hyphens.
+    """
+    slug = name.lower().strip()
+    slug = re.sub(r'[^a-z0-9]+', '-', slug)
+    slug = slug.strip('-')
+    return slug
+
+entity_slug = sanitize_entity_name(entity_name)
+```
+
 ### Generation Code Pattern
 
 ```python
@@ -166,12 +188,12 @@ WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 # Each slide: add title shape, body text boxes, tables as needed
 # Add footer to each slide
 
-prs.save('pitch-deck-[entity-name].pptx')
+prs.save(f'pitch-deck-{entity_slug}.pptx')
 ```
 
-Save as `pitch-deck-[entity-name].pptx` in the current working directory.
+Save as `pitch-deck-[entity-slug].pptx` in the current working directory.
 
-Also save `pitch-deck-[entity-name].md` as a Markdown reference copy.
+Also save `pitch-deck-[entity-slug].md` as a Markdown reference copy.
 
 ## Deliverable 2 — Background Intelligence Report & Score (Word .docx)
 
@@ -179,7 +201,7 @@ Generate a professional Word document using `python-docx`. The report must be po
 
 ### Report Content Structure
 
-```
+```text
 COVER PAGE:
   "Background Intelligence Report"
   [Entity Name]
@@ -203,6 +225,43 @@ EXECUTIVE SUMMARY (1 page):
   - 70-79:  Tier 3 — Good opportunity, standard pursuit
   - 60-69:  Tier 4 — Moderate opportunity, nurture
   - Below 60: Tier 5 — Long-term cultivation needed
+
+  Scoring Rubrics (use for consistent scoring):
+
+  Purchasing Volume Potential (0-20):
+    18-20: Annual budget >$50M, 5%+ YoY growth, active capital plans or large contract portfolio
+    14-17: Annual budget $10-50M, stable or growing, some capital plans
+    10-13: Annual budget $1-10M, flat budget, limited capital plans
+    6-9:   Annual budget <$1M or budget data significantly incomplete
+    0-5:   Declining budget, no capital plans, or very small entity
+
+  Speed to Close (0-20):
+    18-20: Direct procurement authority, immediate need identified, decision-maker engaged
+    14-17: Standard procurement process, 30-60 day timeline, internal champion identified
+    10-13: Formal RFP required, 90-180 day timeline, multiple approvers needed
+    6-9:   Complex approval chain, 6-12 month timeline, no internal champion
+    0-5:   No current need, multi-year timeline, or significant political/legal barriers
+
+  Relationship Strength (0-20):
+    18-20: Active TIPS user, strong CRM history, executive-level champion, recent engagement
+    14-17: Some TIPS history, regular contact, mid-level champion identified
+    10-13: Minimal history, sporadic contact, no clear champion yet
+    6-9:   Cold prospect, no prior relationship, limited contact info
+    0-5:   Negative history (complaints, lost deals) or completely unknown entity
+
+  Strategic Fit (0-20):
+    18-20: Core TIPS categories match 80%+ of entity spend, flagship/reference potential
+    14-17: Good category overlap (50-80%), aligns with TIPS growth priorities
+    10-13: Moderate overlap (25-50%), some relevant contracts available
+    6-9:   Limited overlap (<25%), niche needs outside core TIPS portfolio
+    0-5:   Poor fit, entity needs largely unserved by current TIPS contracts
+
+  Competitive Position (0-20):
+    18-20: No competing co-op presence, or competitor contract expiring within 6 months
+    14-17: Light competitor presence, TIPS has clear pricing/service advantages
+    10-13: Moderate competitor presence, comparable offerings, winnable with effort
+    6-9:   Strong competitor entrenchment, long-term contracts in place
+    0-5:   Exclusive competitor agreement, high switching costs, or entity loyalty to rival
 
 SECTION 1: Entity Overview
   [Full profile from Steps 1-2]
@@ -284,12 +343,12 @@ for level, size in [(1, 22), (2, 16), (3, 13)]:
 # Add headers and footers
 # Add page breaks between sections
 
-doc.save('background-report-[entity-name].docx')
+doc.save(f'background-report-{entity_slug}.docx')
 ```
 
-Save as `background-report-[entity-name].docx` in the current working directory.
+Save as `background-report-[entity-slug].docx` in the current working directory.
 
-Also save `background-report-[entity-name].md` as a Markdown reference copy.
+Also save `background-report-[entity-slug].md` as a Markdown reference copy.
 
 ## Export Dependencies
 
@@ -305,16 +364,16 @@ If `pip install` fails (e.g., no network access), fall back to Markdown-only out
 
 After generation, present the user with a summary of all files created:
 
-```
+```text
 ✅ Meeting Prep Complete for [Entity Name]
 
 Downloadable Files:
-  📊 pitch-deck-[entity-name].pptx    — PowerPoint slide deck (team-presentable)
-  📄 background-report-[entity-name].docx — Word intelligence report (executive-ready)
+  📊 pitch-deck-[entity-slug].pptx    — PowerPoint slide deck (team-presentable)
+  📄 background-report-[entity-slug].docx — Word intelligence report (executive-ready)
 
 Reference Copies:
-  📝 pitch-deck-[entity-name].md       — Markdown slide content
-  📝 background-report-[entity-name].md — Markdown report content
+  📝 pitch-deck-[entity-slug].md       — Markdown slide content
+  📝 background-report-[entity-slug].md — Markdown report content
 
 High-Value Target Score: [X]% ([Grade])
 ```

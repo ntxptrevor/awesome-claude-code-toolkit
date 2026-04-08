@@ -31,14 +31,17 @@ Given the entity name in `$ARGUMENTS`, run an exhaustive data gathering and anal
 Install `python-pptx` and `python-docx` via pip, then generate and save these files to the current directory:
 
 ### Downloadable Files (team-presentable):
-- `pitch-deck-<entity-name>.pptx` — PowerPoint slide deck (16:9, branded, Calibri fonts, navy/blue theme)
-- `background-report-<entity-name>.docx` — Word report (cover page, TOC, branded headings, score table, 10 sections)
+- `pitch-deck-<entity-slug>.pptx` — PowerPoint slide deck (16:9, branded, Calibri fonts, navy/blue theme)
+- `background-report-<entity-slug>.docx` — Word report (cover page, TOC, branded headings, score table, 10 sections)
 
 ### Markdown Reference Copies:
-- `pitch-deck-<entity-name>.md` — slide content in Markdown
-- `background-report-<entity-name>.md` — full report in Markdown
+- `pitch-deck-<entity-slug>.md` — slide content in Markdown
+- `background-report-<entity-slug>.md` — full report in Markdown
+
+**Note**: `<entity-slug>` is a sanitized entity name (lowercase, alphanumeric + hyphens only, spaces/special chars replaced with `-`, path separators stripped).
 
 ### Scoring Categories (each 0-20 points):
+
 | Category | What it measures |
 |----------|-----------------|
 | Purchasing Volume Potential | Budget size, growth, capital plans |
@@ -46,6 +49,7 @@ Install `python-pptx` and `python-docx` via pip, then generate and save these fi
 | Relationship Strength | CRM history, engagement, champion presence |
 | Strategic Fit | Alignment with TIPS contract portfolio |
 | Competitive Position | Competitor presence, switching costs, TIPS advantages |
+
 
 ## Rules
 
