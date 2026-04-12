@@ -219,6 +219,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [pr-reviewer](plugins/pr-reviewer/) | Review pull requests with structured analysis and approve with confidence |
 | [product-shipper](plugins/product-shipper/) | Ship features end-to-end with launch checklists and rollout plans |
 | [production-grade](https://github.com/nagisanzenin/claude-code-production-grade-plugin) | 14-agent autonomous pipeline — PM, Architect, Backend, Frontend, QA, Security, Code Review, DevOps, SRE, Data Scientist, Technical Writer, Skill Maker, Polymath co-pilot. Two-wave parallel execution, brownfield-safe. |
+| [product-org-os](https://github.com/yohayetsion/product-org-os) | 150+ skills and 12 role-based agents (CPO, VP Product, PM, PMM, BizOps, CI, and more) modeling a full product org. Two gateways: `/product` auto-routes to the right agent, `/plt` runs a multi-stakeholder leadership meeting. MIT. `claude plugins install github:yohayetsion/product-org-os` |
 | [project-scaffold](plugins/project-scaffold/) | Scaffold new projects and add features with best-practice templates |
 | [prompt-optimizer](plugins/prompt-optimizer/) | Analyze and optimize AI prompts for better results |
 | [pulse](https://github.com/chsm04/pulse) | Local Channel plugin — push notifications into Claude Code sessions via HTTP POST. No Discord/Slack needed, just curl. Three levels (info/warn/error), source tracking, dedup. |
