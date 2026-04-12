@@ -764,6 +764,17 @@ npx cc-safe-setup
 
 Includes `--audit` (score your setup 0-100), `--scan` (detect tech stack, recommend hooks), and `--verify` (test each hook). See [cc-safe-setup](https://github.com/yurukusa/cc-safe-setup) for details.
 
+### GateGuard — Fact-Forcing PreToolUse Gate
+
+Install a single `PreToolUse` gate that blocks Edit/Write/Bash on first attempt, demanding investigation (importers, schemas, user instruction) before allowing. A/B tested: **+2.25 quality improvement**.
+
+```bash
+pip install gateguard-ai
+gateguard install
+```
+
+See [GateGuard](https://github.com/zunoworks/gateguard) | [PyPI](https://pypi.org/project/gateguard-ai/) for details. By [ZUNO WORKS K.K.](https://github.com/zunoworks)
+
 ---
 
 ## Rules
