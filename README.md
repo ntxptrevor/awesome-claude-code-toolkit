@@ -201,6 +201,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [myclaude](https://github.com/stellarlinkco/myclaude) | Multi-agent orchestration routing tasks to Claude Code, Codex, Gemini, and OpenCode based on complexity. OmO skill for intelligent routing. 2,400+ stars |
 | [nimbalyst](https://nimbalyst.com) | Visual workspace for building with Codex and Claude Code. Session and task manager. Visual editing |
 | [n8n-workflow](plugins/n8n-workflow/) | Generate n8n automation workflows from natural language descriptions |
+| [nexus-agents](https://github.com/williamzujkowski/nexus-agents) | Intelligent orchestration platform routing tasks to Claude, Gemini, Codex, and OpenCode via Budget→TOPSIS→LinUCB composite router. 30 MCP tools (orchestrate, consensus voting, research pipelines), 12 expert agents, 17 skills, plugin-native `/agents` + hooks. Install: `/plugin marketplace add williamzujkowski/nexus-agents` |
 | [onboarding-guide](plugins/onboarding-guide/) | New developer onboarding documentation generator |
 | [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) | Teams-first multi-agent orchestration. 19 specialized agents, 28 skills. Full autonomous execution, Socratic questioning, N coordinated agents. 9,900+ stars |
 | [onWatch](https://github.com/onllm-dev/onwatch) | Open-source Go CLI that tracks AI API quota usage across 7 providers (Synthetic, Z.ai, Anthropic, Codex, GitHub Copilot, MiniMax, Antigravity) with a background daemon (<50 MB RAM), zero telemetry, and a Material Design 3 web dashboard |
