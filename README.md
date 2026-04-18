@@ -585,7 +585,7 @@ Thirty-five curated skill modules included in this repo, with access to **400,00
 | [SciAgent-Skills](https://github.com/jaechang-hits/SciAgent-Skills) | `git clone https://github.com/jaechang-hits/SciAgent-Skills` | 197 life science skills for Claude Code covering genomics, proteomics, drug discovery, and more. BixBench 92.0% accuracy. |
 | [manage-skills](https://github.com/umutbozdag/agent-skills-manager/tree/main/skills/manage-skills) | `cp -r skills/manage-skills ~/.claude/skills/manage-skills` | Discover, create, edit, toggle, copy, move, and delete agent skills across 11 tools (Cursor, Claude, Windsurf, Copilot, Codex, Cline, Aider, Continue, Roo Code, Augment) from the terminal |
 
-| [buyer-eval](https://github.com/salespeak-ai/buyer-eval-skill) | `git clone https://github.com/salespeak-ai/buyer-eval-skill ~/.claude/skills/buyer-eval` | Structured vendor evaluations with identical buyer criteria, side-by-side scorecards, and evidence citations — research shows vendors with AI agents win 91% of structured evaluations |
+| [buyer-eval](https://github.com/salespeak-ai/buyer-eval-skill) | `git clone https://github.com/salespeak-ai/buyer-eval-skill ~/.claude/skills/buyer-eval-skill` | Structured, evidence-based B2B software vendor evaluation — researches your company, asks domain-expert questions, engages vendor AI agents via the Salespeak Frontdoor API, scores vendors across 7 dimensions with evidence transparency, produces comparative scorecards with demo prep questions |
 
 ### Installing Skills
 
