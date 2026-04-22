@@ -1010,6 +1010,7 @@ claude-code-toolkit/               850+ files
 | [cc-token-status](https://github.com/jayson-jia-dev/cc-token-status) | new | macOS menu bar dashboard for Claude Code. Shows live plan limits (5h/7d), costs, tokens, trends, model breakdown, user level system, and multi-machine iCloud sync. 5 languages, dark/light mode. Single Python file, auto-updates |
 | [Watchfire](https://github.com/watchfire-io/watchfire) | 33 | Orchestration platform for AI coding agents (starting with Claude Code). Manages project context, breaks work into tasks, runs agents with full codebase awareness. Git worktree isolation, sandboxed execution, multiple agent modes (chat, task, autonomous). Go daemon + CLI/TUI + Electron GUI |
 | [aby-claude-watcher](https://github.com/aby-agency/aby-claude-watcher) | new | Real-time macOS dashboard for Claude Code sessions. Five color-coded states (thinking, running, waiting, error, completed), per-session notifications, one-click focus terminal across iTerm2/Terminal/Warp/VSCode/Cursor/Ghostty/kitty/WezTerm/Hyper. Bilingual FR/EN, menu-bar tray, MIT licensed. Apple Silicon + Intel builds |
+| [claude-code-notifier](https://github.com/saiso/claude-code-notifier) | new | Native macOS notifier for Claude Code. Swift + UserNotifications, custom Heroicons-derived icon (SF Symbols–free), click-through to your IDE (VS Code, Cursor, Windsurf, JetBrains, iTerm2, Terminal) via bundle ID swap, per-event sound labels, hardened inputs (allowlists, length caps, control-character stripping). Universal binary (arm64 + x86_64), macOS 12+, MIT |
 
 ---
 
