@@ -50,7 +50,7 @@ curl -fsSL https://raw.githubusercontent.com/rohitg00/awesome-claude-code-toolki
 
 ## Table of Contents
 
-- [Plugins](#plugins) (176+)
+- [Plugins](#plugins) (177+)
 - [Agents](#agents) (135)
 - [Skills](#skills) (35 curated + 28 community)
 - [Commands](#commands) (42)
@@ -71,7 +71,7 @@ curl -fsSL https://raw.githubusercontent.com/rohitg00/awesome-claude-code-toolki
 
 ## Plugins
 
-Over 176 production-ready plugins that extend Claude Code with domain-specific capabilities.
+Over 177 production-ready plugins that extend Claude Code with domain-specific capabilities.
 
 ### Featured
 
