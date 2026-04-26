@@ -110,7 +110,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [backend-architect](plugins/backend-architect/) | Backend service architecture design with endpoint scaffolding |
 | [bug-detective](plugins/bug-detective/) | Debug issues systematically with root cause analysis and execution tracing |
 | [Bouncer](https://github.com/buildingopen/bouncer) | Independent quality gate that uses Gemini to audit Claude Code's output. Includes Stop hook (automatic), quick audit skill, and deep audit with full tool access. One-liner install. |
-| [brooks-lint](https://github.com/hyhmrright/brooks-lint) | AI code reviews grounded in six classic engineering books (Brooks, Fowler, Martin, McConnell, Hunt & Thomas, Evans). Diagnoses code across 6 decay risk dimensions with structured findings (Symptom → Source → Consequence → Remedy). Supports PR review, architecture audit, tech debt assessment, and test quality review. v0.6 adds Mermaid dependency graphs. |
+| [brooks-lint](https://github.com/hyhmrright/brooks-lint) | AI code reviews grounded in twelve classic engineering books. Diagnoses code across 6 production + 6 test decay risks with structured findings (Symptom → Source → Consequence → Remedy). Six modes: PR Review, Architecture Audit, Tech Debt, Test Quality Review, Health Dashboard, Full Sweep. v1.2. |
 | [ccmanager](https://github.com/kbwo/ccmanager) | Coding agent session manager supporting Claude Code, Gemini CLI, Codex, Cursor, Copilot, Cline, OpenCode, Kimi CLI. Smart auto-approval via Haiku, devcontainer support. 940+ stars |
 | [ccpm](https://github.com/automazeio/ccpm) | Project management using GitHub Issues + Git worktrees for parallel agent execution. Issue-analyze, epic-start, epic-merge commands. 7,600+ stars |
 | [ccusage](https://github.com/ryoppippi/ccusage) | CLI for analyzing Claude Code/Codex usage from local JSONL files. Daily, monthly, session, billing-window reports. Offline, zero API calls. 11,500+ stars |
@@ -209,6 +209,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [lightcms](https://github.com/jonradoff/lightcms) | AI-native CMS with 41 MCP tools for managing websites through natural language — pages, templates, assets, themes, collections, redirects, and more with full content versioning |
 | [linear-helper](plugins/linear-helper/) | Linear issue tracking integration and workflow management |
 | [load-tester](plugins/load-tester/) | Load and stress testing for APIs and web services |
+| [logic-lens](https://github.com/hyhmrright/logic-lens) | Logic-first code review plugin for Claude Code — detects behavioral bugs via semi-formal execution tracing. Finds logic errors linters and type checkers miss. Structured findings: Premises → Trace → Divergence → Remedy with L1–L6 risk codes. Six skills: logic-review, logic-explain, logic-diff, logic-locate, logic-health, logic-fix-all. |
 | [memory-profiler](plugins/memory-profiler/) | Memory leak detection and heap analysis |
 | [migrate-tool](plugins/migrate-tool/) | Generate database migrations and code migration scripts for framework upgrades |
 | [migration-generator](plugins/migration-generator/) | Database migration generation and rollback management |
