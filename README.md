@@ -1100,6 +1100,7 @@ Notable projects, directories, and resources across the Claude Code ecosystem.
 | [TokRepo](https://tokrepo.com) | -- | Curated, community-ranked registry of 600+ agent skills, MCP servers, prompts, scripts, workflows, and configs. Cross-platform tagging (Claude Code, Codex CLI, Gemini CLI, Cursor), upvotes and usage data |
 | [claudecode-harness](https://github.com/AdelElo13/claude-harness) | new | One-command installer for production-grade Claude Code setup — 34 hooks (quality gates, auto-formatting, security monitoring, session memory), 36 agents, 77 rules across 13 languages, 27 MCP server templates. Zero deps, MIT. `npx claudecode-harness` |
 | [claudex-setup](https://github.com/DnaFin/claudex) | new | Audit and optimize any project for Claude Code — scores 0-100, auto-fixes configuration across 972 verified techniques. Zero deps. `npx claudex-setup` |
+| [nylas/cli](https://github.com/nylas/cli) | new | Email, calendar, and contacts CLI for Claude Code. Built-in MCP server with 16 tools across Gmail, Outlook, Exchange, Yahoo, iCloud, and IMAP. One-line install: `nylas mcp install`. Works with Claude Code, Cursor, Codex, and Windsurf. Docs: https://cli.nylas.com |
 
 ---
 
