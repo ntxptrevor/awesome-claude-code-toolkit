@@ -663,6 +663,7 @@ Thirty-five curated skill modules included in this repo, with access to **400,00
 | [chrome-relay](https://chrome-relay.kushalsm.com/) | `npx skills add chrome-relay` | Drive your already-open Chrome session — cookies, SSO, extensions, localhost — from a local CLI bridge. Real-Chrome counterpart to Playwright skill: no fresh Chromium, no MCP server, no remote relay. Pairs with the [Chrome Web Store extension](https://chromewebstore.google.com/detail/chrome-relay/cpdiapbifblhlcpnmlmfpgfjlacebokb) |
 | [TokenWise](https://github.com/CodeShuX/tokenwise) | `/plugin marketplace add CodeShuX/tokenwise` | Measurement-driven model router for Claude Code — auto-routes Haiku/Sonnet/Opus per task class, logs every routed task with verified $ saved to local NDJSON, A/B tests cheaper tiers before trusting them. MIT, zero telemetry. |
 | [md2wechat](https://github.com/geekjourneyx/md2wechat-skill) | See [README](https://github.com/geekjourneyx/md2wechat-skill) | WeChat public account publishing skill for Claude Code. 43 layout modules, 40+ themes, AI image generation, push drafts to WeChat directly from Claude Code. |
+| [mbti-parallel-persona](https://github.com/taiyouZhang/mbti-parallel-persona) | `git clone https://github.com/taiyouZhang/mbti-parallel-persona ~/.claude/skills/mbti-parallel-persona` | MBTI personality companion — responds to life in your chosen personality's voice with 1-2 sentences of emotional support. Supports 16 types with situational nicknames, contrast mode (/mbti all), and flexible persona switching |
 
 ### Installing Skills
 
