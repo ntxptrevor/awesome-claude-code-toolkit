@@ -1113,7 +1113,6 @@ Notable projects, directories, and resources across the Claude Code ecosystem.
 | [codachi](https://github.com/vincent-k2026/codachi) | New | Tamagotchi-style statusline pet that grows with context usage, shows cache hit rate and burn speed |
 | [claude-code-memory-guide](https://github.com/Acteq1391gp/claude-code-memory-guide) | 2 | Zero-to-production memory setup: CLAUDE.md + MEMORY.md + MemPalace semantic search + session hooks + warm-model daemon + nightly Karpathy compile with free-LLM key rotation. Three guides — linear tutorial, memory format reference, automation reference. Runnable scripts, secrets-in-git precommit guard, end-to-end verification checklist. MIT |
 | [cc-hud](https://github.com/WaterTian/cc-hud) | New | Compact single-line Claude Code statusline -- model, context usage (1/8-char progress bar), active subagents, 5h/7d rate-limit countdowns. Pure Node.js, zero deps, Windows-safe. |
-| [cc-tempo](https://github.com/O0000-code/cc-tempo) | New | Claude Code statusline with wall-clock active work time, SubAgent speedup ratio, /clear-resilient PID timer, code-churn sparkline with trend arrow, and multi-instance detection. Bash + TypeScript, MIT. |
 | [awesome-claude-code-subagents](https://github.com/VoltAgent/awesome-claude-code-subagents) | 15,600+ | 100+ specialized Claude Code subagents organized by domain |
 | [serena](https://github.com/oraios/serena) | 22,200+ | Semantic retrieval and editing MCP server for coding agents -- code-aware search and navigation |
 | [Understand-Anything](https://github.com/Lum1104/Understand-Anything) | 7,000+ | Turns any codebase into an interactive knowledge graph for exploration |
@@ -1134,6 +1133,7 @@ Notable projects, directories, and resources across the Claude Code ecosystem.
 | [agenttrace](https://github.com/luoyuctl/agenttrace) | new | TUI observability for Claude Code, Codex CLI, Gemini CLI, Aider, Cursor exports, and more. Tracks cost, tokens, tool failures, latency, anomalies, health, diffs, and CI gates from local session logs |
 | [agent-shadow-brain](https://github.com/theihtisham/agent-shadow-brain) | 8+ | AI-powered background code analysis agent for Claude Code that continuously monitors your codebase and provides intelligent suggestions. npm: `@theihtisham/agent-shadow-brain` |
 | [omni-skills-forge](https://github.com/theihtisham/omni-skills-forge) | 11+ | Universal skill and slash-command manager for AI coding assistants. Create, share, and manage reusable skills across tools. npm: `omni-skills-forge` |
+| [cc-tempo](https://github.com/O0000-code/cc-tempo) | New | Claude Code statusline with wall-clock active work time, SubAgent speedup ratio, /clear-resilient PID timer, code-churn sparkline with trend arrow, and multi-instance detection. Bash + TypeScript, MIT. |
 
 ---
 
