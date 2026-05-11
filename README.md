@@ -569,7 +569,6 @@ Thirty-five curated skill modules included in this repo, with access to **400,00
 | WebSocket & Realtime | `skills/websocket-realtime/` | Socket.io, SSE, reconnection, scaling |
 | Testing Strategies | `skills/testing-strategies/` | Contract testing, snapshot testing, property-based testing |
 | Git Advanced | `skills/git-advanced/` | Worktrees, bisect, interactive rebase, hooks |
-| [StyleSeed](https://github.com/bitjaru/styleseed) | `skills/styleseed/` | Design judgment: 69 visual rules, brand skins, professional UI |
 | Accessibility (WCAG) | `skills/accessibility-wcag/` | ARIA patterns, keyboard navigation, color contrast |
 | Performance Optimization | `skills/performance-optimization/` | Code splitting, image optimization, Core Web Vitals |
 | Mobile Development | `skills/mobile-development/` | React Native, Flutter, responsive layouts |
@@ -657,6 +656,7 @@ Thirty-five curated skill modules included in this repo, with access to **400,00
 | [planmysaas](https://github.com/creationskiro/planmysaas-claude-skill) | `git clone https://github.com/creationskiro/planmysaas-claude-skill ~/.claude/skills/planmysaas` | Turns idea to a complete 8-stage SaaS blueprint — idea, research, analysis, architecture, features, frontend, phases, build playbook. Stage 8 ships a decision-grade, rubric-graded build playbook with dependency-ordered steps. Plain markdown, MIT, v1.0.0. |
 | [agentkit-seo](https://github.com/agentkit-seo/agentkit-seo) | `npx agentkit-seo install --provider claude-code` | AI agent skill for auditing and optimizing GitHub profiles and repositories. Covers bio, pinned repos, README structure, topics, Copilot instructions, and language stats. |
 | [active-listening](https://github.com/josharsh/active-listening) | `/plugin marketplace add https://github.com/josharsh/active-listening` | Detect developer preferences during conversation ("never push without asking", "always use const") and remember them across sessions. Auto-saves to disk and re-applies in every future conversation |
+| [StyleSeed](https://github.com/bitjaru/styleseed) | `skills/styleseed/` | Design judgment: 69 visual rules, brand skins, professional UI |
 
 ### Installing Skills
 
