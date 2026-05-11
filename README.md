@@ -264,7 +264,6 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [smart-commit](plugins/smart-commit/) | Intelligent git commits with conventional format, semantic analysis, and changelog generation |
 | [sprint-prioritizer](plugins/sprint-prioritizer/) | Sprint planning with story prioritization and capacity estimation |
 | [technical-sales](plugins/technical-sales/) | Technical demo creation and POC proposal writing |
-| [temporal-core](https://github.com/Evanyuan-builder/temporal-core) | Make Claude Code agents feel time pass — research-backed temporal awareness via 3 hooks (SessionStart + UserPromptSubmit + PreToolUse) that inject `session elapsed` and `since last action` signals into context. Bundled skill teaches pacing/deadline reasoning. Aher et al. 2026: explicit time surfacing → 6× deadline performance. Apache-2.0, zero runtime deps. |
 | [the-pragmatic-pm](https://github.com/marfoerst/the-pragmatic-pm) | PM leadership toolkit with 43 skills, 5 agents, 4 workflows. Covers PRD generation, OKR lifecycle, pricing, AI pricing, positioning, sales enablement, and quarterly planning. |
 | [terraform-helper](plugins/terraform-helper/) | Terraform module creation and infrastructure planning |
 | [test-data-generator](plugins/test-data-generator/) | Generate realistic test data and seed databases |
@@ -314,6 +313,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [notify](https://github.com/ApurvBazari/claude-plugins) | Cross-platform system notifications for Claude Code hooks — macOS (terminal-notifier) and Linux (notify-send). Duration filtering to suppress noisy short events, git context extraction (repo + branch), and contextual messages per hook type. MIT |
 | [claude-snapshot](https://github.com/adhenawer/claude-snapshot) | Portable Claude Code setup snapshots — export your settings, plugins, hooks, CLAUDE.md, and MCP configs as a `.tar.gz`, diff before applying, and restore on another machine in under 2 minutes. No network, no daemon, `.bak` safety on every apply. Node.js 18+, cross-platform (macOS + Linux). Install: `/plugin marketplace add adhenawer/claude-snapshot` |
 | [ashlr-plugin](https://github.com/ashlrai/ashlr-plugin) | Open-source Claude Code plugin replacing the built-in Read/Grep/Edit/Bash tools with token-efficient versions backed by `@ashlr/core-efficiency`. Independently benchmarked at 57% token reduction on real codebases. 70+ tools across glob, grep, structural diff/edit, and an opt-in genome (LSP-style codebase index). Install: `curl -fsSL plugin.ashlr.ai/install.sh \| bash` |
+| [temporal-core](https://github.com/Evanyuan-builder/temporal-core) | Make Claude Code agents feel time pass — research-backed temporal awareness via 3 hooks (SessionStart + UserPromptSubmit + PreToolUse) that inject `session elapsed` and `since last action` signals into context. Bundled skill teaches pacing/deadline reasoning. Aher et al. 2026: explicit time surfacing → 6× deadline performance. Apache-2.0, zero runtime deps. |
 
 ### Installing a Plugin
 
