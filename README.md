@@ -80,7 +80,6 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 
 | Plugin | Description |
 |--------|-------------|
-| [ejentum-mcp](https://github.com/ejentum/ejentum-mcp) | Reasoning Harness for agentic AI: 4 MCP tools (reasoning, code, anti-deception, memory) over 679 engineered cognitive operations. Each call returns a structured scaffold the calling LLM ingests before its first token. Catches sycophancy, hallucination, and reasoning decay before they emerge. Companion `skills/` directory ships SKILL.md files for autonomous routing in Claude Code. MIT, free tier 100 calls. |
 | [agento-patronum](https://github.com/emaarco/agento-patronum) | Protects sensitive files, credentials, and shell commands from unintended AI access via Claude Code hooks. Unlike settings.json deny rules, hooks are an enforcement layer you own and can verify. Ships with defaults for .env files, SSH keys, AWS credentials, and kubeconfig. |
 | [skills-janitor](https://github.com/khendzel/skills-janitor) | Audit, deduplicate, check, fix, and track usage of your Claude Code skills. 9 slash commands, zero dependencies |
 | [great_cto](https://github.com/avelikiy/great_cto) | Full SDLC pipeline plugin with 7 agents (tech-lead, senior-dev, qa-engineer, security-officer, devops, l3-support, project-auditor), 12-angle code review, 10 project archetypes, 13 compliance frameworks (SOC2/HIPAA/PCI-DSS/GDPR/ISO 27001), two-gate approval flow. Opus 4.7 advisor escalation, file-based, MIT |
@@ -306,6 +305,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [tailtest](https://github.com/avansaber/tailtest) | Automatically generates and runs tests for every file Claude Code creates or modifies. PostToolUse hook detects changes, generates scenarios, runs them, and surfaces failures. 8 languages (Python, TypeScript, JavaScript, Go, Ruby, PHP, Java, Rust). Zero config, zero commands. |
 | [dodo-agent-plugin](https://github.com/dodopayments/dodo-agent-plugin) | Official Dodo Payments plugin: 8 integration skills (checkout, subscriptions, webhooks, usage-based billing, credits, license keys, BillingSDK, best practices) and 2 MCP servers (live API via browser OAuth + docs search, no auth). Multi-agent: Claude Code, Codex, Cursor, OpenCode |
 | [claude-time](https://github.com/nexusbuildsai/claude-time) | Live local time + timezone injected into every prompt via `UserPromptSubmit` hook. Stops Claude from saying "tonight" at 9 AM. Also stamps every response with `[HH:MM AM/PM TZ]` so you can see when each message landed (useful when tasks stall). Zero config, zero deps beyond `jq`. MIT |
+| [ejentum-mcp](https://github.com/ejentum/ejentum-mcp) | Reasoning Harness for agentic AI: 4 MCP tools (reasoning, code, anti-deception, memory) over 679 engineered cognitive operations. Each call returns a structured scaffold the calling LLM ingests before its first token. Catches sycophancy, hallucination, and reasoning decay before they emerge. Companion `skills/` directory ships SKILL.md files for autonomous routing in Claude Code. MIT, free tier 100 calls. |
 
 ### Installing a Plugin
 
