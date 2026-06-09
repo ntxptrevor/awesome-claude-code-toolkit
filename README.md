@@ -1,6 +1,6 @@
 # Claude Code Toolkit
 
-**The most comprehensive toolkit for Claude Code -- 135 agents, 35 curated skills (+15,000 via [SkillKit](https://agenstskills.com)), 42 commands, 121 plugins, 19 hooks, 15 rules, 7 templates, 6 MCP configs, and more.**
+**The most comprehensive toolkit for Claude Code -- 135 agents, 35 curated skills (+15,000 via [SkillKit](https://agenstskills.com)), 42 commands, 121 plugins, 19 hooks, 15 rules, 7 templates, 7 MCP configs, and more.**
 
 [![Awesome](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)](https://github.com/sindresorhus/awesome)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
@@ -651,7 +651,7 @@ cp templates/claude-md/standard.md CLAUDE.md
 
 ## MCP Configs
 
-Six curated Model Context Protocol server configurations.
+Seven curated Model Context Protocol server configurations.
 
 | Config | File | Servers Included |
 |--------|------|-----------------|
@@ -661,6 +661,7 @@ Six curated Model Context Protocol server configurations.
 | Data Science | [`data-science.json`](mcp-configs/data-science.json) | Jupyter, SQLite, PostgreSQL, Filesystem |
 | Frontend | [`frontend.json`](mcp-configs/frontend.json) | Puppeteer, Figma, Storybook |
 | DevOps | [`devops.json`](mcp-configs/devops.json) | AWS, Docker, GitHub, Terraform, Sentry |
+| Procurement | [`procurement.json`](mcp-configs/procurement.json) | DeepRFP connector, Filesystem, Fetch |
 
 ---
 
@@ -723,7 +724,7 @@ claude-code-toolkit/               796 files
     scripts/                       19 Node.js scripts
   rules/                           15 coding rules
   templates/claude-md/             7 CLAUDE.md templates
-  mcp-configs/                     6 server configurations
+  mcp-configs/                     7 server configurations
   contexts/                        5 context modes
   examples/                        3 walkthrough examples
   setup/                           Interactive installer
