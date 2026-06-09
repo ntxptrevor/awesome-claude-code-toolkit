@@ -43,6 +43,23 @@ npm install
 npm run build
 ```
 
+## Installable bundle (.mcpb)
+
+For a one-click install in Claude Desktop, build an MCP bundle:
+
+```bash
+cd mcp-servers/deeprfp
+bash scripts/pack-mcpb.sh    # produces deeprfp.mcpb
+```
+
+`deeprfp.mcpb` is a self-contained, installable connector (server code +
+dependencies + [`manifest.json`](manifest.json)). Open it in Claude Desktop —
+you'll be prompted for your DeepRFP API key — or install via CLI:
+
+```bash
+npx @anthropic-ai/mcpb install deeprfp.mcpb
+```
+
 ## Use with Claude Code
 
 Add it to your MCP config (see [`mcp-configs/procurement.json`](../../mcp-configs/procurement.json)):
