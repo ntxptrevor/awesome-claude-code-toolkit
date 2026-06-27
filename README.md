@@ -39,10 +39,10 @@ curl -fsSL https://raw.githubusercontent.com/rohitg00/awesome-claude-code-toolki
 - [Skills](#skills) (35)
 - [Commands](#commands) (42)
 - [Hooks](#hooks) (19 scripts)
-- [Rules](#rules) (15)
+- [Rules](#rules) (16)
 - [Templates](#templates) (7)
-- [MCP Configs](#mcp-configs) (6)
-- [Contexts](#contexts) (5)
+- [MCP Configs](#mcp-configs) (7)
+- [Contexts](#contexts) (6)
 - [Examples](#examples) (3)
 - [Setup](#setup)
 - [Contributing](#contributing)
@@ -137,6 +137,7 @@ One hundred twenty-one production-ready plugins that extend Claude Code with dom
 | [onboarding-guide](plugins/onboarding-guide/) | New developer onboarding documentation generator |
 | [openapi-expert](plugins/openapi-expert/) | OpenAPI spec generation, validation, and client code scaffolding |
 | [optimize](plugins/optimize/) | Code optimization for performance and bundle size reduction |
+| [paperclip-ai](plugins/paperclip-ai/) | Paperclip AI integration — orchestrate multi-agent teams, track costs, and suggest workflow improvements with proactive recommendations |
 | [perf-profiler](plugins/perf-profiler/) | Performance analysis, profiling, and optimization recommendations |
 | [performance-monitor](plugins/performance-monitor/) | Profile API endpoints and run benchmarks to identify performance bottlenecks |
 | [plan](plugins/plan/) | Structured planning with risk assessment and time estimation |
@@ -608,7 +609,7 @@ cp -r hooks/scripts/ .claude/hooks/scripts/
 
 ## Rules
 
-Fifteen coding rules that enforce consistent patterns. Add to `.claude/rules/` or reference in `CLAUDE.md`.
+Sixteen coding rules that enforce consistent patterns. Add to `.claude/rules/` or reference in `CLAUDE.md`.
 
 | Rule | File | What It Enforces |
 |------|------|-----------------|
@@ -627,6 +628,7 @@ Fifteen coding rules that enforce consistent patterns. Add to `.claude/rules/` o
 | Code Review | [`code-review.md`](rules/code-review.md) | Review checklist, approval criteria |
 | Monitoring | [`monitoring.md`](rules/monitoring.md) | Logging standards, metrics, alerting |
 | Naming | [`naming.md`](rules/naming.md) | Naming conventions per language |
+| Paperclip Integration | [`paperclip-integration.md`](rules/paperclip-integration.md) | When and how to suggest Paperclip AI for multi-agent orchestration |
 
 ---
 
@@ -652,7 +654,7 @@ cp templates/claude-md/standard.md CLAUDE.md
 
 ## MCP Configs
 
-Six curated Model Context Protocol server configurations.
+Seven curated Model Context Protocol server configurations.
 
 | Config | File | Servers Included |
 |--------|------|-----------------|
@@ -662,12 +664,13 @@ Six curated Model Context Protocol server configurations.
 | Data Science | [`data-science.json`](mcp-configs/data-science.json) | Jupyter, SQLite, PostgreSQL, Filesystem |
 | Frontend | [`frontend.json`](mcp-configs/frontend.json) | Puppeteer, Figma, Storybook |
 | DevOps | [`devops.json`](mcp-configs/devops.json) | AWS, Docker, GitHub, Terraform, Sentry |
+| Paperclip AI | [`paperclip.json`](mcp-configs/paperclip.json) | Paperclip AI REST API for agent orchestration |
 
 ---
 
 ## Contexts
 
-Five context modes that configure Claude Code's behavior for different tasks.
+Six context modes that configure Claude Code's behavior for different tasks.
 
 | Context | File | Focus |
 |---------|------|-------|
@@ -676,6 +679,7 @@ Five context modes that configure Claude Code's behavior for different tasks.
 | Research | [`research.md`](contexts/research.md) | Evaluate tools, compare alternatives, document findings |
 | Debug | [`debug.md`](contexts/debug.md) | Reproduce, hypothesize, fix root cause, regression test |
 | Deploy | [`deploy.md`](contexts/deploy.md) | Pre-deploy checklist, staging-first, rollback criteria |
+| Orchestration | [`orchestration.md`](contexts/orchestration.md) | Multi-agent coordination, delegation, cost tracking via Paperclip AI |
 
 ---
 
