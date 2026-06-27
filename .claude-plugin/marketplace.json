@@ -181,6 +181,12 @@
         "version": "1.0.0"
       },
       {
+        "name": "construction-doc-intelligence",
+        "path": "plugins/construction-doc-intelligence",
+        "description": "End-to-end pipeline for reviewing RFP, vendor, invoicing, submittal, and engineering/design documents - chains mistral-ocr4 extraction to domain-review skills, senior-PM lean judgment, presentation, and a self-improvement loop. Mistral extracts; Claude reasons.",
+        "version": "1.0.0"
+      },
+      {
         "name": "content-creator",
         "path": "plugins/content-creator",
         "description": "Technical content generation for blog posts and social media",
