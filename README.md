@@ -38,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/rohitg00/awesome-claude-code-toolki
 - [Agents](#agents) (135)
 - [Skills](#skills) (35)
 - [Commands](#commands) (42)
-- [Hooks](#hooks) (19 scripts)
+- [Hooks](#hooks) (23 scripts)
 - [Rules](#rules) (16)
 - [Templates](#templates) (7)
 - [MCP Configs](#mcp-configs) (7)
@@ -572,7 +572,7 @@ Then invoke in Claude Code:
 
 ## Hooks
 
-Nineteen hook scripts covering all eight Claude Code lifecycle events. Place `hooks.json` in your `.claude/` directory.
+Twenty-three hook scripts covering all eight Claude Code lifecycle events. Place `hooks.json` in your `.claude/` directory.
 
 ### Hook Scripts
 
@@ -597,6 +597,10 @@ Nineteen hook scripts covering all eight Claude Code lifecycle events. Place `ho
 | `stop-check.js` | Stop | Remind to run tests if code was modified |
 | `notification-log.js` | Notification | Log notifications for later review |
 | `prompt-check.js` | UserPromptSubmit | Detect vague prompts, suggest clarification |
+| `paperclip-auto-start.js` | SessionStart | Auto-start Paperclip server and load agent context silently |
+| `paperclip-activity-log.js` | PostToolUse (Bash/Write/Edit) | Log commits, pushes, tests, and file changes to Paperclip |
+| `paperclip-prompt-enhance.js` | UserPromptSubmit | Suggest Paperclip features when prompt matches orchestration patterns |
+| `paperclip-session-end.js` | SessionEnd | Flush pending activity to Paperclip and save session state |
 
 ### Installing Hooks
 
