@@ -451,6 +451,12 @@
         "version": "1.0.0"
       },
       {
+        "name": "mistral-ocr4",
+        "path": "plugins/mistral-ocr4",
+        "description": "Lean, tool-agnostic Mistral OCR4 + Document AI access layer (custom MCP server, extraction skill, intent hooks, handoff seam) for construction/RFP/vendor/invoice/submittal/engineering documents - extraction only, reasoning stays with the calling model",
+        "version": "1.0.0"
+      },
+      {
         "name": "model-context-protocol",
         "path": "plugins/model-context-protocol",
         "description": "MCP server development helper with tool and resource scaffolding",
