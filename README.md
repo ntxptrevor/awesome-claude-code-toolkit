@@ -38,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/rohitg00/awesome-claude-code-toolki
 - [Agents](#agents) (135)
 - [Skills](#skills) (35)
 - [Commands](#commands) (42)
-- [Hooks](#hooks) (23 scripts)
+- [Hooks](#hooks) (24 scripts)
 - [Rules](#rules) (16)
 - [Templates](#templates) (7)
 - [MCP Configs](#mcp-configs) (7)
@@ -137,7 +137,7 @@ One hundred twenty-one production-ready plugins that extend Claude Code with dom
 | [onboarding-guide](plugins/onboarding-guide/) | New developer onboarding documentation generator |
 | [openapi-expert](plugins/openapi-expert/) | OpenAPI spec generation, validation, and client code scaffolding |
 | [optimize](plugins/optimize/) | Code optimization for performance and bundle size reduction |
-| [paperclip-ai](plugins/paperclip-ai/) | Paperclip AI integration — orchestrate multi-agent teams, track costs, and suggest workflow improvements with proactive recommendations |
+| [paperclip-ai](plugins/paperclip-ai/) | Paperclip AI integration — orchestrate multi-agent teams, track costs, and suggest workflow improvements. Includes custom MCP server, connector toggle, and zero-config hooks |
 | [perf-profiler](plugins/perf-profiler/) | Performance analysis, profiling, and optimization recommendations |
 | [performance-monitor](plugins/performance-monitor/) | Profile API endpoints and run benchmarks to identify performance bottlenecks |
 | [plan](plugins/plan/) | Structured planning with risk assessment and time estimation |
@@ -572,7 +572,7 @@ Then invoke in Claude Code:
 
 ## Hooks
 
-Twenty-three hook scripts covering all eight Claude Code lifecycle events. Place `hooks.json` in your `.claude/` directory.
+Twenty-four hook scripts covering all eight Claude Code lifecycle events. Place `hooks.json` in your `.claude/` directory.
 
 ### Hook Scripts
 
@@ -601,6 +601,7 @@ Twenty-three hook scripts covering all eight Claude Code lifecycle events. Place
 | `paperclip-activity-log.js` | PostToolUse (Bash/Write/Edit) | Log commits, pushes, tests, and file changes to Paperclip |
 | `paperclip-prompt-enhance.js` | UserPromptSubmit | Suggest Paperclip features when prompt matches orchestration patterns |
 | `paperclip-session-end.js` | SessionEnd | Flush pending activity to Paperclip and save session state |
+| `paperclip-mcp-server.js` | MCP Server | Custom MCP server exposing Paperclip tools (issues, agents, costs) natively to Claude |
 
 ### Installing Hooks
 

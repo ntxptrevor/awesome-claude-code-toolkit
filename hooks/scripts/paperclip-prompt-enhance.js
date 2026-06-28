@@ -29,6 +29,13 @@ const stdinData = [];
 process.stdin.on("data", (chunk) => stdinData.push(chunk));
 process.stdin.on("end", () => {
   const input = Buffer.concat(stdinData).toString().trim();
+
+  const state = loadState();
+  if (state.enabled === false) {
+    console.log(JSON.stringify({ suggestions: [] }));
+    return;
+  }
+
   let prompt = "";
   try {
     const parsed = JSON.parse(input);

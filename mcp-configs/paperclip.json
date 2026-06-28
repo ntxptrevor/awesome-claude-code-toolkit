@@ -1,13 +1,12 @@
 {
   "mcpServers": {
-    "paperclip-api": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+    "paperclip": {
+      "command": "node",
+      "args": ["hooks/scripts/paperclip-mcp-server.js"],
       "env": {
-        "PAPERCLIP_BASE_URL": "http://127.0.0.1:3100/api",
-        "PAPERCLIP_API_KEY": "<your-board-api-key>"
+        "PAPERCLIP_BASE_URL": "http://127.0.0.1:3100/api"
       },
-      "description": "Paperclip AI REST API — manage companies, agents, issues, budgets, and org charts. Use the OpenAPI spec at /api/openapi.json for endpoint discovery."
+      "description": "Paperclip AI — manage issues, agents, and costs with native MCP tools. Auto-discovers credentials from ~/.paperclip/connector-state.json. Toggle with /paperclip-ai:toggle."
     }
   }
 }
