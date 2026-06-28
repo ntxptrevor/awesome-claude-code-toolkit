@@ -180,6 +180,12 @@
       "version": "1.0.0"
     },
     {
+      "name": "construction-doc-intelligence",
+      "source": "plugins/construction-doc-intelligence",
+      "description": "End-to-end pipeline for reviewing RFP, vendor, invoicing, submittal, and engineering/design documents - chains mistral-ocr4 extraction to domain-review skills, senior-PM lean judgment, presentation, and a self-improvement loop. Mistral extracts; Claude reasons.",
+      "version": "1.0.0"
+    },
+    {
       "name": "content-creator",
       "source": "plugins/content-creator",
       "description": "Technical content generation for blog posts and social media",
@@ -447,6 +453,12 @@
       "name": "migration-generator",
       "source": "plugins/migration-generator",
       "description": "Database migration generation and rollback management",
+      "version": "1.0.0"
+    },
+    {
+      "name": "mistral-ocr4",
+      "source": "plugins/mistral-ocr4",
+      "description": "Lean, tool-agnostic Mistral OCR4 + Document AI access layer (custom MCP server, extraction skill, intent hooks, handoff seam) for construction/RFP/vendor/invoice/submittal/engineering documents - extraction only, reasoning stays with the calling model",
       "version": "1.0.0"
     },
     {
