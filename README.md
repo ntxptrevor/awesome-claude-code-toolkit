@@ -661,7 +661,7 @@ Seven curated Model Context Protocol server configurations.
 | Data Science | [`data-science.json`](mcp-configs/data-science.json) | Jupyter, SQLite, PostgreSQL, Filesystem |
 | Frontend | [`frontend.json`](mcp-configs/frontend.json) | Puppeteer, Figma, Storybook |
 | DevOps | [`devops.json`](mcp-configs/devops.json) | AWS, Docker, GitHub, Terraform, Sentry |
-| Procurement | [`procurement.json`](mcp-configs/procurement.json) | DeepRFP connector, Filesystem, Fetch |
+| Procurement | [`procurement.json`](mcp-configs/procurement.json) | DeepRFP, Procurement Connectors (SAM.gov/HigherGov/BidBanana/ESBD/Bonfire/Jaggaer/Ionwave), Filesystem, Fetch |
 
 ---
 
