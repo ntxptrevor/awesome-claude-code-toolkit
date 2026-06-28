@@ -498,6 +498,12 @@
       "version": "1.0.0"
     },
     {
+      "name": "ntxp-contacts",
+      "source": "plugins/ntxp-contacts",
+      "description": "NTXP master contacts database: one de-duplicated source of truth with idempotent imports, full-text search, and bi-directional CRM sync",
+      "version": "0.1.0"
+    },
+    {
       "name": "onboarding-guide",
       "source": "plugins/onboarding-guide",
       "description": "New developer onboarding documentation generator",
