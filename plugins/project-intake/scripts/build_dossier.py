@@ -21,7 +21,6 @@ runs; --dry-run needs no key and makes no API calls.
 import argparse
 import csv
 import json
-import os
 import re
 import subprocess
 import sys
@@ -64,6 +63,11 @@ def base_name(src: str) -> str:
     if is_url(src):
         return strip_query(src).rstrip("/").split("/")[-1] or "document"
     return Path(src).stem or "document"
+
+
+def doc_id_for(i: int, src: str) -> str:
+    """Stable per-document id, shared by the real path and the dry-run plan."""
+    return f"doc{i:03d}-{slugify(base_name(src))}"
 
 
 def run_client(client: Path, args: list[str], label: str) -> dict | None:
@@ -137,6 +141,18 @@ def str_list(value) -> list[str]:
     return [x for x in value if isinstance(x, str)]
 
 
+# The harvested annotation fields, in one place: (agg key, annotation field,
+# coercer, per-item wrapper, extract filename). Drives aggregation + dumping so
+# the field set lives in a single registry instead of five copy-paste blocks.
+EXTRACT_SPEC = [
+    ("products", "products", dict_list, None, "products"),
+    ("schedules", "schedules", dict_list, None, "schedules"),
+    ("contacts", "contacts", dict_list, None, "contacts"),
+    ("scope_items", "scope_items", str_list, lambda t: {"text": t}, "scope-items"),
+    ("requirements", "requirements", dict_list, None, "requirements"),
+]
+
+
 def collect_tables(env: dict) -> list[dict]:
     out = []
     for page in env.get("pages", []) or []:
@@ -169,8 +185,7 @@ def resolve_title(explicit, inputs, client, schemas, model, dry_run):
     args = ocr_command(first, fid, (schemas / "identity.schema.json").read_text(),
                        model, pages="0", blocks=False, table_format=None)
     res = run_client(client, args, "identity") or {}
-    ann = parse_annotation(res)
-    title = ann.get("project_title") if isinstance(ann, dict) else None
+    title = parse_annotation(res).get("project_title")  # parse_annotation always returns a dict
     if title:
         return title, "extracted", first, fid
     return base_name(first), "fallback", first, fid
@@ -179,7 +194,7 @@ def resolve_title(explicit, inputs, client, schemas, model, dry_run):
 def process_doc(i, src, client, schema_text, model, fid_cache):
     """Upload (if local & not cached) + OCR one document. Returns a result dict.
     Safe to run concurrently — it touches no shared state."""
-    doc_id = f"doc{i:03d}-{slugify(base_name(src))}"
+    doc_id = doc_id_for(i, src)
     if is_url(src):
         mode, fid = "document_url", None
     else:
@@ -216,7 +231,7 @@ def build(args):
             "dossier_dir": str(out_dir),
             "max_workers": min(MAX_WORKERS, max(1, len(inputs))),
             "planned": [
-                {"input": s, "doc_id": f"doc{i:03d}-{slugify(base_name(s))}",
+                {"input": s, "doc_id": doc_id_for(i, s),
                  "mode": "url" if is_url(s) else "file_id(after upload)"}
                 for i, s in enumerate(inputs)],
             "outputs": ["project.json", "_raw/<docid>.ocr.json",
@@ -239,9 +254,8 @@ def build(args):
             list(enumerate(inputs))))
 
     # ---- aggregate in input order (single-threaded; no races) ----
-    documents, products, schedules, contacts = [], [], [], []
-    scope_items, requirements, tables = [], [], []
-    needs_review = []
+    documents, tables, needs_review = [], [], []
+    agg = {key: [] for key, *_ in EXTRACT_SPEC}
     identity = {"project_title": title}
 
     for r in results:
@@ -258,11 +272,11 @@ def build(args):
         if isinstance(ident, dict):
             for k, v in ident.items():
                 identity.setdefault(k, v)
-        products += [{**p, "_doc": doc_id} for p in dict_list(ann.get("products"))]
-        schedules += [{**s, "_doc": doc_id} for s in dict_list(ann.get("schedules"))]
-        contacts += [{**c, "_doc": doc_id} for c in dict_list(ann.get("contacts"))]
-        scope_items += [{"text": t, "_doc": doc_id} for t in str_list(ann.get("scope_items"))]
-        requirements += [{**q, "_doc": doc_id} for q in dict_list(ann.get("requirements"))]
+        for key, field, coerce, wrap, _ in EXTRACT_SPEC:
+            for item in coerce(ann.get(field)):
+                rec = wrap(item) if wrap else dict(item)
+                rec["_doc"] = doc_id
+                agg[key].append(rec)
         tables += [{**t, "_doc": doc_id} for t in collect_tables(env)]
         documents.append({
             "doc_id": doc_id, "source": r["source"], "input_mode": r.get("input_mode"),
@@ -270,17 +284,18 @@ def build(args):
             "status": "ok", "raw": f"_raw/{doc_id}.ocr.json",
         })
 
+    # named views for the sections below
+    products, schedules, contacts = agg["products"], agg["schedules"], agg["contacts"]
+    scope_items, requirements = agg["scope_items"], agg["requirements"]
+
     # ---- write extracts ----
     extracts = {}
     def dump(name, key, data):
         if data:
             write_json(out_dir / "extracts" / f"{name}.json", data)
             extracts[key] = f"extracts/{name}.json"
-    dump("products", "products", products)
-    dump("schedules", "schedules", schedules)
-    dump("contacts", "contacts", contacts)
-    dump("scope-items", "scope_items", scope_items)
-    dump("requirements", "requirements", requirements)
+    for key, _field, _coerce, _wrap, name in EXTRACT_SPEC:
+        dump(name, key, agg[key])
     if tables:
         csv_path = out_dir / "extracts" / "product-tables.csv"
         with csv_path.open("w", newline="") as f:
@@ -317,8 +332,12 @@ def build(args):
 
     # ---- handoff.json (the contract) ----
     ok_docs = [d for d in documents if d.get("status") == "ok"]
-    status = "ready_for_review" if ok_docs and len(ok_docs) == len(documents) else (
-        "partial" if ok_docs else "error")
+    if ok_docs and len(ok_docs) == len(documents):
+        status = "ready_for_review"   # every doc succeeded
+    elif ok_docs:
+        status = "partial"            # some succeeded
+    else:
+        status = "error"              # none succeeded (or no docs)
     handoff = {
         "schema_version": HANDOFF_VERSION,
         "status": status,
