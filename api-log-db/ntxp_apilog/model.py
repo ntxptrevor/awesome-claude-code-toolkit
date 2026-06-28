@@ -18,6 +18,15 @@ def name_norm(name: str | None) -> str:
     return re.sub(r"\s+", " ", name.strip().lower())
 
 
+def parse_tags(value: str | list[str] | None) -> list[str]:
+    """Coerce a comma-separated string (or list) into a clean tag list."""
+    if isinstance(value, list):
+        items = value
+    else:
+        items = (value or "").split(",")
+    return [t.strip() for t in items if t and t.strip()]
+
+
 @dataclass
 class ApiEntry:
     """One registered API: where it lives, how to authenticate, what it costs."""

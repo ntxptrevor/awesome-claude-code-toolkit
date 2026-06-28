@@ -122,7 +122,8 @@
     <div class="brand"><h1>API Log</h1><div class="tag">Shared Credential &amp; Cost Registry</div></div>
   </div>
   <div class="spacer"></div>
-  <div class="locknote">🔒 Secrets encrypted at rest · loopback only</div>
+  <div id="user" class="locknote"></div>
+  <div class="locknote">🔒 Secrets encrypted at rest</div>
 </header>
 
 <main>
@@ -223,8 +224,17 @@ function toast(msg, isErr){
 }
 async function api(path, opts){
   const r = await fetch(path, opts);
+  if(r.status===401){ location.href='/auth/login'; throw new Error('Sign-in required'); }
   if(!r.ok){ let m='Request failed'; try{m=(await r.json()).error||m}catch(e){} throw new Error(m); }
   return r.status===204?null:r.json();
+}
+async function loadUser(){
+  try{
+    const u = await api('/auth/me');
+    if(u.enabled && u.authenticated){
+      $('#user').innerHTML = `👤 ${esc(u.email)} · <a href="/auth/logout" style="color:#16b8a6">Sign out</a>`;
+    }
+  }catch(e){/* auth disabled or unreachable — leave chip empty */}
 }
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function fmt$(n){return '$'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -383,7 +393,7 @@ $('#overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal
 $('#costOverlay').addEventListener('click',e=>{if(e.target.id==='costOverlay')closeCost();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeCost();}});
 
-(async()=>{try{await loadMeta();refresh();}catch(e){toast('Cannot reach server. Run: ntxp-apilog serve',true);}})();
+(async()=>{try{loadUser();await loadMeta();refresh();}catch(e){toast('Cannot reach server. Run: ntxp-apilog serve',true);}})();
 </script>
 </body>
 </html>

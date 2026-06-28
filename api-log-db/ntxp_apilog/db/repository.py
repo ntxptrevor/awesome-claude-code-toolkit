@@ -22,9 +22,9 @@ _SECRET_COLS = {
 
 
 class Repository:
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, conn: sqlite3.Connection, cipher: Cipher | None = None):
         self.conn = conn
-        self._cipher: Cipher | None = None
+        self._cipher = cipher  # shared instance avoids re-reading the key file
 
     @property
     def cipher(self) -> Cipher:
@@ -120,9 +120,9 @@ class Repository:
                 d[attr] = plain
         return d
 
-    def get_api(self, api_id: int, reveal: bool = False) -> dict[str, Any] | None:
+    def _one(self, where: str, params: tuple, reveal: bool) -> dict[str, Any] | None:
         row = self.conn.execute(
-            "SELECT * FROM apis WHERE api_id = ? AND is_deleted = 0", (api_id,)
+            f"SELECT * FROM apis WHERE {where} AND is_deleted = 0", params
         ).fetchone()
         if not row:
             return None
@@ -130,16 +130,11 @@ class Repository:
         self._attach_spend([d])
         return d
 
+    def get_api(self, api_id: int, reveal: bool = False) -> dict[str, Any] | None:
+        return self._one("api_id = ?", (api_id,), reveal)
+
     def find_by_name(self, name: str, reveal: bool = False) -> dict[str, Any] | None:
-        row = self.conn.execute(
-            "SELECT * FROM apis WHERE name_norm = ? AND is_deleted = 0",
-            (name_norm(name),),
-        ).fetchone()
-        if not row:
-            return None
-        d = self._row_to_dict(row, reveal)
-        self._attach_spend([d])
-        return d
+        return self._one("name_norm = ?", (name_norm(name),), reveal)
 
     def resolve(self, name_or_id: str | int, reveal: bool = False) -> dict[str, Any] | None:
         """Look up by api_id (int or digit-string) or by name."""

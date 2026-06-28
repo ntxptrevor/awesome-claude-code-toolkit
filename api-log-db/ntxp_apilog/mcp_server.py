@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import json
 
+from .crypto import Cipher
 from .db import connect, migrate
 from .db.repository import Repository
-from .model import ApiEntry, UsageEvent
+from .model import ApiEntry, UsageEvent, parse_tags
 
 
 def build_server(db_override: str | None = None):
@@ -27,10 +28,13 @@ def build_server(db_override: str | None = None):
 
     mcp = FastMCP("ntxp-apilog")
 
+    # One-time setup: migrate the DB and build a shared Cipher at startup so
+    # neither happens on every tool call.
+    migrate(connect(db_override))
+    shared_cipher = Cipher()
+
     def _repo() -> Repository:
-        c = connect(db_override)
-        migrate(c)
-        return Repository(c)
+        return Repository(connect(db_override), cipher=shared_cipher)
 
     @mcp.tool()
     def find_api(query: str, limit: int = 10) -> str:
@@ -122,8 +126,7 @@ def build_server(db_override: str | None = None):
             key_number=key_number or None, login_user=login_user or None,
             login_secret=login_secret or None, cost_model=cost_model or None,
             monthly_budget=monthly_budget or None, owner=owner or None,
-            tags=[t.strip() for t in tags.split(",") if t.strip()],
-            notes=notes or None,
+            tags=parse_tags(tags), notes=notes or None,
         )
         api_id, is_new = repo.upsert_api(entry, origin="mcp")
         return json.dumps({"api_id": api_id, "is_new": is_new})

@@ -55,10 +55,34 @@ table, masked secrets with an audited **reveal/copy**, an add/edit form, a
 **+ Cost** logger, and soft delete.
 
 It binds to **loopback (`127.0.0.1`) by default** because it serves live
-credentials. To share the *data* with a team, point everyone's
-`NTXP_APILOG_DB_PATH` at the same synced file. For concurrent multi-user *web*
-access, run one instance on a trusted host behind your own auth/reverse proxy
-(`serve --host 0.0.0.0` prints a warning).
+credentials.
+
+### Sharing the dashboard with Google sign-in
+
+To let a team **share one dashboard** over the network, turn on Google OAuth and
+restrict it to an email/domain allowlist. With it enabled, every route requires a
+signed-in, allow-listed Google account; audited reveals are attributed to the
+signed-in user (`user:<email>`).
+
+1. In Google Cloud Console, create an **OAuth 2.0 Client ID** (type: Web
+   application) and add the redirect URI the server prints at startup
+   (e.g. `https://apilog.ntxp.com/auth/callback`).
+2. Set the env vars and run:
+
+```bash
+export NTXP_APILOG_GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+export NTXP_APILOG_GOOGLE_CLIENT_SECRET=xxxx
+export NTXP_APILOG_ALLOWED_DOMAIN=ntxp.com      # and/or NTXP_APILOG_ALLOWED_EMAILS
+export NTXP_APILOG_OAUTH_REDIRECT=https://apilog.ntxp.com/auth/callback
+export NTXP_APILOG_HTTPS=1                       # mark the session cookie Secure
+ntxp-apilog serve --host 0.0.0.0 --port 8787
+```
+
+Auth routes: `/auth/login` (→ Google), `/auth/callback`, `/auth/logout`,
+`/auth/me`. Sessions are HttpOnly cookies (12 h). **Off by default** — with no
+client id/secret set, the dashboard runs loopback-only with no login.
+Serve it behind TLS (a reverse proxy) since it carries credentials and cookies;
+without an allowlist *any* Google account can sign in (the server warns).
 
 ## How Claude "fills it in" (MCP)
 
@@ -91,7 +115,8 @@ ntxp_apilog/
   model.py             ApiEntry / UsageEvent dataclasses + name normalization
   db/                  connection (WAL/FK), repository (all SQL + FTS), migrations
   cli.py               the `ntxp-apilog` command
-  server.py            stdlib HTTP server: dashboard + JSON API (loopback)
+  server.py            stdlib HTTP server: dashboard + JSON API + OAuth gate
+  auth.py              Google OAuth login (config, allowlist, sessions)
   dashboard/index.html NTXP-branded single-page dashboard
   mcp_server.py        FastMCP tools (find/get/get_credentials/upsert/log_usage/stats)
 ```
@@ -122,6 +147,12 @@ key and cannot decrypt the others' secrets.
 | `NTXP_APILOG_DB_PATH` | Shared DB file location | `~/.ntxp/apilog.db` |
 | `NTXP_APILOG_KEY` | Fernet encryption key (preferred) | — |
 | `NTXP_APILOG_KEY_PATH` | Key file location (fallback) | `~/.ntxp/apilog.key` |
+| `NTXP_APILOG_GOOGLE_CLIENT_ID` | Google OAuth client id (enables sign-in) | — |
+| `NTXP_APILOG_GOOGLE_CLIENT_SECRET` | Google OAuth client secret | — |
+| `NTXP_APILOG_OAUTH_REDIRECT` | OAuth redirect URI | `http://<host>:<port>/auth/callback` |
+| `NTXP_APILOG_ALLOWED_EMAILS` | Comma-separated allowed emails | — |
+| `NTXP_APILOG_ALLOWED_DOMAIN` | Allowed Google hosted domain | — |
+| `NTXP_APILOG_HTTPS` | Mark the session cookie `Secure` | unset |
 
 ## Tests
 

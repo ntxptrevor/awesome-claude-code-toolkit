@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import click
 
@@ -10,7 +11,7 @@ from .config import DEFAULT_HOST, DEFAULT_PORT, db_path
 from .crypto import generate_key
 from .db import connect, migrate
 from .db.repository import Repository
-from .model import ApiEntry, UsageEvent
+from .model import ApiEntry, UsageEvent, parse_tags
 
 
 @click.group()
@@ -70,7 +71,7 @@ def add(ctx, name, tags, **kw):
     """Register or update an API (NAME is the merge key)."""
     entry = ApiEntry(
         name=name,
-        tags=[t.strip() for t in (tags or "").split(",") if t.strip()],
+        tags=parse_tags(tags),
         **{k: v for k, v in kw.items() if v is not None},
     )
     api_id, is_new = _repo(ctx).upsert_api(entry, origin="cli")
@@ -162,7 +163,7 @@ def export(ctx, reveal, out):
     if out == "-":
         click.echo(payload)
     else:
-        open(out, "w", encoding="utf-8").write(payload)
+        Path(out).write_text(payload, encoding="utf-8")
         click.echo(f"Wrote {len(rows)} APIs to {out}")
 
 
