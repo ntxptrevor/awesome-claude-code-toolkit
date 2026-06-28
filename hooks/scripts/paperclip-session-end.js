@@ -16,6 +16,11 @@ function loadState() {
 
 const state = loadState();
 
+if (state.enabled === false) {
+  console.log(JSON.stringify({ paperclip: "disabled" }));
+  process.exit(0);
+}
+
 let queue = [];
 try {
   queue = JSON.parse(fs.readFileSync(QUEUE_FILE, "utf8"));

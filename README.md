@@ -50,7 +50,7 @@ curl -fsSL https://raw.githubusercontent.com/rohitg00/awesome-claude-code-toolki
 - [Agents](#agents) (135)
 - [Skills](#skills) (35 curated + 28 community)
 - [Commands](#commands) (42)
-- [Hooks](#hooks) (23 scripts)
+- [Hooks](#hooks) (24 scripts)
 - [Rules](#rules) (16)
 - [Templates](#templates) (7)
 - [MCP Configs](#mcp-configs) (7)
@@ -231,7 +231,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [opcode](https://github.com/winfunc/opcode) | Tauri 2 desktop GUI and toolkit for Claude Code. Manage sessions, create custom agents with visual editor, usage analytics, MCP integration. 21,000+ stars |
 | [openapi-expert](plugins/openapi-expert/) | OpenAPI spec generation, validation, and client code scaffolding |
 | [optimize](plugins/optimize/) | Code optimization for performance and bundle size reduction |
-| [paperclip-ai](plugins/paperclip-ai/) | Paperclip AI integration — orchestrate multi-agent teams, track costs, and suggest workflow improvements with proactive recommendations |
+| [paperclip-ai](plugins/paperclip-ai/) | Paperclip AI integration — orchestrate multi-agent teams, track costs, and suggest workflow improvements. Includes custom MCP server, connector toggle, and zero-config hooks |
 | [ORCH](https://github.com/oxgeneral/ORCH) | CLI runtime orchestrating Claude Code, Codex, and Cursor as typed agent teams with state machine (todo→review→done), auto-retry, inter-agent messaging, goals, and TUI dashboard |
 | [oss-autopilot](https://github.com/costajohnt/oss-autopilot) | Open source contribution manager — tracks PRs across repos, discovers issues, diagnoses CI failures, drafts maintainer responses. 7 agents, interactive commands, MCP server. Install: `/plugin marketplace add costajohnt/oss-autopilot` |
 | [paco-framework](https://github.com/PenguinAlleyApps/paco-framework) | 1+ | Markdown-first multi-agent OS for Claude Code. Coordinates 3-16 specialized AI agents (Engineering, QA, Growth, Finance) with file-based dispatch, institutional memory, CEO Gate approval, and 24/7 scheduling. No Python required. MIT |
@@ -813,8 +813,7 @@ Then invoke in Claude Code:
 
 ## Hooks
 
-Twenty-three hook scripts covering all eight Claude Code lifecycle events. Place `hooks.json` in your `.claude/` directory.
-Twenty hook scripts covering all eight Claude Code lifecycle events. Place `hooks.json` in your `.claude/` directory.
+Twenty-four hook scripts covering all eight Claude Code lifecycle events. Place `hooks.json` in your `.claude/` directory.
 
 ### Hook Scripts
 
@@ -844,6 +843,7 @@ Twenty hook scripts covering all eight Claude Code lifecycle events. Place `hook
 | `paperclip-activity-log.js` | PostToolUse (Bash/Write/Edit) | Log commits, pushes, tests, and file changes to Paperclip |
 | `paperclip-prompt-enhance.js` | UserPromptSubmit | Suggest Paperclip features when prompt matches orchestration patterns |
 | `paperclip-session-end.js` | SessionEnd | Flush pending activity to Paperclip and save session state |
+| `paperclip-mcp-server.js` | MCP Server | Custom MCP server exposing Paperclip tools (issues, agents, costs) natively to Claude |
 
 ### Related SDKs
 

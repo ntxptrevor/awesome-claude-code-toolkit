@@ -53,6 +53,12 @@ function tryStart() {
   return false;
 }
 
+const toggleState = loadState();
+if (toggleState.enabled === false) {
+  console.log(JSON.stringify({ paperclip: { status: "disabled" } }));
+  process.exit(0);
+}
+
 const output = { paperclip: {} };
 
 if (!fs.existsSync(CONFIG)) {
