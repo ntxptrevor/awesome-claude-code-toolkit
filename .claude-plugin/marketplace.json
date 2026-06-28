@@ -552,6 +552,12 @@
       "version": "1.0.0"
     },
     {
+      "name": "project-intake",
+      "source": "plugins/project-intake",
+      "description": "Project document intake: auto-names a folder from the project title, runs Mistral OCR4 across the document set, builds a dossier (product tables, products, finish/equipment schedules, contacts, scope, requirements with provenance), and emits handoff.json to the construction-doc-intelligence orchestrator.",
+      "version": "1.0.0"
+    },
+    {
       "name": "project-scaffold",
       "source": "plugins/project-scaffold",
       "description": "Scaffold new projects and add features with best-practice templates",
