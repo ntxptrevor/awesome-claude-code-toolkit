@@ -6,20 +6,8 @@ import { highergovAdapter } from "./adapters/highergov.js";
 import { bidbananaAdapter } from "./adapters/bidbanana.js";
 import { ionwaveAdapter } from "./adapters/ionwave.js";
 import { jaggaerAdapter } from "./adapters/jaggaer.js";
-import { makeConfigurableAdapter } from "./adapters/configurable.js";
+import { opengovAdapter } from "./adapters/opengov.js";
 import { demandstarAdapter, planetbidsAdapter } from "./adapters/browser-portal.js";
-
-const opengovAdapter = makeConfigurableAdapter({
-  platform: "opengov",
-  configEnv: ["OPENGOV_BASE_URL", "OPENGOV_API_KEY"],
-  reliability: "requires-config",
-});
-
-const govcloudAdapter = makeConfigurableAdapter({
-  platform: "govcloud",
-  configEnv: ["GOVCLOUD_BASE_URL", "GOVCLOUD_API_KEY"],
-  reliability: "requires-config",
-});
 
 export interface SourceDef {
   name: string;
@@ -27,8 +15,15 @@ export interface SourceDef {
   adapter: Adapter;
   /** Static config baked into the named source (e.g. a Bonfire org). */
   fixed?: Partial<SourceConfig>;
-  /** Env vars supplying apiKey / baseUrl for this source. */
-  env?: { apiKey?: string; baseUrl?: string };
+  /** Env vars supplying credentials/endpoints for this source. */
+  env?: {
+    apiKey?: string;
+    baseUrl?: string;
+    clientId?: string;
+    clientSecret?: string;
+    tokenUrl?: string;
+    searchPath?: string;
+  };
   notes?: string;
 }
 
@@ -56,12 +51,18 @@ export const SOURCES: SourceDef[] = [
     notes: "Paid SaaS; API key provisioned by The Bid Lab.",
   },
   {
-    name: "govcloud",
-    displayName: "GovCloud (configurable — unresolved public portal)",
-    adapter: govcloudAdapter,
-    env: { apiKey: "GOVCLOUD_API_KEY", baseUrl: "GOVCLOUD_BASE_URL" },
+    name: "opengov",
+    displayName: "OpenGov Procurement (formerly ProcureNow)",
+    adapter: opengovAdapter,
+    env: {
+      clientId: "OPENGOV_CLIENT_ID",
+      clientSecret: "OPENGOV_CLIENT_SECRET",
+      baseUrl: "OPENGOV_API_BASE",
+      tokenUrl: "OPENGOV_TOKEN_URL",
+      searchPath: "OPENGOV_SEARCH_PATH",
+    },
     notes:
-      "No public bid portal named 'GovCloud' was found. Point GOVCLOUD_BASE_URL at your intended source, or use samgov / the GovTribe MCP server for federal data.",
+      "OAuth2 client-credentials from developer.opengov.com; API gateway at api.procurement.opengov.com/gateway. Exact search path is configurable (OPENGOV_SEARCH_PATH).",
   },
 
   // ---- Texas state ----
@@ -122,13 +123,6 @@ export const SOURCES: SourceDef[] = [
     adapter: ionwaveAdapter,
     notes: "Generic Ionwave scrape; pass org=<subdomain>.",
   },
-  {
-    name: "opengov",
-    displayName: "OpenGov Procurement (configurable API)",
-    adapter: opengovAdapter,
-    env: { apiKey: "OPENGOV_API_KEY", baseUrl: "OPENGOV_BASE_URL" },
-    notes: "Per-agency API; set OPENGOV_BASE_URL (JSON search URL with {q}/{limit}).",
-  },
   { name: "demandstar", displayName: "DemandStar (browse portal)", adapter: demandstarAdapter },
   {
     name: "planetbids",
@@ -144,9 +138,14 @@ export function getSource(name: string): SourceDef | undefined {
 
 /** Resolve the runtime config for a source from its fixed values + environment. */
 export function resolveConfig(def: SourceDef): SourceConfig {
+  const e = def.env;
   return {
-    apiKey: def.env?.apiKey ? process.env[def.env.apiKey] : undefined,
-    baseUrl: def.env?.baseUrl ? process.env[def.env.baseUrl] : undefined,
+    apiKey: e?.apiKey ? process.env[e.apiKey] : undefined,
+    baseUrl: e?.baseUrl ? process.env[e.baseUrl] : undefined,
+    clientId: e?.clientId ? process.env[e.clientId] : undefined,
+    clientSecret: e?.clientSecret ? process.env[e.clientSecret] : undefined,
+    tokenUrl: e?.tokenUrl ? process.env[e.tokenUrl] : undefined,
+    searchPath: e?.searchPath ? process.env[e.searchPath] : undefined,
     org: def.fixed?.org,
   };
 }
@@ -155,6 +154,7 @@ export function resolveConfig(def: SourceDef): SourceConfig {
 export function isConfigured(def: SourceDef): boolean {
   const cfg = resolveConfig(def);
   if (def.adapter.auth === "api-key" && !cfg.apiKey) return false;
+  if (def.adapter.auth === "oauth" && (!cfg.clientId || !cfg.clientSecret)) return false;
   if (def.adapter.reliability === "requires-config" && !cfg.baseUrl) return false;
   return true;
 }

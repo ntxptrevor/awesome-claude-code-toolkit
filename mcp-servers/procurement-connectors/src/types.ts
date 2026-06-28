@@ -41,6 +41,12 @@ export interface SourceConfig {
   apiKey?: string;
   baseUrl?: string;
   org?: string;
+  /** OAuth2 client-credentials (e.g. OpenGov Procurement). */
+  clientId?: string;
+  clientSecret?: string;
+  tokenUrl?: string;
+  /** Resource path appended to baseUrl for search, where the contract is configurable. */
+  searchPath?: string;
 }
 
 export interface Adapter {

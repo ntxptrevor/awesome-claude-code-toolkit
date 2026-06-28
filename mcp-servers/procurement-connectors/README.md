@@ -13,7 +13,7 @@ adapters.
 | `samgov` | US federal opportunities | SAM.gov API | API key (free) | requires-key |
 | `highergov` | Gov contracting intelligence | HigherGov API | API key (paid) | requires-key |
 | `bidbanana` | 50-state bid aggregator | BidBanana API | API key (paid) | requires-key |
-| `govcloud` | *(unresolved — see note)* | configurable | optional | requires-config |
+| `opengov` | OpenGov Procurement (ProcureNow) | OpenGov API gateway | OAuth2 | requires-key |
 | `esbd` / `txsmartbuy` | Texas state solicitations | TxSmartBuy NetSuite JSON | none | **verified** |
 | `utd` | UT Dallas | Bonfire RSS | none | **verified** |
 | `unt` | University of North Texas | Jaggaer | none | requires-browser |
@@ -22,7 +22,6 @@ adapters.
 | `lewisville-tx` | City of Lewisville, TX | Bonfire RSS | none | **verified** |
 | `bonfire` | Any Bonfire agency (`org`) | Bonfire RSS | none | **verified** |
 | `ionwave` | Any Ionwave agency (`org`) | Ionwave | none | best-effort |
-| `opengov` | OpenGov Procurement | configurable API | API key | requires-config |
 | `demandstar` | DemandStar marketplace | portal | none | requires-browser |
 | `planetbids` | PlanetBids portals | portal | none | requires-browser |
 
@@ -33,12 +32,13 @@ list is rendered client-side, so the connector returns a verified portal link
 instead of fabricating rows; `requires-config`: generic adapter needing a base
 URL.
 
-> **On "GovCloud":** research found no public bid portal by that exact name —
-> "GovCloud" normally refers to AWS/Azure GovCloud hosting regions. The closest
-> data sources (GovSpend, GovWin IQ) are enterprise-only with no public API.
-> The `govcloud` source is a configurable passthrough: point `GOVCLOUD_BASE_URL`
-> at whatever you actually mean, or use `samgov` / the GovTribe MCP server for
-> federal data.
+> **On OpenGov:** the public vendor portal (`procurement.opengov.com/portal/<slug>`)
+> is a Cloudflare-protected SPA with no clean anonymous JSON. The supported path
+> is the official API gateway at `api.procurement.opengov.com/gateway` using
+> OAuth2 client-credentials (register an app at developer.opengov.com). Exact
+> endpoint paths/scopes live behind the logged-in developer docs, so the token
+> URL and search path are configurable (`OPENGOV_SEARCH_PATH`) with sensible
+> defaults — confirm them against your OpenGov account.
 
 > **On Jaggaer (UNT, Texas A&M):** their public event lists are rendered
 > client-side and can't be read over plain HTTP. Those sources return the portal
@@ -61,8 +61,8 @@ All results are normalized to: `source, id, title, agency, status, postedDate, d
 | `SAM_GOV_API_KEY` | samgov | for samgov |
 | `HIGHERGOV_API_KEY`, `HIGHERGOV_BASE_URL` | highergov | key for highergov |
 | `BIDBANANA_API_KEY` | bidbanana | for bidbanana |
-| `OPENGOV_BASE_URL`, `OPENGOV_API_KEY` | opengov | for opengov |
-| `GOVCLOUD_BASE_URL`, `GOVCLOUD_API_KEY` | govcloud | for govcloud |
+| `OPENGOV_CLIENT_ID`, `OPENGOV_CLIENT_SECRET` | opengov | for opengov |
+| `OPENGOV_API_BASE`, `OPENGOV_TOKEN_URL`, `OPENGOV_SEARCH_PATH`, `OPENGOV_AUDIENCE` | opengov | optional overrides |
 | `PLANETBIDS_BASE_URL` | planetbids | optional |
 | `PROCUREMENT_TIMEOUT_MS` | all | optional (default 30000) |
 

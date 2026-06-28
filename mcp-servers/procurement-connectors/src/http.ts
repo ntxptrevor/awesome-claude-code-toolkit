@@ -58,6 +58,21 @@ export async function postJson<T = unknown>(
   return JSON.parse(text) as T;
 }
 
+export async function postForm<T = unknown>(
+  url: string,
+  form: Record<string, string>,
+  headers?: Record<string, string>
+): Promise<T> {
+  const res = await request(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json", ...headers },
+    body: new URLSearchParams(form).toString(),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`POST ${url} -> ${res.status} ${res.statusText}: ${text.slice(0, 300)}`);
+  return JSON.parse(text) as T;
+}
+
 /** Case-insensitive keyword filter over a record's text fields. */
 export function matchesKeywords(haystack: string, keywords?: string): boolean {
   if (!keywords) return true;

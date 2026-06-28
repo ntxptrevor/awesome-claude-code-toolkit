@@ -39,7 +39,7 @@ server.tool(
       auth: s.adapter.auth,
       reliability: s.adapter.reliability,
       configured: isConfigured(s),
-      envVars: [s.env?.apiKey, s.env?.baseUrl].filter(Boolean),
+      envVars: s.env ? Object.values(s.env).filter(Boolean) : [],
       notes: s.notes,
     }));
     return ok(rows);

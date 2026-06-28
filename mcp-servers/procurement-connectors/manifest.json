@@ -18,10 +18,9 @@
         "SAM_GOV_API_KEY": "${user_config.sam_gov_api_key}",
         "HIGHERGOV_API_KEY": "${user_config.highergov_api_key}",
         "BIDBANANA_API_KEY": "${user_config.bidbanana_api_key}",
-        "OPENGOV_BASE_URL": "${user_config.opengov_base_url}",
-        "OPENGOV_API_KEY": "${user_config.opengov_api_key}",
-        "GOVCLOUD_BASE_URL": "${user_config.govcloud_base_url}",
-        "GOVCLOUD_API_KEY": "${user_config.govcloud_api_key}"
+        "OPENGOV_CLIENT_ID": "${user_config.opengov_client_id}",
+        "OPENGOV_CLIENT_SECRET": "${user_config.opengov_client_secret}",
+        "OPENGOV_SEARCH_PATH": "${user_config.opengov_search_path}"
       }
     }
   },
@@ -35,10 +34,9 @@
     "sam_gov_api_key": { "type": "string", "title": "SAM.gov API Key", "description": "Free key from api.data.gov.", "sensitive": true, "required": false },
     "highergov_api_key": { "type": "string", "title": "HigherGov API Key", "description": "From your paid HigherGov subscription.", "sensitive": true, "required": false },
     "bidbanana_api_key": { "type": "string", "title": "BidBanana API Key", "description": "Provisioned by The Bid Lab.", "sensitive": true, "required": false },
-    "opengov_base_url": { "type": "string", "title": "OpenGov Search URL", "description": "Per-agency JSON search URL with {q} and {limit} placeholders.", "required": false },
-    "opengov_api_key": { "type": "string", "title": "OpenGov API Key", "sensitive": true, "required": false },
-    "govcloud_base_url": { "type": "string", "title": "GovCloud Search URL", "description": "Endpoint for whatever 'GovCloud' source you mean (no public portal by that exact name was found).", "required": false },
-    "govcloud_api_key": { "type": "string", "title": "GovCloud API Key", "sensitive": true, "required": false }
+    "opengov_client_id": { "type": "string", "title": "OpenGov Client ID", "description": "OAuth2 client-credentials ID from developer.opengov.com.", "required": false },
+    "opengov_client_secret": { "type": "string", "title": "OpenGov Client Secret", "description": "OAuth2 client secret from developer.opengov.com.", "sensitive": true, "required": false },
+    "opengov_search_path": { "type": "string", "title": "OpenGov Search Path", "description": "Gateway resource path for solicitations (default /procurement/v1/projects). Confirm from your OpenGov developer docs.", "required": false }
   },
   "compatibility": { "runtimes": { "node": ">=18.0.0" } }
 }
