@@ -510,6 +510,12 @@
       "version": "0.1.0"
     },
     {
+      "name": "ntxp-contracts-db",
+      "source": "plugins/ntxp-contracts-db",
+      "description": "NTXP Master Contracts database: one adaptable, pollable source of truth for Job Order, Cooperative, and Master Subcontract Agreements, with an inline-editable web dashboard and per-contract profile",
+      "version": "0.1.0"
+    },
+    {
       "name": "onboarding-guide",
       "source": "plugins/onboarding-guide",
       "description": "New developer onboarding documentation generator",

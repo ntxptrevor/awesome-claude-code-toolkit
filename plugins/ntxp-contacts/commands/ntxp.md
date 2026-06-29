@@ -25,6 +25,7 @@ ntxp init
 - **Stats / provenance:** `ntxp stats`
 - **Export:** `ntxp export --format csv|json --out <file>`
 - **Review near-duplicates:** `ntxp dedup review`, then `ntxp dedup merge <survivor> <loser>`
+- **Regional cleanup:** `ntxp prune --source tips --keep-states TX,OK` — tombstone a source's members outside the given states (reversible; add `--dry-run` to preview, `--hard` to delete permanently)
 - **CRM sync (dry-run):** `ntxp sync push --system <quo|lightfield> --dry-run`
 
 Re-running an import is safe — unchanged rows are skipped and changed rows
