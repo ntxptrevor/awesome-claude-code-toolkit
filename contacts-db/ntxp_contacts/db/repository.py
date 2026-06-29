@@ -303,6 +303,81 @@ class Repository:
         self.log_change("contact", loser, "merge", origin)
         self._reindex_contact(survivor)
 
+    # -- prune (reversible by default) --------------------------------------
+    def prune_by_state(self, source: str, keep_states, hard: bool = False,
+                       dry_run: bool = False, origin: str = "prune") -> dict:
+        """Remove members of `source` whose org address state is not in
+        `keep_states`. Tombstones org + its contacts (recoverable) unless
+        `hard=True`. Returns a counts summary."""
+        keep = {s.strip().upper() for s in keep_states if s.strip()}
+        src_orgs = {r[0] for r in self.conn.execute(
+            "SELECT DISTINCT org_id FROM source_records WHERE source = ? AND org_id IS NOT NULL",
+            (source,))}
+        in_keep = {r[0] for r in self.conn.execute(
+            "SELECT DISTINCT org_id FROM addresses WHERE org_id IS NOT NULL AND state IN (%s)"
+            % ",".join("?" * len(keep)), tuple(keep))} if keep else set()
+        removable = src_orgs - in_keep
+
+        self.conn.execute("DROP TABLE IF EXISTS _prune_orgs")
+        self.conn.execute("CREATE TEMP TABLE _prune_orgs(org_id INTEGER PRIMARY KEY)")
+        self.conn.executemany("INSERT OR IGNORE INTO _prune_orgs VALUES (?)",
+                              [(o,) for o in removable])
+
+        n_contacts = self.conn.execute(
+            "SELECT COUNT(*) FROM contacts WHERE is_deleted = 0 "
+            "AND org_id IN (SELECT org_id FROM _prune_orgs)").fetchone()[0]
+        summary = {"source": source, "keep_states": sorted(keep),
+                   "orgs_removed": len(removable), "orgs_kept": len(in_keep & src_orgs),
+                   "contacts_removed": n_contacts, "mode": "hard" if hard else "tombstone"}
+        if dry_run or not removable:
+            summary["dry_run"] = dry_run
+            self.conn.execute("DROP TABLE IF EXISTS _prune_orgs")
+            return summary
+
+        # Audit log (delete events drive outbound sync).
+        self.conn.execute(
+            "INSERT INTO change_log(entity_type, entity_id, op, origin) "
+            "SELECT 'contact', contact_id, 'delete', ? FROM contacts "
+            "WHERE org_id IN (SELECT org_id FROM _prune_orgs)", (origin,))
+        self.conn.execute(
+            "INSERT INTO change_log(entity_type, entity_id, op, origin) "
+            "SELECT 'org', org_id, 'delete', ? FROM _prune_orgs", (origin,))
+
+        # Drop from the search index either way.
+        self.conn.execute(
+            "DELETE FROM contacts_fts WHERE entity_type='contact' AND entity_id IN "
+            "(SELECT contact_id FROM contacts WHERE org_id IN (SELECT org_id FROM _prune_orgs))")
+        self.conn.execute(
+            "DELETE FROM contacts_fts WHERE entity_type='org' AND entity_id IN "
+            "(SELECT org_id FROM _prune_orgs)")
+
+        if hard:
+            self.conn.execute("DROP TABLE IF EXISTS _prune_contacts")
+            self.conn.execute(
+                "CREATE TEMP TABLE _prune_contacts AS "
+                "SELECT contact_id FROM contacts WHERE org_id IN (SELECT org_id FROM _prune_orgs)")
+            for tbl in ("emails", "phones", "addresses", "source_records", "external_ids"):
+                self.conn.execute(
+                    f"DELETE FROM {tbl} WHERE contact_id IN (SELECT contact_id FROM _prune_contacts)")
+                self.conn.execute(
+                    f"DELETE FROM {tbl} WHERE org_id IN (SELECT org_id FROM _prune_orgs)")
+            self.conn.execute(
+                "DELETE FROM entity_tags WHERE (entity_type='contact' AND entity_id IN (SELECT contact_id FROM _prune_contacts)) "
+                "OR (entity_type='org' AND entity_id IN (SELECT org_id FROM _prune_orgs))")
+            self.conn.execute("DELETE FROM contacts WHERE contact_id IN (SELECT contact_id FROM _prune_contacts)")
+            self.conn.execute("DELETE FROM organizations WHERE org_id IN (SELECT org_id FROM _prune_orgs)")
+            self.conn.execute("DROP TABLE IF EXISTS _prune_contacts")
+        else:
+            self.conn.execute(
+                "UPDATE contacts SET is_deleted = 1, updated_at = datetime('now') "
+                "WHERE org_id IN (SELECT org_id FROM _prune_orgs)")
+            self.conn.execute(
+                "UPDATE organizations SET is_deleted = 1, updated_at = datetime('now') "
+                "WHERE org_id IN (SELECT org_id FROM _prune_orgs)")
+
+        self.conn.execute("DROP TABLE IF EXISTS _prune_orgs")
+        return summary
+
     # -- queries ------------------------------------------------------------
     def search(self, text: str, limit: int = 25) -> list[dict]:
         rows = self.conn.execute(

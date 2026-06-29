@@ -32,6 +32,8 @@ ntxp import all --all /path/to/source/files # load every spreadsheet source
 ntxp stats                                  # entity counts + per-source provenance
 ntxp query "Vaden"                          # full-text search
 ntxp export --format csv --out contacts.csv
+ntxp prune --source tips --keep-states TX,OK --dry-run   # preview a regional cleanup
+ntxp prune --source tips --keep-states TX,OK             # tombstone members outside TX/OK (reversible)
 ```
 
 ### Sources & loaders

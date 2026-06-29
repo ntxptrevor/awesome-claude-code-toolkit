@@ -154,6 +154,28 @@ def stats(ctx):
     click.echo(json.dumps(Repository(_conn(ctx)).stats(), indent=2))
 
 
+@main.command()
+@click.option("--source", required=True, help="Source whose members to prune, e.g. tips.")
+@click.option("--keep-states", required=True,
+              help="Comma-separated 2-letter states to KEEP, e.g. TX,OK. All others are removed.")
+@click.option("--hard", is_flag=True, help="Permanently delete instead of tombstoning (default: reversible tombstone).")
+@click.option("--dry-run", is_flag=True, help="Report what would be removed; make no changes.")
+@click.pass_context
+def prune(ctx, source, keep_states, hard, dry_run):
+    """Remove members of a SOURCE whose state is not in --keep-states.
+
+    Example: ntxp prune --source tips --keep-states TX,OK
+    Tombstoned records are filtered from every query/export/stat but remain
+    recoverable; use --hard to delete permanently.
+    """
+    conn = _conn(ctx)
+    repo = Repository(conn)
+    summary = repo.prune_by_state(source, keep_states.split(","), hard=hard, dry_run=dry_run)
+    if not dry_run:
+        conn.commit()
+    click.echo(json.dumps(summary, indent=2))
+
+
 @main.group()
 def dedup():
     """De-duplication review tools."""
