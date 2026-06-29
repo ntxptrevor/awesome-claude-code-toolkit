@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schedule.schema.json",
+  "title": "Section — Schedule & Milestones",
+  "description": "Contract milestones, key dates, and duration constraints harvested from the documents — the dated skeleton a scheduling tool builds a CPM schedule on. Captures owner-imposed milestones, phase durations, and liquidated-damages-bearing dates. The model structures the dates; it does not build a logic-driven schedule.",
+  "type": "object",
+  "required": ["section"],
+  "properties": {
+    "section": { "type": "string", "const": "schedule" },
+    "milestones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label"],
+        "properties": {
+          "milestone_id": { "type": "string" },
+          "label": { "type": "string", "description": "e.g. 'Notice to Proceed', 'Substantial Completion', 'Final Completion', 'Phase 1 Complete'." },
+          "date": { "type": ["string", "null"], "description": "ISO 8601 when an absolute date is stated." },
+          "relative_to": { "type": "string", "description": "e.g. '180 calendar days from NTP' when the milestone is relative." },
+          "is_contractual": { "type": "boolean", "description": "True if liquidated-damages-bearing / contractually fixed." },
+          "phase": { "type": "string" },
+          "as_written": { "type": "string" },
+          "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" }
+        }
+      }
+    },
+    "contract_duration": { "type": "string", "description": "Overall stated duration (e.g. '270 calendar days')." },
+    "constraints": {
+      "type": "array",
+      "description": "Sequencing/timing constraints stated in the documents, verbatim.",
+      "items": { "type": "object", "properties": { "text": { "type": "string" }, "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" } } }
+    }
+  }
+}

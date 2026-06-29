@@ -1,0 +1,7 @@
+{
+  "name": "canonical-project-model",
+  "version": "1.0.0",
+  "description": "Normalization layer of the construction-doc-intelligence pipeline: turns the verbatim project-intake dossier (which Mistral OCR4 produced) into the Canonical Project Record - one reusable, CSI/UniFormat-aligned, provenance-carrying source of truth covering project identity, scope, quantity takeoff, estimate/SOV, budget, trades, subcontractors, sub-bid log, RFI/submittal logs, safety plan, logistics plan, schedule, and requirements. Parallel agents normalize each section against a fixed schema; a deterministic script validates and assembles canonical-model.json + project-record.md. Built for downstream estimating/PM tools to pull from - it organizes, it never prices, levels, or decides.",
+  "commands": ["commands/structure.md"],
+  "agents": ["agents/model-orchestrator.md", "agents/section-normalizer.md"]
+}

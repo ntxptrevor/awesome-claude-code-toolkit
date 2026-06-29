@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "quantity-takeoff.schema.json",
+  "title": "Section — Quantity Takeoff (QTO)",
+  "description": "Normalized takeoff: measured/stated quantities pulled from drawings, schedules, and spec tables, each tied to a CSI code, a unit of measure, and (where known) a scope item and location. This is the structured feed an estimating tool multiplies by unit rates. The model carries only quantities that appear in the documents (or are a direct count of schedule rows) — it does not perform new measurement or pricing.",
+  "type": "object",
+  "required": ["section", "items"],
+  "properties": {
+    "section": { "type": "string", "const": "quantity_takeoff" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["takeoff_id", "description", "quantity"],
+        "properties": {
+          "takeoff_id": { "type": "string", "description": "Stable id, e.g. 'QTO-0951-0007'." },
+          "scope_item_id": { "type": "string", "description": "Link back to scope.items[].scope_item_id." },
+          "csi": { "$ref": "common.defs.schema.json#/$defs/csi_ref" },
+          "description": { "type": "string" },
+          "quantity": { "$ref": "common.defs.schema.json#/$defs/quantity" },
+          "location": { "type": "string", "description": "Area / room / level / zone / grid the quantity belongs to, when stated — supports area- and phase-based estimating." },
+          "assembly": { "type": "string", "description": "UniFormat system/assembly this rolls up to (e.g. 'Interior Partitions')." },
+          "source_type": { "type": "string", "enum": ["drawing", "schedule", "spec_table", "quantity_survey", "bid_form", "stated", "unknown"], "description": "Where the quantity came from." },
+          "sheet": { "type": "string", "description": "Drawing sheet / schedule id the quantity was read from." },
+          "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" },
+          "normalization": { "$ref": "common.defs.schema.json#/$defs/normalization" }
+        }
+      }
+    },
+    "by_division_summary": {
+      "type": "array",
+      "description": "Optional roll-up of total quantity by CSI division and UOM, for quick conceptual checks.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "masterformat_division": { "type": "string" },
+          "uom": { "type": "string" },
+          "total_quantity": { "type": "number" },
+          "line_count": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

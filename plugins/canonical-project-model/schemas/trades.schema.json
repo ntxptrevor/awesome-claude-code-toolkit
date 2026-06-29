@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "trades.schema.json",
+  "title": "Section — Trades / Bid Packages",
+  "description": "The work broken into trades and bid packages — the unit of buyout and subcontracting. Each trade groups one or more CSI divisions/sections and the scope items under it, so a buyout/procurement tool knows what to solicit and a sub-bid log knows what bucket each bid falls in.",
+  "type": "object",
+  "required": ["section", "trades"],
+  "properties": {
+    "section": { "type": "string", "const": "trades" },
+    "trades": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["trade_id", "name"],
+        "properties": {
+          "trade_id": { "type": "string", "description": "Stable id, e.g. 'TR-26' (Electrical)." },
+          "name": { "type": "string", "description": "Trade / bid-package name." },
+          "csi_divisions": { "type": "array", "items": { "type": "string" }, "description": "MasterFormat divisions/sections rolled into this package." },
+          "scope_item_ids": { "type": "array", "items": { "type": "string" }, "description": "Scope rows assigned to this trade." },
+          "estimated_value": { "$ref": "common.defs.schema.json#/$defs/money" },
+          "self_perform": { "type": "boolean", "description": "True if intended to be self-performed rather than subcontracted, when stated." },
+          "bid_package_status": { "type": "string", "enum": ["not_started", "soliciting", "bids_in", "leveling", "awarded", "unknown"], "description": "Buyout status as found in the documents; defaults unknown." },
+          "min_bidders_required": { "type": ["integer", "null"], "description": "Owner-required number of bidders for this package, when stated." },
+          "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" }
+        }
+      }
+    }
+  }
+}

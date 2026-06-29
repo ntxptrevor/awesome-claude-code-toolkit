@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sub-bid-log.schema.json",
+  "title": "Section — Subcontractor Bid Log (Bid Tab)",
+  "description": "The structured log of subcontractor/supplier bids received per trade — the 'bid tab' an estimator works from. Each entry records what a bidder bid, on which trade, with which inclusions/exclusions, captured verbatim with provenance. This is the STRUCTURE that vendor-bid-leveling reasons over; this layer does not level, normalize-to-apples, validate the low bid, or pick a winner — it organizes the bids so the leveling tool can.",
+  "type": "object",
+  "required": ["section", "entries"],
+  "properties": {
+    "section": { "type": "string", "const": "sub_bid_log" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["bid_id", "trade_id", "party_id"],
+        "properties": {
+          "bid_id": { "type": "string", "description": "Stable id, e.g. 'BID-26-003'." },
+          "trade_id": { "type": "string", "description": "Trade/bid-package this bid is for (trades.trades[].trade_id)." },
+          "party_id": { "type": "string", "description": "Bidder (subcontractors.parties[].party_id)." },
+          "bid_amount": { "$ref": "common.defs.schema.json#/$defs/money" },
+          "scope_covered": { "type": "array", "items": { "type": "string" }, "description": "scope_item_ids the bid states it covers." },
+          "inclusions": { "type": "array", "items": { "type": "string" } },
+          "exclusions": { "type": "array", "items": { "type": "string" }, "description": "Captured verbatim; a blank is never assumed to mean 'included'." },
+          "qualifications": { "type": "array", "items": { "type": "string" } },
+          "alternates": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "amount": { "$ref": "common.defs.schema.json#/$defs/money" } } } },
+          "unit_prices": { "type": "array", "items": { "type": "object", "properties": { "description": { "type": "string" }, "uom": { "type": "string" }, "unit_price": { "$ref": "common.defs.schema.json#/$defs/money" } } } },
+          "bond_provided": { "type": ["boolean", "null"] },
+          "received_date": { "type": ["string", "null"] },
+          "status": { "type": "string", "enum": ["received", "incomplete", "under_review", "awarded", "declined", "withdrawn", "unknown"], "description": "Logged status; the AWARD decision is downstream." },
+          "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" }
+        }
+      }
+    }
+  }
+}
