@@ -1,7 +1,7 @@
-const DEFAULT_TIMEOUT_MS = Number(process.env.PROCUREMENT_TIMEOUT_MS ?? 30_000);
+const DEFAULT_TIMEOUT_MS = Number(process.env.BIDWATCH_TIMEOUT_MS ?? 30_000);
 const USER_AGENT =
-  process.env.PROCUREMENT_USER_AGENT ??
-  "Mozilla/5.0 (compatible; procurement-connectors-mcp/0.1; +https://github.com/)";
+  process.env.BIDWATCH_USER_AGENT ??
+  "Mozilla/5.0 (compatible; ntxp-bidwatch-mcp/0.1; +https://github.com/)";
 
 interface FetchOpts {
   method?: "GET" | "POST";

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Procurement Connectors MCP server.
+ * NTXP BidWatch MCP server.
  *
  * A single hub that unifies search across public procurement / bidding sources:
  * SAM.gov, HigherGov, BidBanana, Texas ESBD/TxSmartBuy, Bonfire (UT Dallas,
@@ -25,11 +25,11 @@ function fail(err: unknown) {
   return { isError: true, content: [{ type: "text" as const, text: `Error: ${message}` }] };
 }
 
-const server = new McpServer({ name: "procurement-connectors", version: "0.1.0" });
+const server = new McpServer({ name: "ntxp-bidwatch", version: "0.1.0" });
 
 server.tool(
-  "procurement_list_sources",
-  "List every configured procurement source with its platform, auth requirement, reliability, and whether it is ready to use right now.",
+  "bidwatch_list_sources",
+  "List every configured BidWatch source with its platform, auth requirement, reliability, and whether it is ready to use right now.",
   {},
   async () => {
     const rows = SOURCES.map((s) => ({
@@ -47,8 +47,8 @@ server.tool(
 );
 
 server.tool(
-  "procurement_search",
-  "Search a single procurement source for opportunities. Use procurement_list_sources to see valid source names.",
+  "bidwatch_search",
+  "Search a single procurement source for opportunities. Use bidwatch_list_sources to see valid source names.",
   {
     source: z.string().describe("Source name, e.g. 'samgov', 'esbd', 'utd', 'denton-tx', 'lewisville-tx', 'bonfire'."),
     keywords: z.string().optional().describe("Free-text keywords to match."),
@@ -59,7 +59,7 @@ server.tool(
   },
   async ({ source, keywords, state, org, limit, verbose }) => {
     const def = getSource(source);
-    if (!def) return fail(new Error(`Unknown source '${source}'. Call procurement_list_sources for valid names.`));
+    if (!def) return fail(new Error(`Unknown source '${source}'. Call bidwatch_list_sources for valid names.`));
     try {
       const results = await def.adapter.search({ keywords, state, org, limit, verbose }, resolveConfig(def));
       return ok({ source: def.name, count: results.length, results });
@@ -70,7 +70,7 @@ server.tool(
 );
 
 server.tool(
-  "procurement_search_all",
+  "bidwatch_search_all",
   "Search across multiple sources at once and aggregate the results. Defaults to every source that is ready to use (no missing credentials). Sources that error are reported per-source rather than failing the whole call.",
   {
     keywords: z.string().optional().describe("Free-text keywords to match."),
@@ -103,7 +103,7 @@ server.tool(
 );
 
 server.tool(
-  "procurement_get_opportunity",
+  "bidwatch_get_opportunity",
   "Fetch a single opportunity by id from a source that supports detail lookups (currently 'esbd').",
   {
     source: z.string().describe("Source name."),
@@ -127,10 +127,10 @@ server.tool(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("[procurement-connectors] MCP server running on stdio");
+  console.error("[ntxp-bidwatch] MCP server running on stdio");
 }
 
 main().catch((err) => {
-  console.error("[procurement-connectors] fatal:", err);
+  console.error("[ntxp-bidwatch] fatal:", err);
   process.exit(1);
 });
