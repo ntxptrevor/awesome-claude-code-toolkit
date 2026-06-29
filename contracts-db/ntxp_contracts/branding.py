@@ -28,6 +28,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 # --- NTXP fallback brand -----------------------------------------------------
+# Web-safe fallback stack appended after whatever heading/body family a skill
+# names (or the defaults below) — defined once so it can't drift.
+_FALLBACK_STACK = ", 'Segoe UI', Arial, sans-serif"
+
 # Placeholder defaults used only when no brand skill is discovered. They are
 # intentionally neutral/professional; the real NTXP palette comes from the
 # brand skill the moment one is present in Claude's settings.
@@ -48,8 +52,8 @@ NTXP_DEFAULTS = {
         "danger": "#C0392B",     # unexecuted / expired
     },
     "fonts": {
-        "heading": "Poppins, 'Segoe UI', Arial, sans-serif",
-        "body": "Inter, 'Segoe UI', Arial, sans-serif",
+        "heading": "Poppins" + _FALLBACK_STACK,
+        "body": "Inter" + _FALLBACK_STACK,
     },
     "logo": None,
 }
@@ -92,8 +96,7 @@ def _candidate_skill_dirs() -> list[Path]:
         home / ".config" / "claude" / "skills",
         Path(__file__).resolve().parents[2] / "skills",   # <repo>/skills
         home / ".claude" / "plugins",
-        Path("/mnt/skills"),
-        Path("/mnt/skills/examples"),
+        Path("/mnt/skills"),   # recursive — covers /mnt/skills/examples too
     ]
     extra = os.environ.get("NTXP_BRANDING_PATH")
     if extra:
@@ -161,23 +164,25 @@ def _parse_colors(text: str) -> dict:
     return colors
 
 
+_FONT_PATTERNS = (
+    ("heading", r"head(?:ing|line)s?\**\s*[:\-]?\s*([A-Za-z][\w '\-,]+)"),
+    ("body", r"body(?:\s*text)?\**\s*[:\-]?\s*([A-Za-z][\w '\-,]+)"),
+)
+
+
 def _parse_fonts(text: str) -> dict:
     fonts: dict = {}
-    h = re.search(r"head(?:ing|line)s?\**\s*[:\-]?\s*([A-Za-z][\w '\-,]+)", text, re.I)
-    b = re.search(r"body(?:\s*text)?\**\s*[:\-]?\s*([A-Za-z][\w '\-,]+)", text, re.I)
-    if h:
-        fonts["heading"] = h.group(1).split("(")[0].strip().rstrip(".") + \
-            ", 'Segoe UI', Arial, sans-serif"
-    if b:
-        fonts["body"] = b.group(1).split("(")[0].strip().rstrip(".") + \
-            ", 'Segoe UI', Arial, sans-serif"
+    for slot, pattern in _FONT_PATTERNS:
+        m = re.search(pattern, text, re.I)
+        if m:
+            fonts[slot] = m.group(1).split("(")[0].strip().rstrip(".") + _FALLBACK_STACK
     return fonts
 
 
 def resolve_brand() -> Brand:
     """Scan Claude's settings for the freshest brand skill and build a Brand.
     Always returns something usable (NTXP defaults if no skill is found)."""
-    best: tuple[int, float, Path] | None = None
+    best: tuple[int, float, Path, str] | None = None
     for sk in _iter_skill_files():
         try:
             text = sk.read_text(encoding="utf-8", errors="ignore")
@@ -188,13 +193,12 @@ def resolve_brand() -> Brand:
             continue
         mtime = sk.stat().st_mtime
         if best is None or (score, mtime) > (best[0], best[1]):
-            best = (score, mtime, sk)
+            best = (score, mtime, sk, text)   # keep the text — no second read
 
     if best is None:
         return Brand(**NTXP_DEFAULTS)
 
-    sk = best[2]
-    text = sk.read_text(encoding="utf-8", errors="ignore")
+    sk, text = best[2], best[3]
     fm = _parse_frontmatter(text)
 
     parsed = _parse_colors(text)

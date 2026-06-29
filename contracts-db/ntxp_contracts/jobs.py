@@ -31,33 +31,41 @@ _ALIASES = {
 }
 
 
-def _pick(row: dict, keys: tuple[str, ...]):
+# Lowercased set of every key _pick may consume, so attrs excludes them
+# regardless of the source header's casing.
+_CONSUMED_KEYS = {a for al in _ALIASES.values() for a in al} | {"source"}
+
+
+def _pick(low: dict, keys: tuple[str, ...]):
+    """First non-empty value among the (lowercase) alias keys. `low` is a
+    once-built case-folded view of the row, so each lookup is an O(1) dict hit."""
     for k in keys:
-        if k in row and row[k] not in (None, ""):
-            return row[k]
-        # case-insensitive fallback
-        for rk in row:
-            if rk.lower() == k and row[rk] not in (None, ""):
-                return row[rk]
+        v = low.get(k)
+        if v not in (None, ""):
+            return v
     return None
 
 
 def coerce_job(row: dict, default_contract_no: str | None = None) -> Job | None:
-    contract_no = _pick(row, _ALIASES["contract_no"]) or default_contract_no
-    name = _pick(row, _ALIASES["name"])
+    low = {k.lower(): v for k, v in row.items()}   # one case-folding pass
+    contract_no = _pick(low, _ALIASES["contract_no"]) or default_contract_no
+    name = _pick(low, _ALIASES["name"])
     if not contract_no or not name:
         return None
     return Job(
         contract_no=str(contract_no),
         name=str(name),
-        customer=_opt(_pick(row, _ALIASES["customer"])),
-        status=_opt(_pick(row, _ALIASES["status"])),
-        contract_value=N.normalize_money(_pick(row, _ALIASES["contract_value"])),
-        sales_amount=N.normalize_money(_pick(row, _ALIASES["sales_amount"])),
-        external_id=_opt(_pick(row, _ALIASES["external_id"])),
+        customer=_opt(_pick(low, _ALIASES["customer"])),
+        status=_opt(_pick(low, _ALIASES["status"])),
+        contract_value=N.normalize_money(_pick(low, _ALIASES["contract_value"])),
+        sales_amount=N.normalize_money(_pick(low, _ALIASES["sales_amount"])),
+        external_id=_opt(_pick(low, _ALIASES["external_id"])),
         source=str(row.get("source") or "jobtread"),
+        # Keep only genuinely-extra columns. Compare case-insensitively (and
+        # against 'source') so a capitalized header like "Name" that _pick
+        # already consumed isn't also duplicated into attrs.
         attrs={k: v for k, v in row.items()
-               if k not in {a for al in _ALIASES.values() for a in al}},
+               if k.lower() not in _CONSUMED_KEYS},
     )
 
 

@@ -81,8 +81,10 @@ def normalize_float(value) -> float | None:
         return None
 
 
+# Yearless formats are deliberately excluded: "%m/%d" would silently parse
+# "12/31" to a year-1900 date and mis-sort the contract as long-expired.
 _DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%m-%d-%Y", "%b %d, %Y",
-                 "%B %d, %Y", "%m/%d", "%Y/%m/%d")
+                 "%B %d, %Y", "%Y/%m/%d")
 
 
 def normalize_date(value) -> str | None:

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import re
+import sqlite3
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -37,9 +38,24 @@ from ..db.repository import ConflictError, Repository
 STATIC = Path(__file__).parent / "static"
 
 
+# Migrations are applied once per process (at serve() startup); the schema does
+# not change between requests, so re-globbing the migrations dir and opening a
+# write transaction on every request (incl. each poll) would be pure hot-path
+# waste. _repo() therefore just connects.
+_MIGRATED: set[str] = set()
+
+
+def _ensure_migrated(db_override):
+    key = str(db_override or "")
+    if key not in _MIGRATED:
+        conn = connect(db_override)
+        migrate(conn)
+        conn.close()
+        _MIGRATED.add(key)
+
+
 def _repo(db_override):
     conn = connect(db_override)
-    migrate(conn)
     return Repository(conn), conn
 
 
@@ -57,8 +73,7 @@ def make_handler(db_override):
             self.end_headers()
             self.wfile.write(body)
 
-        def _file(self, path: Path, ctype: str, download: str | None = None):
-            data = path.read_bytes()
+        def _send_bytes(self, data: bytes, ctype: str, download: str | None = None):
             self.send_response(200)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(data)))
@@ -68,16 +83,11 @@ def make_handler(db_override):
             self.end_headers()
             self.wfile.write(data)
 
+        def _file(self, path: Path, ctype: str, download: str | None = None):
+            self._send_bytes(path.read_bytes(), ctype, download)
+
         def _raw(self, text: str, ctype: str, download: str | None = None):
-            data = text.encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Content-Length", str(len(data)))
-            if download:
-                self.send_header("Content-Disposition",
-                                 f'attachment; filename="{download}"')
-            self.end_headers()
-            self.wfile.write(data)
+            self._send_bytes(text.encode("utf-8"), ctype, download)
 
         def _body_json(self) -> dict:
             n = int(self.headers.get("Content-Length") or 0)
@@ -91,8 +101,35 @@ def make_handler(db_override):
         def log_message(self, *a):  # quiet
             pass
 
-        # -- GET ------------------------------------------------------------
+        # Every request is migrated-once then run inside a guard so a missing
+        # asset, branding I/O error, or unexpected exception returns a clean
+        # 500 instead of tearing down the connection with a stack trace.
+        def _guard(self, fn):
+            try:
+                _ensure_migrated(db_override)
+                fn()
+            except BrokenPipeError:
+                pass
+            except Exception as e:  # noqa: BLE001 — last-resort request guard
+                try:
+                    self._json({"error": "server error", "detail": str(e)}, 500)
+                except Exception:
+                    pass
+
         def do_GET(self):
+            self._guard(self._get)
+
+        def do_POST(self):
+            self._guard(self._post)
+
+        def do_PATCH(self):
+            self._guard(self._patch)
+
+        def do_DELETE(self):
+            self._guard(self._delete)
+
+        # -- GET ------------------------------------------------------------
+        def _get(self):
             u = urlparse(self.path)
             path, qs = u.path, parse_qs(u.query)
             if path == "/" or path == "/index.html":
@@ -164,7 +201,7 @@ def make_handler(db_override):
             return self._json({"error": "not found"}, 404)
 
         # -- POST -----------------------------------------------------------
-        def do_POST(self):
+        def _post(self):
             u = urlparse(self.path)
             if u.path == "/api/contracts":
                 body = self._body_json()
@@ -192,7 +229,7 @@ def make_handler(db_override):
             return self._json({"error": "not found"}, 404)
 
         # -- PATCH ----------------------------------------------------------
-        def do_PATCH(self):
+        def _patch(self):
             m = re.match(r"^/api/contracts/(\d+)$", urlparse(self.path).path)
             if not m:
                 return self._json({"error": "not found"}, 404)
@@ -208,13 +245,13 @@ def make_handler(db_override):
                 return self._json({"contract": updated})
             except ConflictError as e:
                 return self._json({"error": "conflict", "contract": e.args[0]}, 409)
-            except (ValueError, KeyError) as e:
+            except (ValueError, KeyError, sqlite3.IntegrityError) as e:
                 return self._json({"error": str(e)}, 400)
             finally:
                 conn.close()
 
         # -- DELETE ---------------------------------------------------------
-        def do_DELETE(self):
+        def _delete(self):
             m = re.match(r"^/api/contracts/(\d+)$", urlparse(self.path).path)
             if not m:
                 return self._json({"error": "not found"}, 404)
@@ -232,9 +269,8 @@ def serve(db_override: str | None = None, host: str | None = None,
           port: int | None = None) -> None:
     host = host or WEB_HOST
     port = port or WEB_PORT
-    # Make sure the schema exists before the first request.
-    _, conn = _repo(db_override)
-    conn.close()
+    # Apply migrations once, before the first request.
+    _ensure_migrated(db_override)
     httpd = ThreadingHTTPServer((host, port), make_handler(db_override))
     print(f"NTXP Contracts dashboard → http://{host}:{port}/  (Ctrl-C to stop)")
     try:

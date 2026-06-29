@@ -6,10 +6,7 @@
 const id = new URLSearchParams(location.search).get('id');
 const contentEl = document.getElementById('content');
 
-const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const money = v => v == null || v === '' ? '—' :
-  '$' + Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
+// esc / safeUrl / money / daysUntil come from util.js (loaded first).
 const fmtDate = s => s ? new Date(s + 'T00:00:00').toLocaleDateString(undefined,
   { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 // pretty-print +1XXXXXXXXXX for display; keep raw for tel:/sms:
@@ -33,8 +30,8 @@ function contactRow(label, phone) {
 }
 
 function daysBadge(exp) {
-  if (!exp) return '';
-  const d = Math.round((new Date(exp + 'T00:00:00') - new Date(new Date().toDateString())) / 86400000);
+  const d = daysUntil(exp);
+  if (d == null) return '';
   if (d < 0) return `<span class="badge bad">Expired ${-d} days ago</span>`;
   if (d <= 90) return `<span class="badge bad">Expires in ${d} days</span>`;
   return `<span class="badge">Expires in ${d} days</span>`;
@@ -73,7 +70,7 @@ async function load() {
         <span class="badge ${c.is_executed ? 'ok' : 'bad'}">
           ${c.is_executed ? '✓ Executed' : '⚠ Unexecuted'}</span>
         ${daysBadge(c.expiration_date)}
-        ${c.pdf_url ? `<a class="badge" href="${esc(c.pdf_url)}" target="_blank">📄 Signed copy</a>` : ''}
+        ${safeUrl(c.pdf_url) ? `<a class="badge" href="${esc(safeUrl(c.pdf_url))}" target="_blank" rel="noopener">📄 Signed copy</a>` : ''}
         <a class="badge no-print" href="/api/contracts/${id}/ics">📅 Add expiration to calendar</a>
       </div>
     </div>
@@ -85,7 +82,7 @@ async function load() {
         ${kv('Owner entity', esc(ownerName || '—'))}
         ${kv('Location', esc(c.location || '—'))}
         ${kv('Estimated budget', money(c.estimated_budget))}
-        ${kv('Coefficient multiplier', c.coefficient_multiplier ?? '—')}
+        ${kv('Coefficient multiplier', esc(c.coefficient_multiplier ?? '—'))}
         ${kv('Cooperative fee', esc(c.cooperative_fee || '—'))}
         ${kv('Allowable scope', esc(c.allowable_scope || '—'))}
       </div>
@@ -109,8 +106,8 @@ async function load() {
 
     <div class="card" style="margin-bottom:18px">
       <h3>Owner entity — ${esc(ownerName || 'contact')}</h3>
-      ${website ? `<div class="kv"><span class="k">Website</span>
-        <span class="v"><a href="${esc(website)}" target="_blank">${esc(website.replace(/^https?:\/\//, ''))}</a></span></div>` : ''}
+      ${safeUrl(website) ? `<div class="kv"><span class="k">Website</span>
+        <span class="v"><a href="${esc(safeUrl(website))}" target="_blank" rel="noopener">${esc(website.replace(/^https?:\/\//, ''))}</a></span></div>` : ''}
       ${o.email ? `<div class="kv"><span class="k">Email</span>
         <span class="v"><a href="mailto:${esc(o.email)}">${esc(o.email)}</a></span></div>` : ''}
       ${o.address ? kv('Address', esc(o.address)) : ''}

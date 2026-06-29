@@ -8,6 +8,7 @@ instant, field-level, conflict-light saves.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from typing import Any
 
@@ -22,6 +23,11 @@ EDITABLE_FIELDS = {
     "expiration_date", "coefficient_multiplier", "cooperative_fee",
     "allowable_scope", "notes", "pdf_url", "is_executed",
 }
+# Free-text columns whose contents feed the FTS index — listed once and used by
+# both update_field (when to reindex) and _reindex (what to index), so they
+# can't drift apart.
+_FTS_FIELDS = ("contract_title", "contract_no", "owner_entity", "location",
+               "allowable_scope", "notes")
 # How each editable field is coerced before storage.
 _COERCE = {
     "estimated_budget": N.normalize_money,
@@ -41,6 +47,18 @@ class ConflictError(Exception):
 class Repository:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
+        self._not_null_cache: set[str] | None = None
+
+    def _not_null_cols(self) -> set[str]:
+        """NOT NULL columns of `contracts`, read from the schema (cached). Used
+        to reject clearing a required field rather than writing NULL and hitting
+        an uncaught IntegrityError — and it can never drift from the schema."""
+        if self._not_null_cache is None:
+            self._not_null_cache = {
+                r["name"] for r in self.conn.execute("PRAGMA table_info(contracts)")
+                if r["notnull"]
+            }
+        return self._not_null_cache
 
     # -- owner entities -----------------------------------------------------
     def upsert_owner(self, owner: OwnerEntity, actor: str = "system") -> int:
@@ -130,6 +148,12 @@ class Repository:
                  c.coefficient_multiplier, c.cooperative_fee, c.allowable_scope,
                  c.notes, c.pdf_url, cid),
             )
+            # Log the touch so dashboards polling changes_since() refresh after
+            # an import (callers reach this branch only for new/changed rows).
+            self.conn.execute(
+                "INSERT INTO change_log(contract_id, op, actor) VALUES (?, 'update', ?)",
+                (cid, actor),
+            )
             self._reindex(cid)
             return cid, False
 
@@ -173,32 +197,31 @@ class Repository:
         if expected_rev is not None and int(row["rev"]) != int(expected_rev):
             raise ConflictError(self.get_contract(contract_id))
 
-        coerced = _COERCE.get(field, lambda v: (v if v not in ("",) else None))(value)
+        coerced = _COERCE.get(field, _default_coerce)(value)
+        if coerced is None and field in self._not_null_cols():
+            raise ValueError(f"{field} cannot be empty")
         old = row["cur"]
 
-        extra_owner = ""
-        params: list[Any] = [coerced]
+        # (column, value) pairs: the field itself plus any derived columns it
+        # drives. One list keeps the SET clause and its params in lockstep.
+        sets: list[tuple[str, Any]] = [(field, coerced)]
         if field == "owner_entity" and coerced:
-            owner_id = self.upsert_owner(OwnerEntity(name=str(coerced)), actor)
-            extra_owner = ", owner_id = ?"
-            params.append(owner_id)
+            sets.append(("owner_id", self.upsert_owner(OwnerEntity(name=str(coerced)), actor)))
         if field == "contract_no":
-            extra_owner += ", contract_no_norm = ?"
-            params.append(N.contract_no_norm(coerced) if coerced else None)
+            sets.append(("contract_no_norm", N.contract_no_norm(coerced) if coerced else None))
 
-        params.extend([contract_id])
+        set_sql = ", ".join(f"{col} = ?" for col, _ in sets)
         self.conn.execute(
-            f"UPDATE contracts SET {field} = ?{extra_owner}, rev = rev + 1, "
-            f"updated_at = datetime('now') WHERE contract_id = ?",
-            params,
+            f"UPDATE contracts SET {set_sql}, rev = rev + 1, "
+            "updated_at = datetime('now') WHERE contract_id = ?",
+            [v for _, v in sets] + [contract_id],
         )
         self.conn.execute(
             "INSERT INTO change_log(contract_id, field, old_value, new_value, op, actor) "
             "VALUES (?,?,?,?, 'update', ?)",
             (contract_id, field, _s(old), _s(coerced), actor),
         )
-        if field in ("contract_title", "contract_no", "owner_entity", "location",
-                     "allowable_scope", "notes"):
+        if field in _FTS_FIELDS:
             self._reindex(contract_id)
         self.conn.commit()
         return self.get_contract(contract_id)
@@ -350,8 +373,7 @@ class Repository:
     # -- internals ----------------------------------------------------------
     def _reindex(self, contract_id: int) -> None:
         row = self.conn.execute(
-            "SELECT contract_title, contract_no, owner_entity, location, "
-            "allowable_scope, notes FROM contracts WHERE contract_id = ?",
+            f"SELECT {', '.join(_FTS_FIELDS)} FROM contracts WHERE contract_id = ?",
             (contract_id,),
         ).fetchone()
         if not row:
@@ -381,10 +403,18 @@ def _contract_row(row: sqlite3.Row) -> dict:
     return d
 
 
+def _default_coerce(v: Any) -> Any:
+    """Text fields: trim and treat blank/whitespace-only as NULL (matching the
+    importer's strip semantics, so inline edits and imports agree)."""
+    if isinstance(v, str):
+        return v.strip() or None
+    return v
+
+
 def _s(v: Any) -> str | None:
     return None if v is None else str(v)
 
 
 def _fts_query(q: str) -> str:
-    terms = [t for t in __import__("re").findall(r"\w+", q) if t]
+    terms = re.findall(r"\w+", q)
     return " ".join(f"{t}*" for t in terms) if terms else q

@@ -17,10 +17,7 @@ actorInput.value = localStorage.getItem('ntxp_actor') || '';
 actorInput.addEventListener('input', () => localStorage.setItem('ntxp_actor', actorInput.value));
 const actor = () => actorInput.value.trim() || 'web';
 
-const fmtMoney = v => v == null || v === '' ? '' :
-  '$' + Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
-const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// esc / safeUrl / money / daysUntil come from util.js (loaded first).
 
 function flash(msg, color) {
   flashEl.textContent = msg || 'saved ✓';
@@ -28,13 +25,6 @@ function flash(msg, color) {
   flashEl.classList.add('show');
   clearTimeout(flash._t);
   flash._t = setTimeout(() => flashEl.classList.remove('show'), 1400);
-}
-
-function daysTo(dateStr) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr + 'T00:00:00');
-  if (isNaN(d)) return null;
-  return Math.round((d - new Date(new Date().toDateString())) / 86400000);
 }
 
 // --- saving --------------------------------------------------------------
@@ -60,8 +50,11 @@ async function save(c, field, value, cellEl) {
 }
 
 function mergeContract(updated) {
-  const i = CONTRACTS.findIndex(x => x.contract_id === updated.contract_id);
-  if (i >= 0) CONTRACTS[i] = updated; else CONTRACTS.push(updated);
+  // Mutate in place rather than replacing the array slot, so any open cell's
+  // captured `c` (and its `rev`) reflects the save — otherwise the next edit
+  // to the same row would send a stale rev and 409 in a loop.
+  const existing = CONTRACTS.find(x => x.contract_id === updated.contract_id);
+  if (existing) Object.assign(existing, updated); else CONTRACTS.push(updated);
 }
 
 // --- cell builders -------------------------------------------------------
@@ -73,7 +66,9 @@ function textCell(c, field, opts = {}) {
   inp.addEventListener('focus', () => editingId = c.contract_id);
   inp.addEventListener('blur', async () => {
     editingId = null;
-    if ((inp.value ?? '') !== (c[field] ?? ''))
+    // Compare as strings — c[field] may be a number (coefficient) or null, and
+    // an input value is always a string; a type-only mismatch must not save.
+    if (inp.value !== String(c[field] ?? ''))
       await save(c, field, inp.value, inp);
   });
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
@@ -91,7 +86,9 @@ function dateCell(c, field) {
   inp.type = 'date'; inp.className = 'cell'; inp.style.maxWidth = '150px';
   inp.value = c[field] || '';
   inp.addEventListener('focus', () => editingId = c.contract_id);
-  inp.addEventListener('change', async () => { await save(c, field, inp.value); });
+  inp.addEventListener('change', async () => {
+    if (inp.value !== (c[field] || '')) await save(c, field, inp.value);
+  });
   inp.addEventListener('blur', () => editingId = null);
   return inp;
 }
@@ -133,9 +130,10 @@ function pdfCell(c) {
   const wrap = document.createElement('span');
   const render = () => {
     wrap.innerHTML = '';
-    if (c.pdf_url) {
+    const href = safeUrl(c.pdf_url);
+    if (href) {
       const a = document.createElement('a');
-      a.href = c.pdf_url; a.target = '_blank'; a.className = 'pdf-yes';
+      a.href = href; a.target = '_blank'; a.rel = 'noopener'; a.className = 'pdf-yes';
       a.textContent = '📄 view';
       wrap.appendChild(a);
     }
@@ -176,10 +174,20 @@ function conoCell(c) {
   pencil.className = 'pencil'; pencil.textContent = '✎';
   pencil.title = 'Edit number';
   pencil.onclick = () => {
-    const inp = textCell(c, 'contract_no', { placeholder: 'contract / RFP #' });
-    inp.style.maxWidth = '130px';
+    // Dedicated input (not textCell) so there is a single blur handler that
+    // saves and only then re-renders — avoids racing a second listener that
+    // would rebuild the row while the save was still in flight.
+    const inp = document.createElement('input');
+    inp.className = 'cell'; inp.style.maxWidth = '130px';
+    inp.value = c.contract_no || ''; inp.placeholder = 'contract / RFP #';
     wrap.innerHTML = ''; wrap.appendChild(inp); inp.focus();
-    inp.addEventListener('blur', () => renderRows()); // re-render to restore link
+    editingId = c.contract_id;
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+    inp.addEventListener('blur', async () => {
+      editingId = null;
+      if (inp.value !== String(c.contract_no ?? '')) await save(c, 'contract_no', inp.value);
+      renderRows();   // restore the link (CONTRACTS now holds the saved value)
+    });
   };
   wrap.appendChild(pencil);
   return wrap;
@@ -203,7 +211,7 @@ function renderRows() {
 
   for (const c of list) {
     const tr = document.createElement('tr');
-    const d = daysTo(c.expiration_date);
+    const d = daysUntil(c.expiration_date);
     if (d != null && d < 0) tr.className = 'expired';
     else if (d != null && d <= 90) tr.className = 'soon';
 
@@ -258,9 +266,10 @@ async function poll() {
       const data = await (await fetch('/api/contracts')).json();
       CONTRACTS = data.contracts; latestSeq = ch.latest_seq;
       renderRows();
-    } else if (ch.changed) {
-      latestSeq = ch.latest_seq; // defer re-render until the editor blurs
     }
+    // If a cell is being edited, leave latestSeq untouched so the NEXT idle
+    // poll still sees `changed` and refetches — advancing it here would mark
+    // the teammate's edit as seen and silently drop it until a full reload.
   } catch (e) { /* transient */ }
   setTimeout(poll, META.poll_ms || 4000);
 }

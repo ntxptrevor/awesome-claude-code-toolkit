@@ -78,6 +78,43 @@ def test_rejects_non_editable_field(repo):
         repo.update_field(cid, "contract_id", 99)
 
 
+def test_clearing_not_null_field_rejected_not_crashed(repo):
+    cid, _ = repo.upsert_contract(Contract(contract_title="X"))
+    # recipient is NOT NULL — clearing it must raise ValueError (-> 400),
+    # never an uncaught IntegrityError (-> 500).
+    with pytest.raises(ValueError):
+        repo.update_field(cid, "recipient", "")
+    # the row is untouched
+    assert repo.get_contract(cid)["recipient"] == "NTXP LLC"
+
+
+def test_blank_nullable_field_coerced_to_none(repo):
+    cid, _ = repo.upsert_contract(Contract(contract_title="X"))
+    repo.update_field(cid, "location", "Dallas")
+    repo.update_field(cid, "location", "   ")   # whitespace-only clears it
+    assert repo.get_contract(cid)["location"] is None
+
+
+def test_yearless_date_not_misparsed():
+    from ntxp_contracts import normalize as N
+    # "12/31" must not silently become 1900-12-31
+    assert N.normalize_date("12/31") is None
+    assert N.normalize_date("12/31/2026") == "2026-12-31"
+
+
+def test_jobs_attrs_excludes_mixed_case_aliases(repo):
+    repo.upsert_contract(Contract(contract_title="J", contract_no="J-1"))
+    repo.conn.commit()
+    sync_jobs(repo, [{"Contract": "J-1", "Name": "Roof", "Sales": "1000",
+                      "Region": "North"}])
+    cid = repo.get_contract_by_no("J-1")["contract_id"]
+    job = repo.list_jobs(cid)[0]
+    assert job["name"] == "Roof"
+    # capitalized consumed headers must not be duplicated into attrs
+    assert "Name" not in job["attrs"] and "Sales" not in job["attrs"]
+    assert job["attrs"].get("Region") == "North"   # genuine extra is kept
+
+
 def test_optimistic_lock_conflict(repo):
     cid, _ = repo.upsert_contract(Contract(contract_title="X"))
     rev = repo.get_contract(cid)["rev"]
