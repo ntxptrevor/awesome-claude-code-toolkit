@@ -28,7 +28,16 @@ const API_KEY = process.env.MISTRAL_API_KEY ?? "";
 const BASE_URL = process.env.MISTRAL_BASE_URL || undefined;
 const DEFAULT_OCR_MODEL = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
 
-const client = new MistralClient({ apiKey: API_KEY, baseUrl: BASE_URL });
+// Construct lazily: the MCP server must complete initialize/tools-list without
+// credentials, so we only build the client on first tool use (guard() ensures a
+// key is present before any call site runs).
+let _client: MistralClient | undefined;
+function getClient(): MistralClient {
+  if (!_client) {
+    _client = new MistralClient({ apiKey: API_KEY, baseUrl: BASE_URL });
+  }
+  return _client;
+}
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -196,7 +205,7 @@ server.tool(
       "document_annotation_format",
     ];
     for (const k of opt) if (a[k] !== undefined) payload[k] = a[k];
-    return ok(await client.ocr(payload));
+    return ok(await getClient().ocr(payload));
   })
 );
 
@@ -215,7 +224,7 @@ server.tool(
       .optional()
       .describe('Upload purpose. Defaults to "ocr".'),
   },
-  guard(async (a) => ok(await client.uploadFile(a.path, a.purpose ?? "ocr")))
+  guard(async (a) => ok(await getClient().uploadFile(a.path, a.purpose ?? "ocr")))
 );
 
 server.tool(
@@ -230,7 +239,7 @@ server.tool(
       .optional()
       .describe("Expiry in hours (optional)."),
   },
-  guard(async (a) => ok(await client.getSignedUrl(a.file_id, a.expiry)))
+  guard(async (a) => ok(await getClient().getSignedUrl(a.file_id, a.expiry)))
 );
 
 server.tool(
@@ -243,7 +252,7 @@ server.tool(
   },
   guard(async (a) =>
     ok(
-      await client.listFiles({
+      await getClient().listFiles({
         page: a.page,
         page_size: a.page_size,
         purpose: a.purpose,
@@ -256,14 +265,14 @@ server.tool(
   "files_retrieve",
   "Retrieve metadata for one stored file by id (read).",
   { file_id: z.string().describe("The Mistral file id.") },
-  guard(async (a) => ok(await client.retrieveFile(a.file_id)))
+  guard(async (a) => ok(await getClient().retrieveFile(a.file_id)))
 );
 
 server.tool(
   "files_delete",
   "Delete a stored file by id (write). Use to clean up after extraction.",
   { file_id: z.string().describe("The Mistral file id.") },
-  guard(async (a) => ok(await client.deleteFile(a.file_id)))
+  guard(async (a) => ok(await getClient().deleteFile(a.file_id)))
 );
 
 // ---------------------------------------------------------------------------
@@ -275,14 +284,14 @@ server.tool(
     "the batch payload (input_files, endpoint, model, etc.) per the Mistral " +
     "Batch API. For a handful of docs, prefer parallel ocr_process calls instead.",
   { payload: z.record(z.any()).describe("Batch job creation payload.") },
-  guard(async (a) => ok(await client.createBatch(a.payload)))
+  guard(async (a) => ok(await getClient().createBatch(a.payload)))
 );
 
 server.tool(
   "batch_get",
   "Get the status/result of a batch job by id (read).",
   { job_id: z.string().describe("The batch job id.") },
-  guard(async (a) => ok(await client.getBatch(a.job_id)))
+  guard(async (a) => ok(await getClient().getBatch(a.job_id)))
 );
 
 server.tool(
@@ -295,7 +304,7 @@ server.tool(
   },
   guard(async (a) =>
     ok(
-      await client.listBatches({
+      await getClient().listBatches({
         page: a.page,
         page_size: a.page_size,
         status: a.status,
@@ -308,7 +317,7 @@ server.tool(
   "batch_cancel",
   "Cancel a running batch job by id (write).",
   { job_id: z.string().describe("The batch job id.") },
-  guard(async (a) => ok(await client.cancelBatch(a.job_id)))
+  guard(async (a) => ok(await getClient().cancelBatch(a.job_id)))
 );
 
 // ---------------------------------------------------------------------------
@@ -319,7 +328,7 @@ server.tool(
   "List available Mistral models (read). Use to discover the current OCR4 / " +
     "newest OCR model id at runtime instead of hardcoding it.",
   {},
-  guard(async () => ok(await client.listModels()))
+  guard(async () => ok(await getClient().listModels()))
 );
 
 // ---------------------------------------------------------------------------
@@ -334,7 +343,7 @@ server.tool(
     "only when explicitly instructed to offload understanding to Mistral. " +
     "Provide the full chat payload (model, messages with document_url content).",
   { payload: z.record(z.any()).describe("Chat completions payload.") },
-  guard(async (a) => ok(await client.chat(a.payload)))
+  guard(async (a) => ok(await getClient().chat(a.payload)))
 );
 
 // ---------------------------------------------------------------------------
@@ -362,7 +371,7 @@ server.tool(
       .describe("Query string parameters."),
   },
   guard(async (a) =>
-    ok(await client.request(a.method, a.path, { body: a.body, query: a.query }))
+    ok(await getClient().request(a.method, a.path, { body: a.body, query: a.query }))
   )
 );
 

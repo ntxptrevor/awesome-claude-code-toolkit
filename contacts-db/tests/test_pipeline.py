@@ -85,6 +85,36 @@ def test_invalid_email_does_not_fuse(conn):
     assert Repository(conn).stats()["contacts"] == 2
 
 
+def test_prune_by_state(conn):
+    from ntxp_contacts.model import Address
+    def org_in(name_norm, state, source, pk):
+        r = _person(f"c {name_norm}", "C", name_norm, name_norm, source=source, pk=pk)
+        a = Address(state=state, addr_norm=f"{name_norm} {state}".lower())
+        r.org_addresses.append(a)
+        return r
+    tips = _FakeLoader([
+        org_in("alpha", "TX", "tips", "t1"),
+        org_in("bravo", "OK", "tips", "t2"),
+        org_in("charlie", "CA", "tips", "t3"),
+        org_in("delta", "NY", "tips", "t4"),
+    ])
+    # provenance comes from loader.source, so the non-tips record needs its own loader
+    other = _FakeLoader([org_in("echo", "CA", "buildingconnectd", "b1")])
+    other.source = "buildingconnectd"
+    import_records(conn, tips, "x")
+    import_records(conn, other, "x")
+    repo = Repository(conn)
+    before = repo.stats()["contacts"]
+    summary = repo.prune_by_state("tips", ["TX", "OK"])
+    conn.commit()
+    assert summary["orgs_removed"] == 2          # charlie, delta
+    assert summary["orgs_kept"] == 2             # alpha, bravo
+    after = repo.stats()
+    assert after["contacts"] == before - 2       # the 2 CA/NY tips contacts gone
+    # the non-tips CA org/contact is untouched
+    assert repo.search("echo")
+
+
 def test_fts_search(conn):
     import_records(conn, _FakeLoader([
         _person("eric vaden", "Eric", "Vaden", "Vadens Drywall", email="e@v.com", pk="r1"),
