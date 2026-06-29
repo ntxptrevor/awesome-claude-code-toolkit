@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "budget.schema.json",
+  "title": "Section — Budget / Cost Plan",
+  "description": "The internal budget view: anticipated cost by cost code / CSI division, with buyout targets. Distinct from estimate-sov (which is the bid/billing structure) and from the owner's SOV. Populated from any budget/cost-plan document present; otherwise it stands as a cost-code skeleton derived from scope+divisions for a budgeting tool to fill. The model organizes the structure; it does not set budget numbers itself.",
+  "type": "object",
+  "required": ["section", "lines"],
+  "properties": {
+    "section": { "type": "string", "const": "budget" },
+    "currency": { "type": "string", "default": "USD" },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["budget_line_id", "description"],
+        "properties": {
+          "budget_line_id": { "type": "string", "description": "Stable id, e.g. 'BL-09'." },
+          "csi": { "$ref": "common.defs.schema.json#/$defs/csi_ref" },
+          "description": { "type": "string" },
+          "estimated_cost": { "$ref": "common.defs.schema.json#/$defs/money" },
+          "buyout_target": { "$ref": "common.defs.schema.json#/$defs/money", "description": "Target sub/supplier value for this code." },
+          "labor_hours": { "type": ["number", "null"] },
+          "scope_item_ids": { "type": "array", "items": { "type": "string" } },
+          "trade_id": { "type": "string", "description": "Link to trades.trades[].trade_id." },
+          "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" },
+          "normalization": { "$ref": "common.defs.schema.json#/$defs/normalization" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "direct_cost": { "$ref": "common.defs.schema.json#/$defs/money" },
+        "indirect_cost": { "$ref": "common.defs.schema.json#/$defs/money" },
+        "total_budget": { "$ref": "common.defs.schema.json#/$defs/money" }
+      }
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "canonical-model.schema.json",
+  "title": "Canonical Project Record (CPR) — root",
+  "description": "The single, reusable source of truth for one commercial-construction or job-order-contracting (JOC) project. Built by normalizing the verbatim project-intake dossier (which OCR4 produced) into stable, CSI/UniFormat-aligned, provenance-carrying sections. It is human-readable (a project-record.md is rendered alongside) but its purpose is to be machine-consumable: estimating, budgeting, scheduling, buyout, RFI/submittal, safety, and logistics tools all PULL from it instead of re-parsing documents. This layer normalizes and organizes only — it never prices, levels, scores, or decides; that reasoning belongs to the downstream tools.",
+  "type": "object",
+  "required": ["schema_version", "project", "sections", "source"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0", "description": "Version of THIS canonical model contract. Downstream tools pin to it." },
+    "model_version": { "type": "integer", "description": "Monotonic revision of this project's record; bumps each time the model is rebuilt as documents/addenda arrive." },
+    "generated_at": { "type": "string", "description": "ISO 8601 timestamp the model was assembled (supplied by the caller)." },
+    "generated_by": { "type": "string", "default": "canonical-project-model" },
+    "source": {
+      "type": "object",
+      "description": "What this model was built from — the upstream project-intake handoff. The model never re-OCRs; it consumes the dossier extracts and raw envelopes.",
+      "required": ["dossier_dir"],
+      "properties": {
+        "dossier_dir": { "type": "string", "description": "Path to the projects/<slug>/ dossier this model was normalized from." },
+        "handoff": { "type": "string", "description": "Path to the project-intake handoff.json consumed." },
+        "documents": { "type": "integer", "description": "Number of source documents represented." }
+      }
+    },
+    "project": {
+      "type": "object",
+      "description": "Identity summary, denormalized from the project_identity section for quick lookup by every consumer.",
+      "required": ["title", "slug"],
+      "properties": {
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "number": { "type": "string" },
+        "owner": { "type": "string" },
+        "location": { "type": "string" },
+        "delivery_method": { "type": "string" },
+        "contract_type": { "type": "string" },
+        "is_joc": { "type": "boolean", "description": "True for job-order-contracting / IDIQ task-order work." }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "description": "Which industry standards this record is organized against, so any tool knows how to join to it.",
+      "properties": {
+        "masterformat_version": { "type": "string", "default": "MasterFormat 2020" },
+        "uniformat_version": { "type": "string", "default": "UniFormat II" },
+        "sov_standard": { "type": "string", "default": "AIA G703", "description": "Schedule-of-Values / pay-application convention used." },
+        "joc_unit_price_book": { "type": "string", "description": "For JOC: the UPB the line items reference (e.g. 'RSMeans/Gordian 2025 City Cost'). Empty for non-JOC." }
+      }
+    },
+    "sections": {
+      "type": "object",
+      "description": "The normalized record. Each key is one canonical section, conforming to its own schema in this folder. A section may be embedded inline (object) or referenced by relative path (string) when the assembler writes sections to separate files. Keys absent from the documents are omitted, not faked.",
+      "properties": {
+        "project_identity": { "description": "project-identity.schema.json", "type": ["object", "string"] },
+        "scope": { "description": "scope.schema.json — the master scope register (rows for everything else).", "type": ["object", "string"] },
+        "quantity_takeoff": { "description": "quantity-takeoff.schema.json", "type": ["object", "string"] },
+        "estimate_sov": { "description": "estimate-sov.schema.json — estimate structure + Schedule of Values + JOC line-item proposal.", "type": ["object", "string"] },
+        "budget": { "description": "budget.schema.json — cost-code cost plan / buyout targets.", "type": ["object", "string"] },
+        "trades": { "description": "trades.schema.json — trade / bid-package breakdown.", "type": ["object", "string"] },
+        "subcontractors": { "description": "subcontractors.schema.json — subs & suppliers directory (the entity table other sections reference by party_id).", "type": ["object", "string"] },
+        "sub_bid_log": { "description": "sub-bid-log.schema.json — bid tab of subcontractor bids received per trade.", "type": ["object", "string"] },
+        "rfi_log": { "description": "rfi-log.schema.json", "type": ["object", "string"] },
+        "submittal_log": { "description": "submittal-log.schema.json", "type": ["object", "string"] },
+        "safety_plan": { "description": "safety-plan.schema.json", "type": ["object", "string"] },
+        "logistics_plan": { "description": "logistics-plan.schema.json", "type": ["object", "string"] },
+        "schedule": { "description": "schedule.schema.json — milestones & key dates.", "type": ["object", "string"] },
+        "requirements": { "description": "requirements.schema.json — binding requirements, compliance, addenda.", "type": ["object", "string"] }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "description": "At-a-glance population of each section, so a consumer knows what is worth fetching.",
+      "additionalProperties": { "type": "integer" }
+    },
+    "confidence": {
+      "type": "object",
+      "description": "Roll-up of extraction/normalization confidence, overall and per section (0..1).",
+      "properties": {
+        "overall": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "by_section": { "type": "object", "additionalProperties": { "type": "number" } }
+      }
+    },
+    "normalization_log": {
+      "type": "array",
+      "description": "Notable cross-document transformations applied while building the model (entity merges, unit conversions, lump-sum allocations, conflict resolutions). Auditable trail of everything that changed from verbatim.",
+      "items": { "type": "string" }
+    },
+    "conflicts": {
+      "type": "array",
+      "description": "Where two documents disagreed on the same fact (e.g. two different bid-due dates, two square-footages). Recorded with both values and their provenance; NOT silently resolved — flagged for a human/downstream tool.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": { "type": "string" },
+          "values": { "type": "array", "items": { "type": "object", "properties": { "value": {}, "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" } } } }
+        }
+      }
+    },
+    "needs_human_review": {
+      "type": "array",
+      "description": "Low-confidence values, unresolved conflicts, failed sections, and gaps a downstream tool should not trust blindly.",
+      "items": { "type": "string" }
+    },
+    "next_consumers": {
+      "type": "array",
+      "description": "The tools/skills this record is built to feed (advisory). e.g. vendor-bid-leveling, rfp-analysis, estimating, scheduling, invoice-reconciliation.",
+      "items": { "type": "string" }
+    }
+  }
+}
