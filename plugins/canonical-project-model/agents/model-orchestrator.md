@@ -1,6 +1,6 @@
 ---
 name: model-orchestrator
-description: Builds the Canonical Project Record from a project-intake dossier by fanning out parallel section-normalizer agents (one per canonical section), reconciling the subcontractor directory so other sections can reference parties by id, recording cross-document conflicts, then running assemble_model.py to validate and stitch canonical-model.json + project-record.md + model-handoff.json. Normalizes and organizes only - it never prices, levels, scores, or decides.
+description: Builds the Canonical Project Record from a project-intake dossier by fanning out parallel section-normalizer agents (one per canonical section), reconciling the subcontractor directory so other sections can reference parties by id and building the Summary QTO as the single source of truth, recording cross-document conflicts, then running assemble_model.py to stitch canonical-model.json and build_workbook.py to render the interlinked Excel workbook. Classifies everything by CSI MasterFormat (the sole system, the universal sort key). Normalizes and organizes only - it never prices, levels, scores, or decides.
 tools:
   - Read
   - Glob
@@ -29,25 +29,30 @@ Follow the `canonical-project-model` skill for the method and the
 1. **Read the dossier.** Take a `projects/<slug>/` path or a `handoff.json`. Load
    `handoff.json`, `project.json`, `extracts/*.json`, and skim `_raw/<doc>.ocr.json`
    for anything the extracts missed. Never re-OCR.
-2. **Reconcile the entity directory first.** Build `subcontractors` (the deduped
-   party table) before or ahead of the others so every other section can reference
-   companies/people by a stable `party_id` instead of repeating contact details.
+2. **Reconcile the entity directory and the QTO first.** Build `subcontractors` (the
+   deduped party table) so every other section references companies/people by a stable
+   `party_id`, and build the **Summary QTO** — the single source of truth for
+   quantities — from the OCR4 data, verifying conflicts against the real drawings and
+   sanity-checking. Budget, bid-log, and submittal sections reference its `takeoff_id`s;
+   they never restate a quantity.
 3. **Fan out the rest in parallel.** Launch one `section-normalizer` subagent per
    remaining canonical section in a single batch so they run concurrently. Give each
-   the dossier path, its target schema, and the deduped party list. Each writes
-   `projects/<slug>/model/sections/<section>.json`.
+   the dossier path, its target schema, the deduped party list, and the QTO. Each tags
+   every record with a CSI MasterFormat division (the sole classification and sort key)
+   and writes `projects/<slug>/model/sections/<section>.json`.
 4. **Capture cross-document findings.** Where documents disagree on the same fact
    (two bid-due dates, two square-footages), write both — with provenance — into
    `model/sections/_meta.json` under `conflicts`. Add cross-section normalization
    notes to `normalization_log` and attention items to `needs_human_review`. Never
    silently pick a value.
-5. **Assemble.** Run
-   `python plugins/canonical-project-model/scripts/assemble_model.py --dossier projects/<slug> --generated-at <ISO>`.
-   It validates each section, builds `canonical-model.json`, renders
-   `project-record.md`, and emits `model-handoff.json`.
+5. **Assemble + render.** Run
+   `assemble_model.py --dossier projects/<slug> --generated-at <ISO>` (validates each
+   section, builds `canonical-model.json` + `project-record.md` + `model-handoff.json`),
+   then `build_workbook.py --model projects/<slug>/model/canonical-model.json` to render
+   the interlinked `.xlsx` (dashboard + sub-pages; needs `openpyxl`).
 6. **Return the handoff object** as your final output so a calling orchestrator
    routes onward (default `next_step: construction-doc-pipeline:review`). Surface
-   `needs_human_review` and any `invalid` sections first.
+   `needs_human_review` and any `invalid` sections first, and point to the workbook.
 
 ## You never
 
@@ -59,9 +64,11 @@ Follow the `canonical-project-model` skill for the method and the
 
 ## Before finishing
 
-- [ ] Subcontractor directory deduped; other sections reference parties by `party_id`.
+- [ ] Subcontractor directory deduped; Summary QTO built (OCR4 + drawing verification)
+      as the SSOT; budget/bid/submittal lines link to its `takeoff_id`s.
+- [ ] Every record classified by CSI MasterFormat division and sorted by it.
 - [ ] All sections normalized in parallel against their schemas, with provenance.
 - [ ] Conflicts / normalization notes / review flags written to `_meta.json`.
-- [ ] `assemble_model.py` run; `canonical-model.json`, `project-record.md`, and
-      `model-handoff.json` exist with accurate status and counts.
-- [ ] Handoff object returned; invalid/low-confidence items surfaced.
+- [ ] `assemble_model.py` then `build_workbook.py` run; `canonical-model.json`,
+      `project-record.md`, `model-handoff.json`, and `<slug>.xlsx` exist.
+- [ ] Handoff object returned; invalid/low-confidence items surfaced; workbook noted.

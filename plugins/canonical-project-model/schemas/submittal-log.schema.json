@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "submittal-log.schema.json",
   "title": "Section — Submittal Register",
-  "description": "The submittal register seeded at project start-up: every required submittal by spec section, its type, and any stated lead time / required-by date. Built from the spec's submittal requirements (Division 01 33 00 and per-section 'Submittals' articles). Whether a submittal complies is the submittal-review skill's job; this section structures the register.",
+  "description": "The submittal register, in CSI MasterFormat order. Built by scanning the Summary QTO and the specs for every likely required submittal — product data, samples, engineered/shop drawings, certificates — each tagged with its MasterFormat division and trade and an estimated manufacturer lead time (the long-lead feed for the critical path). Whether a submittal complies is the submittal-review skill's job; this section structures the register.",
   "type": "object",
   "required": ["section", "entries"],
   "properties": {
@@ -21,6 +21,7 @@
           "scope_item_id": { "type": "string" },
           "responsible_party": { "type": "string", "description": "Trade/sub responsible (party_id or name) when assignable." },
           "lead_time": { "type": "string", "description": "Stated procurement/fabrication lead time, verbatim." },
+          "lead_time_weeks": { "type": ["number", "null"], "description": "Estimated manufacturer lead time normalized to weeks — feeds the critical-path long-lead analysis." },
           "required_by_date": { "type": ["string", "null"] },
           "status": { "type": "string", "enum": ["required", "submitted", "under_review", "approved", "approved_as_noted", "revise_resubmit", "unknown"] },
           "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" }

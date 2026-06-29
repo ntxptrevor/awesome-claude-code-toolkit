@@ -110,7 +110,7 @@
     {
       "name": "canonical-project-model",
       "source": "plugins/canonical-project-model",
-      "description": "Normalization layer of the construction-doc-intelligence pipeline: turns the verbatim project-intake dossier (which Mistral OCR4 produced) into the Canonical Project Record - one reusable, CSI/UniFormat-aligned, provenance-carrying source of truth covering project identity, scope, quantity takeoff, estimate/SOV, budget, trades, subcontractors, sub-bid log, RFI/submittal logs, safety plan, logistics plan, schedule, and requirements. Parallel agents normalize each section against a fixed schema; a deterministic script validates and assembles canonical-model.json. It organizes - it never prices, levels, or decides.",
+      "description": "Normalization layer of the construction-doc-intelligence pipeline: turns the verbatim project-intake dossier (which Mistral OCR4 produced) into the Canonical Project Record - one reusable, CSI MasterFormat-organized, provenance-carrying source of truth - and renders it as an interlinked Excel workbook (dashboard + sub-pages for project bio, contacts, quick links, trades, Summary QTO as single source of truth, per-trade budget pages with ITB/QR, submittal register, schedule, critical path, bid log, editable budget rollup). MasterFormat division is the sole classification and universal sort key. Parallel agents normalize each section; deterministic scripts assemble canonical-model.json and build the workbook. It organizes - it never prices, levels, or decides.",
       "version": "1.0.0"
     },
     {

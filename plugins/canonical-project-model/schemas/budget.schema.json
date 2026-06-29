@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "budget.schema.json",
-  "title": "Section — Budget / Cost Plan",
-  "description": "The internal budget view: anticipated cost by cost code / CSI division, with buyout targets. Distinct from estimate-sov (which is the bid/billing structure) and from the owner's SOV. Populated from any budget/cost-plan document present; otherwise it stands as a cost-code skeleton derived from scope+divisions for a budgeting tool to fill. The model organizes the structure; it does not set budget numbers itself.",
+  "title": "Section — Budget (per-trade lines + editable rollup)",
+  "description": "Two views of the budget, both in CSI MasterFormat order. (1) lines: detailed per-trade budget lines — each references a QTO takeoff_id so its quantity is PULLED from the Summary QTO (the single source of truth), not restated; the workbook renders these as one page per trade with live qty links, unit costs, and a trade total. (2) rollup: the high-level editable budget — one row per top-level cost code / trade with an estimated value (from the trade pages) that a user can override or replace with a selected bid, and a running project total. The model supplies structure and any extracted numbers; it does not invent pricing.",
   "type": "object",
   "required": ["section", "lines"],
   "properties": {
@@ -12,18 +12,36 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["budget_line_id", "description"],
+        "required": ["budget_line_id", "description", "trade_id"],
         "properties": {
-          "budget_line_id": { "type": "string", "description": "Stable id, e.g. 'BL-09'." },
+          "budget_line_id": { "type": "string", "description": "Stable id, e.g. 'BL-09-003'." },
+          "trade_id": { "type": "string", "description": "Trade page this line belongs to (trades.trades[].trade_id)." },
           "csi": { "$ref": "common.defs.schema.json#/$defs/csi_ref" },
+          "cost_code": { "type": "string", "description": "Sub-division split within the trade (demo | new_work | schedule | ...)." },
           "description": { "type": "string" },
-          "estimated_cost": { "$ref": "common.defs.schema.json#/$defs/money" },
-          "buyout_target": { "$ref": "common.defs.schema.json#/$defs/money", "description": "Target sub/supplier value for this code." },
-          "labor_hours": { "type": ["number", "null"] },
+          "qto_takeoff_id": { "type": "string", "description": "QTO line this quantity is pulled from (quantity-takeoff.items[].takeoff_id). The workbook links the cell to the QTO so editing the QTO updates the budget." },
+          "quantity": { "$ref": "common.defs.schema.json#/$defs/quantity", "description": "Mirror of the QTO quantity for offline readers; the live workbook value comes from the QTO link." },
+          "unit_cost": { "$ref": "common.defs.schema.json#/$defs/money", "description": "Estimated cost per unit. Null until an estimating tool/user fills it." },
+          "extended_cost": { "$ref": "common.defs.schema.json#/$defs/money", "description": "quantity x unit_cost; computed by the workbook formula when both are present." },
           "scope_item_ids": { "type": "array", "items": { "type": "string" } },
-          "trade_id": { "type": "string", "description": "Link to trades.trades[].trade_id." },
           "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" },
           "normalization": { "$ref": "common.defs.schema.json#/$defs/normalization" }
+        }
+      }
+    },
+    "rollup": {
+      "type": "array",
+      "description": "The high-level editable budget: one row per top-level trade/cost code. estimated_value comes from the trade pages; selected_bid_id lets a user swap in a submitted bid; override lets them set a manual number. The workbook keeps a running project total.",
+      "items": {
+        "type": "object",
+        "required": ["trade_id"],
+        "properties": {
+          "trade_id": { "type": "string" },
+          "masterformat_division": { "type": "string", "pattern": "^[0-9]{2}$" },
+          "label": { "type": "string" },
+          "estimated_value": { "$ref": "common.defs.schema.json#/$defs/money", "description": "Rolled up from the trade's budget page." },
+          "selected_bid_id": { "type": ["string", "null"], "description": "bid-log.bids[].bid_id the user chose to use instead of the estimate." },
+          "manual_override": { "$ref": "common.defs.schema.json#/$defs/money", "description": "User-entered value that wins over estimate/selected bid when set." }
         }
       }
     },

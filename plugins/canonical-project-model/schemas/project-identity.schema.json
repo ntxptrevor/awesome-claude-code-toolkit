@@ -37,7 +37,27 @@
         "construction_type": { "type": "string", "description": "IBC construction type (e.g. II-B, V-A) when stated." }
       }
     },
-    "key_dates": { "type": "array", "items": { "$ref": "common.defs.schema.json#/$defs/key_date" } },
+    "key_dates": {
+      "type": "array",
+      "description": "All important dates, rendered in date order. Use these standard NTXP labels when present: 'Prebid / Questions Deadline', 'Job Walk' (only if not the same as prebid), 'RFP Opening', 'NTXP Sub Bids Due', 'Bid Review', plus contractual dates (NTP, Substantial Completion). Any additional dated item is allowed.",
+      "items": { "$ref": "common.defs.schema.json#/$defs/key_date" }
+    },
+    "bid_documents": {
+      "type": "array",
+      "description": "The list of documents in the bid set, in date order (most recent addenda last). Feeds the Project Bio page and the ITB document links.",
+      "items": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "description": "Document title (e.g. 'Drawings — Architectural', 'Project Manual / Specs', 'Addendum 02')." },
+          "doc_id": { "type": "string", "description": "Source document id from the intake handoff." },
+          "doc_date": { "type": ["string", "null"], "description": "Issue/revision date (ISO when parseable) — used to order the list." },
+          "pages": { "type": ["integer", "null"] },
+          "url": { "type": "string", "description": "Link to the document (PDF / OCR4 source)." },
+          "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" }
+        }
+      }
+    },
     "commercial_terms": {
       "type": "object",
       "description": "Bonding, insurance, wage, and tax regime that drive estimate markups and eligibility.",
