@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Build a distributable, installable MCP bundle (.mcpb) for procurement-connectors.
+# Build a distributable, installable MCP bundle (.mcpb) for NTXP BidWatch.
 #
-# Produces procurement-connectors.mcpb containing manifest.json, the compiled
+# Produces ntxp-bidwatch.mcpb containing manifest.json, the compiled
 # server/ directory, package.json, and production node_modules — so it runs
 # without an npm install on the target machine.
 #
 # Install by opening the file in Claude Desktop, or:
-#   npx @anthropic-ai/mcpb install procurement-connectors.mcpb
+#   npx @anthropic-ai/mcpb install ntxp-bidwatch.mcpb
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 BUILD_DIR="$ROOT/build/bundle"
-OUT="$ROOT/procurement-connectors.mcpb"
+OUT="$ROOT/ntxp-bidwatch.mcpb"
 
 echo "==> Compiling TypeScript"
 npm install

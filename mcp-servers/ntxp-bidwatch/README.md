@@ -1,4 +1,4 @@
-# Procurement Connectors MCP Server
+# NTXP BidWatch MCP Server
 
 A single MCP server that unifies opportunity search across public procurement /
 bidding sources — federal, Texas state, local, and university. Built around a
@@ -47,10 +47,10 @@ URL.
 
 ## Tools
 
-- `procurement_list_sources` — list sources with platform, auth, reliability, and whether each is ready now.
-- `procurement_search` — search one source: `{ source, keywords?, state?, org?, limit?, verbose? }`.
-- `procurement_search_all` — aggregate across many sources (defaults to all configured/keyless); per-source errors are reported, not fatal.
-- `procurement_get_opportunity` — fetch one opportunity by id (currently `esbd`).
+- `bidwatch_list_sources` — list sources with platform, auth, reliability, and whether each is ready now.
+- `bidwatch_search` — search one source: `{ source, keywords?, state?, org?, limit?, verbose? }`.
+- `bidwatch_search_all` — aggregate across many sources (defaults to all configured/keyless); per-source errors are reported, not fatal.
+- `bidwatch_get_opportunity` — fetch one opportunity by id (currently `esbd`).
 
 All results are normalized to: `source, id, title, agency, status, postedDate, dueDate, url, description, naics, category`.
 
@@ -64,12 +64,12 @@ All results are normalized to: `source, id, title, agency, status, postedDate, d
 | `OPENGOV_CLIENT_ID`, `OPENGOV_CLIENT_SECRET` | opengov | for opengov |
 | `OPENGOV_API_BASE`, `OPENGOV_TOKEN_URL`, `OPENGOV_SEARCH_PATH`, `OPENGOV_AUDIENCE` | opengov | optional overrides |
 | `PLANETBIDS_BASE_URL` | planetbids | optional |
-| `PROCUREMENT_TIMEOUT_MS` | all | optional (default 30000) |
+| `BIDWATCH_TIMEOUT_MS` | all | optional (default 30000) |
 
 ## Install & build
 
 ```bash
-cd mcp-servers/procurement-connectors
+cd mcp-servers/ntxp-bidwatch
 npm install
 npm run build
 ```
@@ -77,7 +77,7 @@ npm run build
 ## Use with Claude Code
 
 ```bash
-claude mcp add procurement -e SAM_GOV_API_KEY=<key> -- node ./mcp-servers/procurement-connectors/dist/index.js
+claude mcp add ntxp-bidwatch -e SAM_GOV_API_KEY=<key> -- node ./mcp-servers/ntxp-bidwatch/dist/index.js
 ```
 
 Keyless sources (`esbd`, `utd`, `lewisville-tx`, generic `bonfire`) work with no
@@ -86,11 +86,11 @@ env vars at all.
 ## Installable bundle (.mcpb)
 
 ```bash
-bash scripts/pack-mcpb.sh    # produces procurement-connectors.mcpb
+bash scripts/pack-mcpb.sh    # produces ntxp-bidwatch.mcpb
 ```
 
 Open the `.mcpb` in Claude Desktop (it prompts for the optional API keys), or
-`npx @anthropic-ai/mcpb install procurement-connectors.mcpb`.
+`npx @anthropic-ai/mcpb install ntxp-bidwatch.mcpb`.
 
 ## Notes & caveats
 
