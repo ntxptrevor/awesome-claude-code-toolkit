@@ -83,8 +83,6 @@ process.stdin.on("end", () => {
     return;
   }
 
-  const state = loadState();
-
   if (multiAgentPatterns.some((p) => p.test(lower))) {
     suggestions.push(
       "Tip: Paperclip is running — you can coordinate multiple agents with " +

@@ -100,7 +100,6 @@ process.stdin.on("end", () => {
   queue.push(activity);
 
   const FLUSH_THRESHOLD = 5;
-  const state = loadState();
 
   if (queue.length >= FLUSH_THRESHOLD && state.agentKey && state.activeIssueId) {
     if (flushToIssue(state, queue)) {
