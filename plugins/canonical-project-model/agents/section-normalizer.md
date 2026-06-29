@@ -1,6 +1,6 @@
 ---
 name: section-normalizer
-description: Normalizes ONE canonical section (e.g. scope, quantity_takeoff, estimate_sov, subcontractors, rfi_log, safety_plan) from a project-intake dossier into a single schema-conforming JSON file under model/sections/. Reads the verbatim extracts, maps to CSI MasterFormat / UniFormat, normalizes units and entities, preserves verbatim text + provenance, and writes the section. One instance runs per section, all in parallel. It structures - it does not price, judge, or decide.
+description: Normalizes ONE canonical section (e.g. scope, quantity_takeoff, estimate_sov, subcontractors, rfi_log, safety_plan) from a project-intake dossier into a single schema-conforming JSON file under model/sections/. Reads the verbatim extracts, classifies every record by CSI MasterFormat division (the sole system and universal sort key), normalizes units and entities, references quantities from the Summary QTO single source of truth, preserves verbatim text + provenance, and writes the section. One instance runs per section, all in parallel. It structures - it does not price, judge, or decide.
 tools:
   - Read
   - Glob
@@ -36,9 +36,13 @@ the downstream tools' job. A value enters your file only if a document stated it
    your section (e.g. the scope normalizer reads `scope-items.json` + requirement and
    table blocks; the QTO normalizer reads schedules and quantity tables).
 2. **Normalize to the standard.**
-   - **Classification:** tag every item with CSI MasterFormat division/section and,
-     where it helps system-level rollups, a UniFormat code. Map to the firm's cost
-     code when one is evident.
+   - **Classification (CSI MasterFormat only):** tag every item with a two-digit
+     MasterFormat division (most recent version; 01–32 primary) and the full section
+     when known. The division is the universal sort key — sort your records by it. Map
+     to the firm's cost code when evident. Use no other classification system.
+   - **Quantities live once:** the Summary QTO is the single source of truth. If your
+     section needs a quantity (budget, bid log, submittal), reference the QTO line's
+     `takeoff_id` — never restate the number.
    - **Units:** normalize `uom` to the canonical set (EA, LF, SF, SY, CY, TON, LS, …)
      and record the conversion in `normalization.actions` (e.g. `"uom: SY->SF"`).
      Keep the original in `as_written`.

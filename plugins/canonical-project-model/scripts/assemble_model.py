@@ -36,18 +36,21 @@ LOW_CONFIDENCE = 0.60  # values below this are surfaced for human review
 # array length is the section's record count). count_key=None => singleton (1).
 SECTIONS = [
     ("project_identity", "project-identity.schema.json", "project_identity", None),
+    ("contacts", "contacts.schema.json", "contacts", "contacts"),
+    ("quick_links", "quick-links.schema.json", "quick_links", "links"),
     ("scope", "scope.schema.json", "scope", "items"),
     ("quantity_takeoff", "quantity-takeoff.schema.json", "quantity_takeoff", "items"),
     ("estimate_sov", "estimate-sov.schema.json", "estimate_sov", "cost_lines"),
     ("budget", "budget.schema.json", "budget", "lines"),
     ("trades", "trades.schema.json", "trades", "trades"),
     ("subcontractors", "subcontractors.schema.json", "subcontractors", "parties"),
-    ("sub_bid_log", "sub-bid-log.schema.json", "sub_bid_log", "entries"),
-    ("rfi_log", "rfi-log.schema.json", "rfi_log", "entries"),
+    ("bid_log", "bid-log.schema.json", "bid_log", "bids"),
     ("submittal_log", "submittal-log.schema.json", "submittal_log", "entries"),
+    ("critical_path", "critical-path.schema.json", "critical_path", "items"),
+    ("schedule", "schedule.schema.json", "schedule", "milestones"),
+    ("rfi_log", "rfi-log.schema.json", "rfi_log", "entries"),
     ("safety_plan", "safety-plan.schema.json", "safety_plan", "hazards"),
     ("logistics_plan", "logistics-plan.schema.json", "logistics_plan", "constraints"),
-    ("schedule", "schedule.schema.json", "schedule", "milestones"),
     ("requirements", "requirements.schema.json", "requirements", "requirements"),
 ]
 SECTION_BY_KEY = {s[0]: s for s in SECTIONS}
@@ -239,8 +242,8 @@ def build(args):
         },
         "project": model_project,
         "classification": {
+            "classification_system": "CSI MasterFormat",
             "masterformat_version": "MasterFormat 2020",
-            "uniformat_version": "UniFormat II",
             "sov_standard": "AIA G703",
             "joc_unit_price_book": (joc or {}).get("unit_price_book", "") if isinstance(joc, dict) else "",
         },

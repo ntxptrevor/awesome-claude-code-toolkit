@@ -1,10 +1,13 @@
 # /canonical-project-model:structure
 
-Normalize a project-intake dossier into the **Canonical Project Record (CPR)** —
-the single, reusable, machine-readable source of truth every downstream estimating
-and project-management tool pulls from. Reasoning (reading the dossier and mapping
-each domain to its section schema) runs as **parallel section-normalizer agents**;
-a deterministic script validates and assembles the result.
+Normalize a project-intake dossier into the **Canonical Project Record (CPR)** and
+render it as an **interlinked Excel workbook** — the single, reusable source of truth
+every downstream estimating and project-management tool pulls from. Reasoning (reading
+the dossier and mapping each domain to its section schema) runs as **parallel
+section-normalizer agents**; deterministic scripts validate, assemble, and render.
+
+Everything is classified and sorted by **CSI MasterFormat division** — the sole
+classification system (see `resources/masterformat-divisions.json`).
 
 ## Usage
 
@@ -12,60 +15,61 @@ a deterministic script validates and assembles the result.
 /canonical-project-model:structure <projects/<slug>  |  path/to/handoff.json>
 ```
 
-If given a `handoff.json`, its `dossier_dir` is used. The dossier must already
-exist (run `/project-intake:ingest` first). This step never re-OCRs.
+If given a `handoff.json`, its `dossier_dir` is used. The dossier must already exist
+(run `/project-intake:ingest` first). This step never re-OCRs.
 
 ## Steps
 
 1. **Locate the dossier.** Read `projects/<slug>/handoff.json` and its
    `extracts/*.json`, `_raw/<doc>.ocr.json`, and `project.json`. These verbatim
-   extracts (with provenance) are the only input — extraction already happened.
-2. **Fan out one normalizer per section, in parallel.** Launch a
-   `section-normalizer` agent for each canonical section (project_identity, scope,
-   quantity_takeoff, estimate_sov, budget, trades, subcontractors, sub_bid_log,
-   rfi_log, submittal_log, safety_plan, logistics_plan, schedule, requirements).
-   Each agent reads the relevant extracts, maps them to CSI MasterFormat / UniFormat,
-   normalizes units and entities, preserves verbatim text + provenance, and writes
-   `projects/<slug>/model/sections/<section>.json` conforming to
-   `schemas/<section>.schema.json`. Sections are independent — they all run at once.
-   The **subcontractors** agent should finish first (or be reconciled first) so other
-   agents can reference parties by `party_id`; if run fully in parallel, the
-   orchestrator reconciles party ids in a short reduce step.
-3. **Record cross-document findings.** Where two documents disagree on the same fact,
-   write both into `model/sections/_meta.json` under `conflicts` (do not silently
-   pick one). Put cross-section normalization notes in `normalization_log` and any
-   manual-attention items in `needs_human_review`.
-4. **Assemble.** Run `scripts/assemble_model.py --dossier projects/<slug>`. It
-   validates each section against its schema, stitches `canonical-model.json`
-   (the source of truth), renders `project-record.md` (human-readable), and emits
-   `model-handoff.json` with status, counts, confidence, and `next_step`.
+   extracts (with provenance) are the input — extraction already happened.
+2. **Reconcile the subcontractor directory first**, then **fan out one normalizer per
+   section in parallel.** Launch a `section-normalizer` agent for each canonical section
+   (project_identity, contacts, quick_links, scope, quantity_takeoff, estimate_sov,
+   budget, trades, subcontractors, bid_log, submittal_log, critical_path, schedule,
+   rfi_log, safety_plan, logistics_plan, requirements). Each reads the relevant extracts,
+   tags every record with a MasterFormat division, normalizes units and entities,
+   preserves verbatim text + provenance, and writes
+   `projects/<slug>/model/sections/<section>.json` conforming to its schema.
+   - **Summary QTO is the single source of truth.** Build it first from the OCR4 data,
+     verify conflicts against the real drawings, sanity-check, and list in CSI order.
+     Budget, bid-log, and submittal lines reference its `takeoff_id`s — they never
+     restate a quantity.
+3. **Record cross-document findings** in `model/sections/_meta.json` (`conflicts`,
+   `normalization_log`, `needs_human_review`). Never silently resolve a disagreement.
+4. **Assemble.** Run `scripts/assemble_model.py --dossier projects/<slug>`. It validates
+   each section, stitches `canonical-model.json`, renders `project-record.md`, and emits
+   `model-handoff.json`.
+5. **Render the workbook.** Run `scripts/build_workbook.py --model
+   projects/<slug>/model/canonical-model.json` (after `pip install -r requirements.txt`).
+   It produces `<slug>.xlsx`: Dashboard + Project Bio, Contacts, Quick Links, Trades,
+   Summary QTO, per-trade Budget pages (qty pulled live from the QTO, ITB button), ITB
+   pages (QR to the NTXP site, print-ready), Submittal Register, Schedule, Critical
+   Path, Bid Log, and an editable Budget Rollup — all sorted by MasterFormat division.
 
-## Running the assembler directly
+## Running the scripts directly
 
 ```bash
-# Plan only — shows which section files are present (no work, no network)
+# plan only — which section files are present (no network, no deps)
 python plugins/canonical-project-model/scripts/assemble_model.py --dossier projects/lincoln-clinic-ti --dry-run
 
-# Assemble after the normalizer agents have written model/sections/*.json
-python plugins/canonical-project-model/scripts/assemble_model.py \
-  --dossier projects/lincoln-clinic-ti --generated-at "$(date -u +%FT%TZ)"
+# assemble, then render the workbook
+python plugins/canonical-project-model/scripts/assemble_model.py --dossier projects/lincoln-clinic-ti --generated-at "$(date -u +%FT%TZ)"
+python plugins/canonical-project-model/scripts/build_workbook.py --model projects/lincoln-clinic-ti/model/canonical-model.json
 ```
 
-`--no-embed` references sections by relative path instead of embedding them inline
-in `canonical-model.json`; `--model-version N` bumps the revision as addenda arrive.
+`assemble_model.py`: `--no-embed`, `--model-version N`. `build_workbook.py`: `--out`,
+`--company` (default NTXP), `--website` (ITB QR target), `--dry-run`.
 
 ## Rules
 
-- **Normalize, never reason.** Map to CSI/UniFormat, convert units, dedup entities,
-  link references, carry provenance. Do **not** price, level bids, validate the low
-  bid, judge compliance, or pick a winner — those are downstream skills
-  (`vendor-bid-leveling`, `rfp-analysis`, `invoice-reconciliation`, estimating).
-- **Never invent values.** A price/quantity/date appears in the model only if it was
-  in a document (verbatim preserved); empty structured slots are left for the tools
-  that fill them.
-- **Provenance on everything.** Every value carries `source_doc`, page, bbox, and
-  confidence from the OCR4 envelope so any consumer can cite and re-verify.
-- **Conflicts surface, never resolve silently.** Disagreements go to `conflicts` /
-  `needs_human_review`.
-- **Idempotent.** Re-running updates the same `projects/<slug>/model/`.
-- Always emit `model-handoff.json`, even on partial/failed assembly (status reflects it).
+- **MasterFormat only.** Every record gets a division; sort everything by it.
+- **Normalize, never reason.** Map to MasterFormat, convert units, dedup entities, link
+  references, carry provenance. Do **not** price, level bids, validate the low bid,
+  judge compliance, or pick a winner — those are downstream skills.
+- **Quantities live once** (the Summary QTO); everything else links to it.
+- **Never invent values.** A price/quantity/date appears only if the documents support
+  it; empty slots are left for the tools that fill them.
+- **Conflicts surface, never resolve silently.** Verify QTO conflicts against drawings.
+- **Idempotent.** Re-running updates the same `projects/<slug>/model/` and workbook.
+- Always emit `model-handoff.json`, even on partial/failed assembly.

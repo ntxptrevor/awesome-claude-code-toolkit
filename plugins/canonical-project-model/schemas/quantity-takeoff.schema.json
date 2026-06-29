@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "quantity-takeoff.schema.json",
-  "title": "Section — Quantity Takeoff (QTO)",
-  "description": "Normalized takeoff: measured/stated quantities pulled from drawings, schedules, and spec tables, each tied to a CSI code, a unit of measure, and (where known) a scope item and location. This is the structured feed an estimating tool multiplies by unit rates. The model carries only quantities that appear in the documents (or are a direct count of schedule rows) — it does not perform new measurement or pricing.",
+  "title": "Section — Summary Quantity Takeoff (QTO)",
+  "description": "The single source of truth for quantities. Every other section (budget, trade pages, submittal register, bid log) pulls its quantities from here — they never restate a quantity, they reference a takeoff_id. Each line is tied to a MasterFormat division (the universal sort key), a unit of measure, and (where known) a scope item and location. Listed in CSI MasterFormat division order. The initial QTO is built from the OCR4 extraction; conflicts are verified against the real drawings and sanity-checked. The model carries only quantities supported by the documents/drawings — it never invents measurement or pricing.",
   "type": "object",
   "required": ["section", "items"],
   "properties": {
@@ -19,9 +19,10 @@
           "description": { "type": "string" },
           "quantity": { "$ref": "common.defs.schema.json#/$defs/quantity" },
           "location": { "type": "string", "description": "Area / room / level / zone / grid the quantity belongs to, when stated — supports area- and phase-based estimating." },
-          "assembly": { "type": "string", "description": "UniFormat system/assembly this rolls up to (e.g. 'Interior Partitions')." },
+          "cost_code": { "type": "string", "description": "Sub-division cost code within the trade (e.g. 'demo', 'new_work', 'schedule') so budgets can split a division." },
           "source_type": { "type": "string", "enum": ["drawing", "schedule", "spec_table", "quantity_survey", "bid_form", "stated", "unknown"], "description": "Where the quantity came from." },
           "sheet": { "type": "string", "description": "Drawing sheet / schedule id the quantity was read from." },
+          "verified_against_drawings": { "type": ["boolean", "null"], "description": "True once a conflict/sanity-check was reconciled against the real drawings." },
           "provenance": { "$ref": "common.defs.schema.json#/$defs/provenance" },
           "normalization": { "$ref": "common.defs.schema.json#/$defs/normalization" }
         }

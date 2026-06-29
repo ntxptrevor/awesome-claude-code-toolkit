@@ -26,26 +26,32 @@ process.stdin.on("end", () => {
     command = raw;
   }
 
-  // Require an actual python invocation of the assembler — not a mere mention of
-  // the file (e.g. `cat assemble_model.py`), which must NOT trigger a false handoff.
-  const ran = /\bpython[0-9.]*\s+\S*assemble_model\.py\b/.test(command);
+  // Require an actual python invocation of the assembler or the workbook builder —
+  // not a mere mention of the file (e.g. `cat assemble_model.py`), which must NOT
+  // trigger a false handoff.
+  const assembled = /\bpython[0-9.]*\s+\S*assemble_model\.py\b/.test(command);
+  const built = /\bpython[0-9.]*\s+\S*build_workbook\.py\b/.test(command);
   const dryRun = /--dry-run\b/.test(command);
-  if (!ran || dryRun) return; // not an assemble run, or just a plan — stay silent
+  if ((!assembled && !built) || dryRun) return; // not a real run — stay silent
+
+  const tail = built
+    ? "The interlinked Excel workbook (<slug>.xlsx) was just rendered — the primary " +
+      "deliverable. Point the user to it; it carries the Dashboard, Summary QTO " +
+      "(single source of truth), per-trade budget pages, ITB sheets, bid log, and the " +
+      "editable budget rollup, all sorted by CSI MasterFormat division."
+    : "Read the model-handoff.json it wrote under projects/<slug>/model/ (schema: " +
+      "plugins/canonical-project-model/schemas/model-handoff.schema.json). The source " +
+      "of truth is canonical-model.json. If status is 'ready' or 'partial', render the " +
+      "workbook with build_workbook.py, then proceed with the handoff's next_step " +
+      "(default construction-doc-pipeline:review), having downstream skills PULL their " +
+      "inputs from the canonical sections instead of re-parsing documents. Surface " +
+      "anything in needs_human_review and any 'invalid' sections first.";
 
   console.log(
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: "PostToolUse",
-        additionalContext:
-          "[canonical-project-model] A Canonical Project Record was just assembled. " +
-          "Read the model-handoff.json it wrote under projects/<slug>/model/ (schema: " +
-          "plugins/canonical-project-model/schemas/model-handoff.schema.json). The " +
-          "source of truth is canonical-model.json; the human-readable view is " +
-          "project-record.md. If status is 'ready' or 'partial', proceed with the " +
-          "handoff's next_step (default construction-doc-pipeline:review), having " +
-          "downstream skills PULL their inputs from the canonical sections instead of " +
-          "re-parsing documents. Surface anything in needs_human_review and any " +
-          "'invalid' sections first.",
+        additionalContext: "[canonical-project-model] " + tail,
       },
     })
   );
