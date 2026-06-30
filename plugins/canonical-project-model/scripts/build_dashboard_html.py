@@ -319,8 +319,11 @@ SCRIPT = """
   },{threshold:.12}) : null;
   document.querySelectorAll('.reveal').forEach(function(el){ io?io.observe(el):fire(el); });
 
-  // Failsafe: anything never scrolled into view still ends correct after a beat.
+  // Failsafe: anything never scrolled into view still ends correct after a beat —
+  // including revealing any section whose observer never crossed the threshold, so
+  // content is never left hidden.
   setTimeout(function(){
+    document.querySelectorAll('.reveal:not(.in)').forEach(function(el){ el.classList.add('in'); });
     document.querySelectorAll('[data-target]:not([data-done])').forEach(countUp);
     document.querySelectorAll('[data-w]').forEach(function(b){ if(!b.style.width)b.style.width=b.getAttribute('data-w'); });
   }, 2600);
@@ -436,7 +439,7 @@ def build_body(model, model_dir, company, titles):
     cells = []
     for i, (lab, val, pre, dec, suf) in enumerate(kpis):
         acc = " accent" if lab == "Est. value" else ""
-        init = f"{pre}{val:,}{suf}"  # real value pre-rendered so it's correct without/before JS
+        init = f"{pre}{val:,.0f}{suf}"  # real value pre-rendered so it's correct without/before JS
         cells.append(reveal(f'''<div class="cpm-kpi">
           <div class="label">{esc(lab)}</div>
           <div class="val{acc} num" data-target="{val}" data-pre="{pre}" data-suf="{suf}" data-dec="{dec}">{init}</div>
