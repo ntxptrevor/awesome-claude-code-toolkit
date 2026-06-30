@@ -41,7 +41,8 @@ projects/<slug>/model/
                             #   rfi_log, safety_plan, logistics_plan, requirements) + _meta.json
   project-record.md         # human-readable projection
   model-handoff.json        # downstream contract (schema: schemas/model-handoff.schema.json)
-<slug>.xlsx                 # the interlinked workbook (primary deliverable)
+<slug>.xlsx                 # the interlinked workbook (primary working deliverable)
+<slug>.html                # self-contained animated dashboard (read-only "at a glance" view)
 ```
 
 ### The workbook (sheets, all sorted by MasterFormat division)
@@ -102,17 +103,35 @@ python scripts/build_workbook.py --model projects/lincoln-clinic-ti/model/canoni
 
 # plan only (no dependencies):
 python scripts/build_workbook.py --model .../canonical-model.json --dry-run
+
+# 3) render the animated HTML dashboard (stdlib only — no dependencies)
+python scripts/build_dashboard_html.py --model projects/lincoln-clinic-ti/model/canonical-model.json
 ```
+
+### The HTML dashboard (`build_dashboard_html.py`)
+
+A self-contained `<slug>.html` (no external requests — safe to email or host) that
+presents the same record as a read-only, interactive dashboard: KPI summary, key-date
+and schedule timelines, filterable Trades and Summary QTO, Bid Log with confidence
+meters, Critical Path, and an editable-looking Budget Rollup — all sorted by
+MasterFormat division. Visual system: charcoal ground with 3D beveled gradients,
+**blue** for interactive/data, **gold** hairline rules + money, **red** reserved for
+risk (low confidence, long-lead, needs-review), serif headlines over a sans body.
+Motion (scroll reveals, count-ups, bar fills, hover glow, drifting background) honors
+`prefers-reduced-motion` and degrades gracefully with JS off. `--fragment` emits
+body-only markup for embedding; `--company` / `--website` set branding and the (Excel)
+ITB QR target. The Excel workbook remains the working deliverable; this is the glance.
 
 `build_workbook.py` flags: `--out` (xlsx path), `--company` (branding, default NTXP),
 `--website` (URL the ITB QR points to, default the NTXP site), `--dry-run`.
 
 ## Dependencies
 
-`assemble_model.py` is **stdlib-only**. `build_workbook.py` needs **openpyxl**; the ITB
-**QR code** uses **segno + Pillow** when present and falls back to a plain hyperlink
-when not. See `requirements.txt`. (True macro buttons require a `.xlsm` template; the
-ITB "button" is a styled hyperlink to a print-ready ITB sheet — Save-as-PDF.)
+`assemble_model.py` and `build_dashboard_html.py` are **stdlib-only**. Only
+`build_workbook.py` needs **openpyxl**; the ITB **QR code** uses **segno + Pillow**
+when present and falls back to a plain hyperlink when not. See `requirements.txt`.
+(True macro buttons require a `.xlsm` template; the ITB "button" is a styled hyperlink
+to a print-ready ITB sheet — Save-as-PDF.)
 
 ## Boundaries
 
