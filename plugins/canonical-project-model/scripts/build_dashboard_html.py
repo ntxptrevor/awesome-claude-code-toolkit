@@ -39,7 +39,9 @@ import datetime as _dt
 import html
 import json
 import math
+import random
 import sys
+import urllib.parse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -48,11 +50,13 @@ DIVISIONS_FILE = PLUGIN_DIR / "resources" / "masterformat-divisions.json"
 
 DEFAULT_COMPANY = "NTXP"
 
-# Validated categorical palette (dataviz validator, --mode dark --surface #20242c:
-# all six checks PASS; worst adjacent CVD ΔE 22.3). Fixed order, assigned to the
+# Validated categorical palette — no yellow/ochre/olive hues (brand: navy + platinum
+# + blue). dataviz validator, --mode dark --surface #141a24: lightness band, chroma
+# floor, contrast all PASS; worst adjacent CVD ΔE 10.3 (floor band — legal with our
+# 2px slice gaps + legends as secondary encoding). Fixed order, assigned to the
 # project's divisions in ascending order, never cycled; 9th+ divisions fold to OTHER.
-CAT = ["#4a86c2", "#b58530", "#1fa396", "#8a63c9", "#c9702e", "#b0589f", "#5f6fd0", "#7d9440"]
-CAT_OTHER = "#6f7885"
+CAT = ["#3f78b5", "#bd6428", "#17948a", "#7e58c2", "#1d7fa8", "#a44e94", "#5563cc", "#b85c6e"]
+CAT_OTHER = "#5f6a78"
 NEON_PROFIT = "#3be08f"   # buyout profit — used only for profit, with icon+label
 
 R = 44.0                   # donut radius
@@ -135,6 +139,27 @@ def fmt_money(amount):
     return f"${amount:,.0f}" if isinstance(amount, (int, float)) else "—"
 
 
+def constellation(n, seed, w=1500, h=1050, link=170, bright=False):
+    """A tileable-enough field of faint interlinked stars (the brand board's
+    blueprint-node feel) as a self-contained SVG data URI. Seeded RNG keeps the
+    render deterministic; nearby stars are joined by hairline links."""
+    rng = random.Random(seed)
+    pts = [(rng.uniform(0, w), rng.uniform(0, h)) for _ in range(n)]
+    a = 0.42 if bright else 0.30
+    parts = []
+    for i, (x1, y1) in enumerate(pts):
+        for x2, y2 in pts[i + 1:]:
+            if math.hypot(x2 - x1, y2 - y1) < link:
+                parts.append(f'<line x1="{x1:.0f}" y1="{y1:.0f}" x2="{x2:.0f}" y2="{y2:.0f}" '
+                             f'stroke="rgba(140,170,215,{0.10 if bright else 0.07})" stroke-width="1"/>')
+    for x, y in pts:
+        r = rng.uniform(0.7, 1.9)
+        parts.append(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{r:.1f}" fill="rgba(190,210,240,{a})"/>')
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
+           f'viewBox="0 0 {w} {h}">{"".join(parts)}</svg>')
+    return "data:image/svg+xml," + urllib.parse.quote(svg)
+
+
 def parse_date(s):
     try:
         return _dt.date.fromisoformat(str(s)[:10])
@@ -150,13 +175,15 @@ def fmt_day(d):
 
 STYLE = """
 :root{
-  --bg:#191c21; --ink:#e9ecf1; --muted:#a3acb9; --faint:#6f7885;
-  --blue:#5b9bd5; --blue-deep:#3f7cb8; --gold:#c8a050; --gold-soft:#d8b878; --red:#cf5c6b;
-  --green:#54c08a; --yellow:#d9b04a; --neon:#3be08f;
-  --line-w:rgba(255,255,255,.09); --line-g:rgba(200,160,80,.45); --line2:rgba(255,255,255,.16);
-  --panel:linear-gradient(157deg,#2b313a 0%,#23272f 52%,#1d2127 100%);
-  --raise:0 1px 0 rgba(255,255,255,.05) inset,0 18px 38px -20px rgba(0,0,0,.85);
-  --raise-hi:0 1px 0 rgba(255,255,255,.08) inset,0 24px 52px -18px rgba(0,0,0,.9),0 0 30px -6px rgba(91,155,213,.30);
+  /* NTXP brand board: deep navy-black ground, platinum/silver metal, one blue accent.
+     --gold/--line-g keep their names for stability but now hold PLATINUM values. */
+  --bg:#0b0f16; --ink:#e8edf4; --muted:#9aa7b8; --faint:#66707f;
+  --blue:#4f96d8; --blue-deep:#2f6cae; --gold:#c3cddd; --gold-soft:#dde5f0; --red:#cf5c6b;
+  --green:#54c08a; --yellow:#cf8a3a; --neon:#3be08f;
+  --line-w:rgba(255,255,255,.08); --line-g:rgba(195,205,221,.28); --line2:rgba(255,255,255,.15);
+  --panel:linear-gradient(157deg,#1e2530 0%,#171d27 52%,#11151d 100%);
+  --raise:0 1px 0 rgba(255,255,255,.05) inset,0 18px 38px -20px rgba(0,0,0,.9);
+  --raise-hi:0 1px 0 rgba(255,255,255,.08) inset,0 24px 52px -18px rgba(0,0,0,.95),0 0 30px -6px rgba(79,150,216,.32);
   --r:14px;
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
@@ -167,15 +194,21 @@ STYLE = """
   -webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden}
 .cpm-root h1,.cpm-root h2,.cpm-root h3{margin:0;font-weight:600;letter-spacing:-.01em}
 .cpm-root a{color:inherit;text-decoration:none}
+/* 3D ground: navy-black radial vignette + a faint diagonal sheen, with two
+   constellation layers (interlinked stars) drifting slower than the foreground. */
 .cpm-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:
-  radial-gradient(120% 90% at 50% -10%,#222730 0%,#191c21 45%,#121419 100%)}
+  linear-gradient(118deg,rgba(120,150,195,.05) 0%,transparent 34%,transparent 70%,rgba(60,80,115,.05) 100%),
+  radial-gradient(125% 95% at 50% -12%,#151b28 0%,#0b0f16 46%,#05070c 100%)}
 .cpm-bg::before,.cpm-bg::after{content:"";position:absolute;width:62vmax;height:62vmax;border-radius:50%;
-  filter:blur(90px);opacity:.15;will-change:transform}
-.cpm-bg::before{background:radial-gradient(circle,var(--blue),transparent 60%);top:-22vmax;right:-12vmax;animation:drift1 38s ease-in-out infinite}
-.cpm-bg::after{background:radial-gradient(circle,var(--gold),transparent 60%);bottom:-26vmax;left:-16vmax;animation:drift2 46s ease-in-out infinite}
-.cpm-grid{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.6;
-  background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(91,155,213,.05) 1px,transparent 1px);
-  background-size:46px 46px;mask-image:radial-gradient(circle at 50% -5%,#000 0%,transparent 72%)}
+  filter:blur(95px);opacity:.11;will-change:transform}
+.cpm-bg::before{background:radial-gradient(circle,var(--blue),transparent 60%);top:-24vmax;right:-14vmax;animation:drift1 44s ease-in-out infinite}
+.cpm-bg::after{background:radial-gradient(circle,#8ea6c9,transparent 60%);bottom:-28vmax;left:-18vmax;animation:drift2 56s ease-in-out infinite}
+.cpm-stars{position:fixed;inset:-8%;z-index:0;pointer-events:none;background-repeat:repeat;
+  mask-image:radial-gradient(120% 100% at 50% 0%,#000 0%,rgba(0,0,0,.35) 75%,transparent 100%)}
+.cpm-stars.s1{opacity:.5;animation:starDrift1 240s linear infinite alternate}
+.cpm-stars.s2{opacity:.32;animation:starDrift2 160s linear infinite alternate}
+@keyframes starDrift1{to{transform:translate(-70px,42px)}}
+@keyframes starDrift2{to{transform:translate(55px,-38px)}}
 @keyframes drift1{50%{transform:translate(-7vmax,6vmax) scale(1.12)}}
 @keyframes drift2{50%{transform:translate(7vmax,-5vmax) scale(1.06)}}
 
@@ -186,9 +219,9 @@ STYLE = """
   border-bottom:1px solid var(--line-w);box-shadow:0 1px 0 var(--line-g)}
 .cpm-nav .brand{font:600 15px/1 var(--serif);margin-right:auto;display:flex;align-items:center;gap:11px}
 .cpm-nav .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold);animation:pulse 2.8s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(200,160,80,.5)}70%{box-shadow:0 0 0 9px rgba(200,160,80,0)}100%{box-shadow:0 0 0 0 rgba(200,160,80,0)}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(195,205,221,.5)}70%{box-shadow:0 0 0 9px rgba(195,205,221,0)}100%{box-shadow:0 0 0 0 rgba(195,205,221,0)}}
 .cpm-nav a{font-size:13px;color:var(--muted);padding:7px 12px;border-radius:9px;transition:.22s ease;border:1px solid transparent}
-.cpm-nav a:hover{color:#fff;border-color:var(--line2);box-shadow:0 0 20px -2px rgba(91,155,213,.45);transform:translateY(-1px)}
+.cpm-nav a:hover{color:#fff;border-color:var(--line2);box-shadow:0 0 20px -2px rgba(79,150,216,.45);transform:translateY(-1px)}
 
 /* ------- sync pills ------- */
 .syncbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 0 0}
@@ -196,14 +229,14 @@ STYLE = """
 .spill{cursor:pointer;display:inline-flex;align-items:center;gap:9px;font:600 12.5px/1 var(--sans);color:var(--muted);
   padding:9px 15px;border-radius:999px;border:1px solid var(--line-w);background:var(--panel);box-shadow:var(--raise);
   transition:.24s cubic-bezier(.2,.7,.2,1)}
-.spill:hover{color:#fff;transform:translateY(-2px);box-shadow:var(--raise),0 0 22px -2px rgba(91,155,213,.6);border-color:rgba(91,155,213,.5)}
+.spill:hover{color:#fff;transform:translateY(-2px);box-shadow:var(--raise),0 0 22px -2px rgba(79,150,216,.6);border-color:rgba(79,150,216,.5)}
 .spill .lt{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
 .spill .when{font:500 11px/1 var(--mono);color:var(--faint)}
 .spill.propose{border-color:var(--line-g);color:var(--gold-soft)}
-.spill.propose:hover{box-shadow:var(--raise),0 0 24px -2px rgba(200,160,80,.65);border-color:var(--gold)}
+.spill.propose:hover{box-shadow:var(--raise),0 0 24px -2px rgba(195,205,221,.6);border-color:var(--gold)}
 .spill.syncing .lt{animation:pulse 1.1s infinite}
 .lt.green{background:var(--green);box-shadow:0 0 8px rgba(84,192,138,.7)}
-.lt.yellow{background:var(--yellow);box-shadow:0 0 8px rgba(217,176,74,.7)}
+.lt.yellow{background:var(--yellow);box-shadow:0 0 8px rgba(207,138,58,.7)}
 .lt.red{background:var(--red);box-shadow:0 0 8px rgba(207,92,107,.7)}
 
 .cpm-hero{padding:34px 0 8px}
@@ -230,7 +263,7 @@ STYLE = """
 .donuts{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:16px;margin-top:26px}
 .dcard{position:relative;padding:18px 16px 14px;border:1px solid var(--line-w);border-radius:var(--r);
   background:var(--panel);box-shadow:var(--raise);transition:.28s cubic-bezier(.2,.7,.2,1)}
-.dcard:hover{transform:translateY(-4px);border-color:rgba(91,155,213,.4);box-shadow:var(--raise-hi)}
+.dcard:hover{transform:translateY(-4px);border-color:rgba(79,150,216,.4);box-shadow:var(--raise-hi)}
 .dcard .dl{font:600 11px/1 var(--mono);color:var(--faint);letter-spacing:.12em;text-transform:uppercase;text-align:center}
 .dwrap{position:relative;width:128px;height:128px;margin:14px auto 10px}
 .dwrap svg{width:128px;height:128px;display:block}
@@ -247,8 +280,8 @@ STYLE = """
   box-shadow:0 2px 10px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.06) inset;
   display:grid;place-items:center}
 .dnum{font:700 21px/1 var(--sans);font-variant-numeric:tabular-nums;color:#fff;
-  text-shadow:0 0 14px rgba(91,155,213,.95),0 0 34px rgba(91,155,213,.45)}
-.dnum.goldglow{text-shadow:0 0 14px rgba(216,184,120,.95),0 0 34px rgba(200,160,80,.5)}
+  text-shadow:0 0 14px rgba(79,150,216,.95),0 0 34px rgba(79,150,216,.45)}
+.dnum.goldglow{text-shadow:0 0 14px rgba(216,184,120,.95),0 0 34px rgba(195,205,221,.5)}
 .dleg{display:flex;flex-wrap:wrap;gap:5px 10px;justify-content:center;min-height:18px}
 .dleg span{display:inline-flex;align-items:center;gap:5px;font:500 10.5px/1 var(--sans);color:var(--muted)}
 .dleg i{width:8px;height:8px;border-radius:2px;flex:0 0 8px}
@@ -262,7 +295,7 @@ STYLE = """
 .segw .nm{font:500 10.5px/1.2 var(--sans);color:var(--muted);text-align:center;margin-top:5px}
 .segfill{height:46px;border-radius:5px;box-shadow:0 1px 0 rgba(255,255,255,.14) inset,0 -10px 16px -8px rgba(0,0,0,.5) inset;
   transition:.25s ease;transform-origin:bottom}
-.segw:hover .segfill{box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 0 18px -2px rgba(91,155,213,.55)}
+.segw:hover .segfill{box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 0 18px -2px rgba(79,150,216,.55)}
 .segfill.profit{background:linear-gradient(180deg,#49f09d,var(--neon));box-shadow:0 0 22px -2px rgba(59,224,143,.8),0 1px 0 rgba(255,255,255,.25) inset}
 .segw .amt.profit{color:var(--neon);text-shadow:0 0 12px rgba(59,224,143,.7)}
 .segtotal{display:flex;justify-content:flex-end;gap:12px;align-items:baseline;margin-top:14px;padding-top:12px;
@@ -274,11 +307,11 @@ STYLE = """
 .stream{display:grid;gap:10px}
 .sitem{display:flex;gap:14px;align-items:flex-start;padding:13px 16px;border:1px solid var(--line-w);
   border-radius:12px;background:var(--panel);box-shadow:var(--raise);transition:.22s ease}
-.sitem:hover{transform:translateX(4px);border-color:rgba(91,155,213,.35)}
+.sitem:hover{transform:translateX(4px);border-color:rgba(79,150,216,.35)}
 .sthumb{width:58px;height:58px;border-radius:9px;object-fit:cover;flex:0 0 58px;border:1px solid var(--line2)}
 .sdoc{width:58px;height:58px;border-radius:9px;flex:0 0 58px;display:grid;place-items:center;
   font:700 10px/1 var(--mono);color:var(--gold-soft);border:1px solid var(--line-g);
-  background:linear-gradient(160deg,rgba(200,160,80,.12),rgba(200,160,80,.03))}
+  background:linear-gradient(160deg,rgba(195,205,221,.12),rgba(195,205,221,.03))}
 .sitem .tx{font-size:13.5px}
 .sitem .meta{font:500 11px/1 var(--mono);color:var(--faint);margin-top:5px;display:flex;gap:10px;flex-wrap:wrap}
 .srcchip{font:600 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:3px 7px;border-radius:5px;
@@ -311,7 +344,7 @@ STYLE = """
 .block h3 .cnt{margin-left:auto;font:700 13px/1 var(--mono);color:var(--gold-soft)}
 .brow{display:flex;gap:12px;align-items:baseline;padding:11px 16px;border-bottom:1px solid var(--line-w);font-size:13px;transition:background .18s}
 .brow:last-child{border-bottom:0}
-.brow:hover{background:rgba(91,155,213,.06)}
+.brow:hover{background:rgba(79,150,216,.06)}
 .brow .id{font:600 11px/1 var(--mono);color:var(--faint);flex:0 0 auto}
 .brow .lead{margin-left:auto;font:600 11px/1 var(--mono);color:var(--muted);white-space:nowrap}
 .brow .lead.hot{color:var(--yellow)}
@@ -324,7 +357,7 @@ STYLE = """
   background:linear-gradient(var(--gold),var(--blue),transparent)}
 .pev{position:relative;padding:0 0 18px}
 .pev::before{content:"";position:absolute;left:-21px;top:5px;width:11px;height:11px;border-radius:50%;
-  background:var(--bg);border:2px solid var(--blue);box-shadow:0 0 10px rgba(91,155,213,.5)}
+  background:var(--bg);border:2px solid var(--blue);box-shadow:0 0 10px rgba(79,150,216,.5)}
 .pev.crit::before{border-color:var(--red);box-shadow:0 0 10px rgba(207,92,107,.6)}
 .pev .pd{font:600 11px/1 var(--mono);color:var(--gold-soft)}
 .pev .pl{font-size:13px;margin-top:3px}
@@ -332,15 +365,15 @@ STYLE = """
 .pbtns{display:flex;gap:8px;justify-content:center;padding:10px}
 .pbtn{cursor:pointer;width:34px;height:30px;border-radius:8px;border:1px solid var(--line-w);background:var(--panel);
   color:var(--muted);font-size:13px;transition:.2s}
-.pbtn:hover{color:#fff;box-shadow:0 0 14px -2px rgba(91,155,213,.6)}
+.pbtn:hover{color:#fff;box-shadow:0 0 14px -2px rgba(79,150,216,.6)}
 
 /* ------- look-ahead ------- */
 .la-tabs{display:flex;gap:8px;margin:0 0 14px}
 .la-tab{cursor:pointer;font:600 12px/1 var(--sans);color:var(--muted);background:var(--panel);
   border:1px solid var(--line-w);box-shadow:var(--raise);padding:9px 16px;border-radius:9px;transition:.2s}
-.la-tab:hover{color:#fff;box-shadow:var(--raise),0 0 16px -2px rgba(91,155,213,.5)}
-.la-tab[aria-selected="true"]{color:#fff;border-color:rgba(91,155,213,.6);
-  background:linear-gradient(180deg,var(--blue),var(--blue-deep));box-shadow:0 0 20px -2px rgba(91,155,213,.6)}
+.la-tab:hover{color:#fff;box-shadow:var(--raise),0 0 16px -2px rgba(79,150,216,.5)}
+.la-tab[aria-selected="true"]{color:#fff;border-color:rgba(79,150,216,.6);
+  background:linear-gradient(180deg,var(--blue),var(--blue-deep));box-shadow:0 0 20px -2px rgba(79,150,216,.6)}
 .la-tab[aria-selected="true"] .num{color:rgba(255,255,255,.85)!important}
 .la-view{overflow:hidden;border-radius:var(--r)}
 .la-track{display:flex;width:300%;transition:transform .55s cubic-bezier(.2,.7,.2,1)}
@@ -352,24 +385,24 @@ STYLE = """
   padding:13px 14px;border-bottom:1px solid var(--line-g);background:linear-gradient(180deg,rgba(255,255,255,.04),transparent)}
 .cpm-table td{padding:11px 14px;border-bottom:1px solid var(--line-w);vertical-align:top}
 .cpm-table tr:last-child td{border-bottom:0}
-.cpm-table tbody tr:hover{background:rgba(91,155,213,.05)}
+.cpm-table tbody tr:hover{background:rgba(79,150,216,.05)}
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 tr.crit td:first-child{box-shadow:3px 0 0 var(--red) inset}
 tr.deliv td:first-child{box-shadow:3px 0 0 var(--blue) inset}
 .typechip{font:600 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.07em;padding:4px 8px;border-radius:5px;border:1px solid var(--line-w);color:var(--muted)}
 .typechip.crit{color:var(--red);border-color:rgba(207,92,107,.5)}
-.typechip.deliv{color:var(--blue);border-color:rgba(91,155,213,.5)}
+.typechip.deliv{color:var(--blue);border-color:rgba(79,150,216,.5)}
 [contenteditable="true"]{outline:none;border-bottom:1px dashed rgba(255,255,255,.18);cursor:text;min-width:40px}
-[contenteditable="true"]:focus{border-bottom-color:var(--blue);background:rgba(91,155,213,.08)}
+[contenteditable="true"]:focus{border-bottom-color:var(--blue);background:rgba(79,150,216,.08)}
 
 .divtag{display:inline-flex;align-items:center;gap:8px;font:600 12px/1 var(--mono);padding:5px 10px;border-radius:7px;
   background:rgba(255,255,255,.04);border:1px solid var(--line-w);white-space:nowrap}
 .divtag .sw{width:9px;height:9px;border-radius:3px}
 
 /* ------- review / focus ------- */
-.review{border:1px solid rgba(217,176,74,.4);background:linear-gradient(160deg,rgba(217,176,74,.09),rgba(217,176,74,.02));
+.review{border:1px solid var(--line2);background:var(--panel);
   border-radius:var(--r);padding:20px 22px;box-shadow:var(--raise)}
-.review li{color:#e6cf96;margin:4px 0}
+.review li{color:var(--muted);margin:4px 0}
 
 /* ------- modal + toast ------- */
 .mmask{position:fixed;inset:0;z-index:60;background:rgba(10,12,16,.66);backdrop-filter:blur(6px);
@@ -387,9 +420,9 @@ tr.deliv td:first-child{box-shadow:3px 0 0 var(--blue) inset}
 .mfoot{display:flex;gap:10px;padding:16px 22px;border-top:1px solid var(--line-w);flex-wrap:wrap}
 .btn{cursor:pointer;font:600 12.5px/1 var(--sans);padding:11px 18px;border-radius:9px;border:1px solid var(--line-w);
   background:var(--panel);color:var(--muted);transition:.2s}
-.btn:hover{color:#fff;box-shadow:0 0 18px -2px rgba(91,155,213,.55);transform:translateY(-1px)}
-.btn.primary{color:#fff;border-color:rgba(91,155,213,.6);background:linear-gradient(180deg,var(--blue),var(--blue-deep))}
-.btn.gold{color:#241a06;border-color:var(--gold);background:linear-gradient(180deg,var(--gold-soft),var(--gold))}
+.btn:hover{color:#fff;box-shadow:0 0 18px -2px rgba(79,150,216,.55);transform:translateY(-1px)}
+.btn.primary{color:#fff;border-color:rgba(79,150,216,.6);background:linear-gradient(180deg,var(--blue),var(--blue-deep))}
+.btn.gold{color:#10141b;border-color:var(--gold);background:linear-gradient(180deg,var(--gold-soft),var(--gold))}
 .itb .krow{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:14px}
 .itb .krow div{font-size:12.5px;color:var(--muted)}
 .itb .krow b{display:block;color:var(--ink);font-size:13px}
@@ -408,7 +441,7 @@ tr.deliv td:first-child{box-shadow:3px 0 0 var(--blue) inset}
 #followup.show{display:block}
 .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:80;opacity:0;pointer-events:none;
   font:600 12.5px/1.4 var(--sans);color:var(--ink);padding:13px 20px;border-radius:11px;border:1px solid var(--line-g);
-  background:linear-gradient(157deg,#2e343e,#23272f);box-shadow:0 18px 50px -12px rgba(0,0,0,.9),0 0 24px -4px rgba(200,160,80,.35);
+  background:linear-gradient(157deg,#2e343e,#23272f);box-shadow:0 18px 50px -12px rgba(0,0,0,.9),0 0 24px -4px rgba(140,175,220,.35);
   transition:.35s cubic-bezier(.2,.7,.2,1);max-width:520px;text-align:center}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
@@ -693,8 +726,8 @@ def itb_modal(mid, t, ident, contacts, budget_rows, trade_total, company, titles
         <p class="note" style="color:var(--red);font-weight:700;font-size:12.5px;margin-top:16px">
         Subcontractors are responsible to verify all quantities, dimensions, and information herein against the contract documents.</p>
       </div>
-      <div class="mfoot"><button class="btn gold" data-print="1">🖨 Print / Save PDF</button>
-        <button class="btn" data-download="ITB-{esc(t.get("trade_id",""))}">⬇ Download ITB</button>
+      <div class="mfoot"><button class="btn gold" data-print="1">Print / Save PDF</button>
+        <button class="btn" data-download="ITB-{esc(t.get("trade_id",""))}">Download ITB</button>
         <button class="btn x" style="margin-left:auto">Close</button></div>
     </div></div>'''
 
@@ -706,8 +739,8 @@ def week_bounds(anchor):
             (monday + _dt.timedelta(days=7), monday + _dt.timedelta(days=13))]
 
 
-FLAG_COLORS = {"meeting": "#8a63c9", "intel": "#b58530", "safety": "#cf5c6b",
-               "weather": "#4a86c2", "delivery": "#4a86c2", "inspection": "#1fa396", "other": "#6f7885"}
+FLAG_COLORS = {"meeting": "#7e58c2", "intel": "#1d7fa8", "safety": "#cf5c6b",
+               "weather": "#3f78b5", "delivery": "#3f78b5", "inspection": "#17948a", "other": "#5f6a78"}
 
 
 def build_body(model, model_dir, company, titles):
@@ -780,7 +813,7 @@ def build_body(model, model_dir, company, titles):
                      f'{f"<span class=&quot;when&quot;>{when}</span>" if when else ""}</button>')
     pills.append('<button class="spill propose" data-modal="m-suggest" '
                  'data-tip="Review the agent&#39;s suggested moves, then approve a two-way sync — nothing writes outward without you">'
-                 '✦ Propose updates</button>')
+                 'Propose updates</button>')
     out.append(f'<div class="syncbar">{"".join(pills)}</div>')
 
     # ---------- hero ----------
@@ -875,7 +908,7 @@ def build_body(model, model_dir, company, titles):
             elif e.get("kind") == "pdf_snip":
                 thumb = '<div class="sdoc">PDF<br>SNIP</div>'
             else:
-                thumb = '<div class="sdoc" style="color:var(--blue);border-color:rgba(91,155,213,.4)">LOG</div>'
+                thumb = '<div class="sdoc" style="color:var(--blue);border-color:rgba(79,150,216,.4)">LOG</div>'
             ts = esc(str(e.get("ts", ""))[:16].replace("T", " · "))
             items.append(reveal(f'''<div class="sitem">{thumb}<div>
               <div class="tx">{esc(e.get("text",""))}</div>
@@ -893,7 +926,7 @@ def build_body(model, model_dir, company, titles):
         cards = []
         for i, r in enumerate(reports[-5:]):
             d = parse_date(r.get("date"))
-            tint = CAT[i % len(CAT)]
+            tint = "#3f78b5"  # one steel-blue glass tint — flags carry the color meaning
             banners = "".join(
                 f'<div class="fbanner" style="background:linear-gradient(90deg,{FLAG_COLORS.get(f.get("kind","other"), CAT_OTHER)}e6,{FLAG_COLORS.get(f.get("kind","other"), CAT_OTHER)}99)">'
                 f'{esc(f.get("kind","")).upper()} · {esc(f.get("text",""))}</div>'
@@ -1060,7 +1093,9 @@ def build(args):
 
     titles = load_division_titles()
     body = build_body(model, model_dir, args.company, titles)
-    bg = '<div class="cpm-bg"></div><div class="cpm-grid"></div>'
+    bg = ('<div class="cpm-bg"></div>'
+          f'<div class="cpm-stars s1" style="background-image:url(\'{constellation(72, seed=7)}\')"></div>'
+          f'<div class="cpm-stars s2" style="background-image:url(\'{constellation(44, seed=23, bright=True)}\')"></div>')
     noscript = ('<noscript><style>.reveal{opacity:1!important;transform:none!important}'
                 '.slice{stroke-dashoffset:calc(var(--off)*1px)!important;opacity:1!important}'
                 '.la-track{transform:translateX(-33.3334%)!important}</style></noscript>')
