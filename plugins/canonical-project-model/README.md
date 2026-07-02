@@ -121,8 +121,8 @@ flips to the **Buyout Budget with neon-green profit** once `phase=project` · th
 **daily-report cards** with intelligence-flag banners · **open submittals/RFIs** beside
 a scrollable **critical-path plotter** · a **three-week look-ahead** with click-to-edit
 cells (red critical path, blue deliveries). Green/yellow/red **health lights** per
-section; copy stays constructive (customers may see the screen). Charcoal 3D-gradient
-visual system (blue interactive/data, gold rules+money, red risk); categorical chart
+section; copy stays constructive (customers may see the screen). Navy-black 3D-gradient (faint interlinked-star field)
+visual system (blue interactive/data, platinum hairlines+values, red risk); categorical chart
 palette validated with the dataviz six checks. Honors `prefers-reduced-motion`,
 degrades with JS off; `--fragment` embeds. The workbook remains the working
 deliverable; this is the wall screen.

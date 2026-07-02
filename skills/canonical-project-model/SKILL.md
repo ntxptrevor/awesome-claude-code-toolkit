@@ -1,6 +1,6 @@
 ---
 name: canonical-project-model
-description: Normalizes the verbatim project-intake dossier (which Mistral OCR4 produced) into the Canonical Project Record - one reusable, CSI MasterFormat-organized, provenance-carrying source of truth - and renders it as an interlinked Excel workbook (dashboard + sub-pages for project bio, contacts, quick links, trades, Summary QTO as single source of truth, per-trade budget pages with ITB/QR, submittal register, schedule, critical path, bid log, and an editable budget rollup) plus a self-contained animated HTML dashboard. MasterFormat division is the sole classification and universal sort key. Uses parallel section agents and deterministic assembler/workbook scripts; built for downstream estimating/PM tools to pull from - it organizes and structures, it never prices, levels, or decides.
+description: Normalizes the verbatim project-intake dossier (which Mistral OCR4 produced) into the Canonical Project Record - one reusable, CSI MasterFormat-organized, provenance-carrying source of truth - and renders it as an interlinked Excel workbook plus a self-contained animated HTML command dashboard (donut KPI infographics, click-to-ITB segmented budget bar with buyout/profit mode, activity stream, daily-report cards with intelligence flags, critical-path plotter, editable three-week look-ahead, health lights, one-way connector sync with approval-gated two-way suggestions) in NTXP's navy/platinum/blue brand system. MasterFormat division is the sole classification and universal sort key. It organizes and structures; it never prices, levels, or decides.
 ---
 
 # Canonical Project Model — the source-of-truth layer
@@ -97,7 +97,7 @@ single barrier:** `assemble_model.py` validates and stitches `canonical-model.js
 `build_workbook.py` then renders the `.xlsx` (needs `openpyxl`; QR needs `segno`+`Pillow`,
 else it degrades to a hyperlink); and `build_dashboard_html.py` (stdlib only) renders a
 self-contained animated HTML dashboard — a read-only "at a glance" view in NTXP's
-charcoal/blue/gold/red visual system. The Excel workbook stays the working deliverable.
+navy/platinum/blue/red visual system. The Excel workbook stays the working deliverable.
 
 ## The dashboard (v2) — what it renders
 
