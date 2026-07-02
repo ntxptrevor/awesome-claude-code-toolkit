@@ -223,6 +223,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [nimbalyst](https://nimbalyst.com) | Visual workspace for building with Codex and Claude Code. Session and task manager. Visual editing |
 | [n8n-workflow](plugins/n8n-workflow/) | Generate n8n automation workflows from natural language descriptions |
 | [ntxp-contacts](plugins/ntxp-contacts/) | NTXP master contacts database: one de-duplicated source of truth with idempotent imports, full-text search, and bi-directional CRM sync |
+| [tesla-connector](plugins/tesla-connector/) | Tesla vehicle control: find my Tesla / drop a pin / navigate-to-car, lock & unlock, climate, charging — 72 MCP tools, zero-touch first-run setup, themed dashboard GUI, Siri/ChatGPT bridge |
 | [nexus-agents](https://github.com/williamzujkowski/nexus-agents) | Intelligent orchestration platform routing tasks to Claude, Gemini, Codex, and OpenCode via Budget→TOPSIS→LinUCB composite router. 30 MCP tools (orchestrate, consensus voting, research pipelines), 12 expert agents, 17 skills, plugin-native `/agents` + hooks. Install: `/plugin marketplace add williamzujkowski/nexus-agents` |
 | [onboarding-guide](plugins/onboarding-guide/) | New developer onboarding documentation generator |
 | [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) | Teams-first multi-agent orchestration. 19 specialized agents, 28 skills. Full autonomous execution, Socratic questioning, N coordinated agents. 9,900+ stars |
@@ -936,7 +937,7 @@ cp templates/claude-md/standard.md CLAUDE.md
 ## MCP Configs
 
 Seven curated Model Context Protocol server configurations.
-Sixteen curated Model Context Protocol server configurations.
+Seventeen curated Model Context Protocol server configurations.
 
 | Config | File | Servers Included |
 |--------|------|-----------------|
@@ -958,6 +959,7 @@ Sixteen curated Model Context Protocol server configurations.
 | Finance | [`finance.json`](mcp-configs/finance.json) | Helium news/markets/options, Chart Library pattern intelligence, Fetch, Memory |
 | E-Commerce | [`ecommerce.json`](mcp-configs/ecommerce.json) | BuyWhere product search, price comparison, deal discovery across 1M+ products |
 | LLM Cost | [`llm-cost.json`](mcp-configs/llm-cost.json) | llm-prices: look up and compare API costs across 167 models from 23 providers before making calls |
+| Tesla | [`tesla.json`](mcp-configs/tesla.json) | Tesla connector ([server](mcp-servers/tesla/)): find my Tesla / drop a pin / navigate-to-car, lock/unlock, climate, charging, sentry — 72 tools + themed dashboard + Siri/ChatGPT bridge |
 | Procurement | [`procurement.json`](mcp-configs/procurement.json) | DeepRFP, NTXP BidWatch (SAM.gov/HigherGov/BidBanana/OpenGov/ESBD/Bonfire/Jaggaer/Ionwave), Filesystem, Fetch |
 
 ---
