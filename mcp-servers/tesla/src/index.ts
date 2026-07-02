@@ -15,7 +15,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { loadConfig } from "./config.js";
+import { applyConfigFile, loadConfig } from "./config.js";
 import { TeslaClient } from "./client.js";
 import { TOOLS } from "./tools.js";
 
@@ -30,6 +30,7 @@ function fail(err: unknown) {
   return { isError: true, content: [{ type: "text" as const, text: `Error: ${message}` }] };
 }
 
+applyConfigFile();
 const config = loadConfig();
 const client = new TeslaClient(config);
 const server = new McpServer({ name: "tesla", version: "0.1.0" });

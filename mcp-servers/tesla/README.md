@@ -117,7 +117,22 @@ claude mcp add tesla --env TESLA_REFRESH_TOKEN=... \
 ```
 
 Claude Desktop / any MCP client — see `../../mcp-configs/tesla.json`.
-A packaged one-click bundle can be built with `scripts/pack-mcpb.sh` → `tesla.mcpb`.
+
+### Prepackaged exports
+
+`scripts/export.sh` builds three self-contained artifacts into `build/`
+(compiled server + production dependencies embedded — no repo clone or
+`npm install` on the target machine):
+
+| Artifact | Install |
+| --- | --- |
+| `tesla.mcpb` | MCP Bundle: open in Claude Desktop, or `npx @anthropic-ai/mcpb install tesla.mcpb` |
+| `tesla-connector-plugin.zip` | Claude Code plugin (MCP server + `/setup` + `/dashboard` commands + skill + first-run hook): unzip into `~/.claude/plugins/` |
+| `tesla-connector-skill.zip` | Prepackaged Agent Skill (SKILL.md + bundled `tesla-cli`, no MCP needed): unzip into `~/.claude/skills/` or upload to claude.ai |
+
+There is also a direct CLI over the same registry:
+`node dist/cli.js tesla_find_my_tesla` / `node dist/cli.js list`.
+(`scripts/pack-mcpb.sh` remains for building just the `.mcpb`.)
 
 Then just ask: *"where's my Tesla?"*, *"unlock the car for my wife"*,
 *"set the charge limit to 90 and warm the cabin to 72"*.

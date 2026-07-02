@@ -5,7 +5,8 @@
   "type": "module",
   "bin": {
     "mcp-server-tesla": "dist/index.js",
-    "tesla-bridge": "dist/bridge.js"
+    "tesla-bridge": "dist/bridge.js",
+    "tesla-cli": "dist/cli.js"
   },
   "files": ["dist", "public"],
   "scripts": {

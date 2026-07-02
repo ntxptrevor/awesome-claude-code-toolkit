@@ -29,10 +29,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { loadConfig } from "./config.js";
+import { applyConfigFile, loadConfig } from "./config.js";
 import { TeslaClient } from "./client.js";
 import { TOOLS, getTool, statusSnapshot, mapLinks } from "./tools.js";
 
+applyConfigFile();
 const config = loadConfig();
 const client = new TeslaClient(config);
 const PORT = Number(process.env.TESLA_BRIDGE_PORT || 8321);
