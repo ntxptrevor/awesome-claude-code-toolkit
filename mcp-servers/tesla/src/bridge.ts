@@ -5,6 +5,8 @@
  *   GET  /                     Tesla-themed dashboard GUI
  *   GET  /healthz              liveness (no auth)
  *   GET  /openapi.json         OpenAPI spec for ChatGPT Actions (no auth)
+ *   ALL  /mcp                  MCP over streamable HTTP — add as a claude.ai
+ *                              custom connector: https://<host>/mcp?token=<TOKEN>
  *   GET  /api/tools            list every tool + params
  *   POST /api/tools/{name}     invoke any tool, JSON body = args
  *   GET  /api/status           composite vehicle snapshot
@@ -29,8 +31,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { applyConfigFile, loadConfig } from "./config.js";
 import { TeslaClient } from "./client.js";
+import { buildMcpServer } from "./mcp.js";
 import { TOOLS, getTool, statusSnapshot, mapLinks } from "./tools.js";
 
 applyConfigFile();
@@ -194,6 +198,21 @@ const serverInstance = createServer(async (req, res) => {
     // Everything below requires the bridge token.
     if (!tokenOk(req, url)) {
       return json(res, 401, { error: "Unauthorized. Pass Authorization: Bearer <TESLA_BRIDGE_TOKEN> or ?token=." });
+    }
+
+    // MCP over streamable HTTP (stateless): lets claude.ai / Claude mobile add
+    // this bridge as a custom connector. Fresh server+transport per request.
+    if (url.pathname === "/mcp") {
+      const body = req.method === "POST" ? await readBody(req) : undefined;
+      const mcp = buildMcpServer(client);
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+      res.on("close", () => {
+        transport.close();
+        mcp.close();
+      });
+      await mcp.connect(transport);
+      await transport.handleRequest(req, res, body);
+      return;
     }
 
     if (url.pathname === "/api/tools" && req.method === "GET") {

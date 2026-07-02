@@ -187,6 +187,27 @@ it launches turn-by-turn walking directions), `/siri/pin` as **"Drop a pin to
 my Tesla"** (add **Share** to text it to family), and `/siri/unlock` as
 **"Unlock my Tesla for the family"**. Then: *"Hey Siri, find my Tesla."*
 
+## Show it in your Connectors
+
+Two surfaces, both supported:
+
+- **Claude Desktop (Extensions/Connectors)** — build or grab `tesla.mcpb`
+  (`scripts/export.sh`) and open the file in Claude Desktop. It installs under
+  Settings → Extensions with a config screen for your token/VIN/region, and the
+  `tesla` tools appear in every chat.
+- **claude.ai / Claude mobile (custom connector)** — the bridge speaks MCP over
+  streamable HTTP at `/mcp`. Expose the bridge over HTTPS (Tailscale funnel /
+  Cloudflare tunnel, see above), then in claude.ai → Settings → Connectors →
+  **Add custom connector**, use:
+
+  ```
+  https://<your-host>/mcp?token=<TESLA_BRIDGE_TOKEN>
+  ```
+
+  The Tesla connector then shows in your connectors list on web and mobile,
+  with all 72 tools. (The token rides in the URL because custom connectors
+  don't send custom headers — use HTTPS and a long random token.)
+
 ## ChatGPT integration
 
 Two ways, both first-class:
