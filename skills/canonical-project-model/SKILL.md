@@ -99,6 +99,43 @@ else it degrades to a hyperlink); and `build_dashboard_html.py` (stdlib only) re
 self-contained animated HTML dashboard — a read-only "at a glance" view in NTXP's
 charcoal/blue/gold/red visual system. The Excel workbook stays the working deliverable.
 
+## The dashboard (v2) — what it renders
+
+`build_dashboard_html.py` (stdlib-only, self-contained output) renders: manual **sync
+pills** across the top (glow on hover) · five **donut KPI infographics** (thick bold
+slices slide around the ring and bounce closed; glowing value in a smooth round
+center) · a **segmented budget bar** by trade with dollar amounts above and the total
+below — click a segment for that trade's budget justification and **exportable ITB**
+(print / download); once `phase=project` it becomes the **Buyout Budget** with profit
+in neon green · the **activity stream** (JobTread photos, OCR4 pdf snips) · five
+translucent **daily-report date cards** with meeting/workplace-intelligence flag
+banners linking to the JobTread report · **open submittals** and **open RFIs** beside
+a scrollable vertical **critical-path plotter** · a **three-week look-ahead**
+(last/this/next week) with click-to-edit cells, red critical path and blue deliveries.
+**Health lights**: green = on track · yellow = the PM team should work this soon ·
+red = priority focus. Donut/segment colors are a validated categorical palette
+(dataviz six checks, dark surface) assigned to divisions in fixed order.
+
+## Data connectors & sync policy
+
+- **One-way in, always.** Every connector (JobTread, OCR4 docs, schedule, contacts)
+  syncs INTO the knowledge base. Prioritize the most recent **five days** of data,
+  then backfill quickly. The canonical model is the **single source of truth**.
+- **Two-way only by approval.** After inbound sync and tool updates finish, present
+  the agent's reasoned conclusions in the dashboard GUI (**Propose updates**):
+  suggested meetings to resolve items, schedule changes to protect the critical path,
+  budget adjustments, change-order candidates for scope that appears unbudgeted,
+  constraint solutions, and alternative specs/products/suppliers. Nothing writes
+  outward until the user approves.
+- **If declined**, ask once whether a narrower sync is wanted (schedule / documents /
+  contacts only). If not, leave the dashboard and knowledge base **correct and
+  authoritative even when external tools do not align**.
+- **Voice**: senior PM helping the newer team members — calm, assertive, specific,
+  supportive. Explain circumstances so people relax and feel supported; never add
+  stress. **Never make blunt negative statements about the project's success** — a
+  customer may be reading. Use constructive framing ("the item to watch this week"),
+  and encode urgency in the red/yellow/green lights, not in alarming language.
+
 ## Cross-references
 
 - `mistral-ocr4` — extraction layer (upstream of intake).

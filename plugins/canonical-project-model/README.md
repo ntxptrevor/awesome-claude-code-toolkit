@@ -110,17 +110,22 @@ python scripts/build_dashboard_html.py --model projects/lincoln-clinic-ti/model/
 
 ### The HTML dashboard (`build_dashboard_html.py`)
 
-A self-contained `<slug>.html` (no external requests — safe to email or host) that
-presents the same record as a read-only, interactive dashboard: KPI summary, key-date
-and schedule timelines, filterable Trades and Summary QTO, Bid Log with confidence
-meters, Critical Path, and an editable-looking Budget Rollup — all sorted by
-MasterFormat division. Visual system: charcoal ground with 3D beveled gradients,
-**blue** for interactive/data, **gold** hairline rules + money, **red** reserved for
-risk (low confidence, long-lead, needs-review), serif headlines over a sans body.
-Motion (scroll reveals, count-ups, bar fills, hover glow, drifting background) honors
-`prefers-reduced-motion` and degrades gracefully with JS off. `--fragment` emits
-body-only markup for embedding; `--company` / `--website` set branding and the (Excel)
-ITB QR target. The Excel workbook remains the working deliverable; this is the glance.
+A self-contained `<slug>.html` (no external requests — safe to email or host) rendered
+from the same model: manual **sync pills** (one-way into the knowledge base, last five
+days first; the Propose-Updates dialog stages the agent's suggestions for an
+**approved** two-way sync) · five **donut KPI infographics** (slices slide around the
+ring and bounce closed; glowing center values) · a **segmented budget bar** — click a
+segment for that trade's budget justification and **exportable ITB** (print/download);
+flips to the **Buyout Budget with neon-green profit** once `phase=project` · the
+**activity stream** (JobTread photos, OCR4 pdf snips) · five translucent
+**daily-report cards** with intelligence-flag banners · **open submittals/RFIs** beside
+a scrollable **critical-path plotter** · a **three-week look-ahead** with click-to-edit
+cells (red critical path, blue deliveries). Green/yellow/red **health lights** per
+section; copy stays constructive (customers may see the screen). Charcoal 3D-gradient
+visual system (blue interactive/data, gold rules+money, red risk); categorical chart
+palette validated with the dataviz six checks. Honors `prefers-reduced-motion`,
+degrades with JS off; `--fragment` embeds. The workbook remains the working
+deliverable; this is the wall screen.
 
 `build_workbook.py` flags: `--out` (xlsx path), `--company` (branding, default NTXP),
 `--website` (URL the ITB QR points to, default the NTXP site), `--dry-run`.

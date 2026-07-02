@@ -50,7 +50,9 @@
       "properties": {
         "direct_cost": { "$ref": "common.defs.schema.json#/$defs/money" },
         "indirect_cost": { "$ref": "common.defs.schema.json#/$defs/money" },
-        "total_budget": { "$ref": "common.defs.schema.json#/$defs/money" }
+        "total_budget": { "$ref": "common.defs.schema.json#/$defs/money" },
+        "contract_value": { "$ref": "common.defs.schema.json#/$defs/money", "description": "Awarded contract sum (project phase)." },
+        "profit": { "$ref": "common.defs.schema.json#/$defs/money", "description": "Buyout profit (contract value minus committed/estimated cost). Shown in the buyout view once phase=project." }
       }
     }
   }
