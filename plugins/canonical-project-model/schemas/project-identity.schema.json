@@ -24,6 +24,7 @@
     },
     "market_sector": { "type": "string", "description": "e.g. commercial office, healthcare, education, federal, industrial, multifamily." },
     "project_type": { "type": "string", "enum": ["new_construction", "renovation", "tenant_improvement", "addition", "repair_maintenance", "mixed", "unknown"] },
+    "phase": { "type": "string", "enum": ["estimate", "project", "closeout", "unknown"], "description": "Lifecycle stage. 'estimate' = bidding; 'project' = awarded/under way — the dashboard's budget section flips to the Buyout Budget with profit shown." },
     "delivery_method": { "type": "string", "enum": ["design_bid_build", "design_build", "cm_at_risk", "cm_agency", "joc", "idiq", "design_assist", "ipd", "other", "unknown"] },
     "contract_type": { "type": "string", "enum": ["lump_sum", "gmp", "unit_price", "cost_plus", "time_and_materials", "joc_coefficient", "other", "unknown"] },
     "building": {

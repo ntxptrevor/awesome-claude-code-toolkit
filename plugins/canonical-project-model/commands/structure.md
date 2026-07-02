@@ -46,6 +46,10 @@ If given a `handoff.json`, its `dossier_dir` is used. The dossier must already e
    Summary QTO, per-trade Budget pages (qty pulled live from the QTO, ITB button), ITB
    pages (QR to the NTXP site, print-ready), Submittal Register, Schedule, Critical
    Path, Bid Log, and an editable Budget Rollup — all sorted by MasterFormat division.
+6. **(Optional) Render the HTML dashboard.** Run `scripts/build_dashboard_html.py
+   --model projects/<slug>/model/canonical-model.json` for a self-contained, animated
+   `<slug>.html` "at a glance" view (stdlib only). Charcoal/blue/gold/red visual
+   system; the Excel workbook stays the working deliverable.
 
 ## Running the scripts directly
 

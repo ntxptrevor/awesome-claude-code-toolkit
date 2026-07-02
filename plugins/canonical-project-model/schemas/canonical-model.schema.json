@@ -65,7 +65,22 @@
         "rfi_log": { "description": "rfi-log.schema.json", "type": ["object", "string"] },
         "safety_plan": { "description": "safety-plan.schema.json", "type": ["object", "string"] },
         "logistics_plan": { "description": "logistics-plan.schema.json", "type": ["object", "string"] },
-        "requirements": { "description": "requirements.schema.json — binding requirements, compliance, addenda.", "type": ["object", "string"] }
+        "requirements": { "description": "requirements.schema.json — binding requirements, compliance, addenda.", "type": ["object", "string"] },
+        "activity_stream": { "description": "activity-stream.schema.json — connector-synced activity (JobTread photos, OCR4 pdf snips).", "type": ["object", "string"] },
+        "daily_reports": { "description": "daily-reports.schema.json — JobTread daily-report summaries with intelligence flags.", "type": ["object", "string"] },
+        "suggestions": { "description": "suggestions.schema.json — agent-proposed changes staged for user-approved two-way sync.", "type": ["object", "string"] },
+        "connectors": { "description": "connectors.schema.json — data-source sync state (one-way in; last five days prioritized).", "type": ["object", "string"] }
+      }
+    },
+    "health": {
+      "type": "object",
+      "description": "Traffic-light trend per dashboard section: green = on track; yellow = the PM team should give this attention soon; red = priority focus (trending the wrong way). Phrasing everywhere stays constructive — the dashboard never makes blunt negative statements about project success (a customer may be looking).",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["green", "yellow", "red"] },
+          "note": { "type": "string", "description": "Short, constructive reason (e.g. 'switchgear lead time is the item to watch')." }
+        }
       }
     },
     "counts": {

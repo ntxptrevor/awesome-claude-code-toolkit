@@ -52,6 +52,10 @@ SECTIONS = [
     ("safety_plan", "safety-plan.schema.json", "safety_plan", "hazards"),
     ("logistics_plan", "logistics-plan.schema.json", "logistics_plan", "constraints"),
     ("requirements", "requirements.schema.json", "requirements", "requirements"),
+    ("activity_stream", "activity-stream.schema.json", "activity_stream", "entries"),
+    ("daily_reports", "daily-reports.schema.json", "daily_reports", "reports"),
+    ("suggestions", "suggestions.schema.json", "suggestions", "items"),
+    ("connectors", "connectors.schema.json", "connectors", "sources"),
 ]
 SECTION_BY_KEY = {s[0]: s for s in SECTIONS}
 
@@ -199,11 +203,16 @@ def build(args):
     meta = load_json(sections_dir / "_meta.json") or {}
     conflicts = meta.get("conflicts", []) if isinstance(meta, dict) else []
     normalization_log = meta.get("normalization_log", []) if isinstance(meta, dict) else []
+    health = meta.get("health", {}) if isinstance(meta, dict) else {}
     if isinstance(meta, dict):
         needs_review.extend(meta.get("needs_human_review", []) or [])
     for c in conflicts:
         if isinstance(c, dict) and c.get("field"):
             needs_review.append(f"conflict: documents disagree on '{c['field']}'")
+
+    # near-duplicate review items (auto-generated + orchestrator-supplied) read as
+    # noise on the dashboard — keep first occurrence, preserve order
+    needs_review = list(dict.fromkeys(needs_review))
 
     overall_conf = round(sum(all_conf) / len(all_conf), 3) if all_conf else None
 
@@ -222,6 +231,7 @@ def build(args):
         "location": project.get("location"),
         "delivery_method": ident.get("delivery_method"),
         "contract_type": ident.get("contract_type"),
+        "phase": ident.get("phase", "estimate"),
         "is_joc": bool(joc) or ident.get("delivery_method") in ("joc", "idiq"),
     }
     # sections value: embedded object (self-contained) or relative path (modular)
@@ -248,6 +258,7 @@ def build(args):
             "joc_unit_price_book": (joc or {}).get("unit_price_book", "") if isinstance(joc, dict) else "",
         },
         "sections": sections_value,
+        "health": health,
         "counts": counts,
         "confidence": {"overall": overall_conf, "by_section": conf_by_section},
         "normalization_log": normalization_log,
