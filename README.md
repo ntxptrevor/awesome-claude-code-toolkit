@@ -936,7 +936,7 @@ cp templates/claude-md/standard.md CLAUDE.md
 ## MCP Configs
 
 Seven curated Model Context Protocol server configurations.
-Sixteen curated Model Context Protocol server configurations.
+Seventeen curated Model Context Protocol server configurations.
 
 | Config | File | Servers Included |
 |--------|------|-----------------|
@@ -958,6 +958,7 @@ Sixteen curated Model Context Protocol server configurations.
 | Finance | [`finance.json`](mcp-configs/finance.json) | Helium news/markets/options, Chart Library pattern intelligence, Fetch, Memory |
 | E-Commerce | [`ecommerce.json`](mcp-configs/ecommerce.json) | BuyWhere product search, price comparison, deal discovery across 1M+ products |
 | LLM Cost | [`llm-cost.json`](mcp-configs/llm-cost.json) | llm-prices: look up and compare API costs across 167 models from 23 providers before making calls |
+| Tesla | [`tesla.json`](mcp-configs/tesla.json) | Tesla connector ([server](mcp-servers/tesla/)): find my Tesla / drop a pin / navigate-to-car, lock/unlock, climate, charging, sentry — 72 tools + themed dashboard + Siri/ChatGPT bridge |
 | Procurement | [`procurement.json`](mcp-configs/procurement.json) | DeepRFP, NTXP BidWatch (SAM.gov/HigherGov/BidBanana/OpenGov/ESBD/Bonfire/Jaggaer/Ionwave), Filesystem, Fetch |
 
 ---
