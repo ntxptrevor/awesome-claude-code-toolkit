@@ -1,0 +1,38 @@
+{
+  "manifest_version": "0.2",
+  "name": "browserbase",
+  "display_name": "Browserbase Connector",
+  "version": "0.1.0",
+  "description": "Cloud browser automation via Browserbase + Stagehand: navigate, act, observe, and extract structured data from any web page — no local Chrome required.",
+  "long_description": "Wraps the official @browserbasehq/mcp server with zero-touch setup. Exposes 6 tools (start, end, navigate, act, observe, extract) backed by real cloud Chrome sessions. Bring your own Browserbase API key and project ID (free tier available); optionally set a model provider key for the act/observe/extract AI calls (Gemini by default, or any provider via modelName/modelApiKey).",
+  "author": { "name": "awesome-claude-code-toolkit" },
+  "license": "MIT",
+  "keywords": ["browser", "automation", "scraping", "stagehand", "browserbase", "web", "playwright"],
+  "server": {
+    "type": "node",
+    "entry_point": "vendor/node_modules/@browserbasehq/mcp/cli.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/vendor/node_modules/@browserbasehq/mcp/cli.js"],
+      "env": {
+        "BROWSERBASE_API_KEY": "${user_config.browserbase_api_key}",
+        "BROWSERBASE_PROJECT_ID": "${user_config.browserbase_project_id}",
+        "GEMINI_API_KEY": "${user_config.gemini_api_key}"
+      }
+    }
+  },
+  "tools": [
+    { "name": "start", "description": "Open (or reuse) a cloud browser session." },
+    { "name": "navigate", "description": "Load a URL in the current session." },
+    { "name": "act", "description": "Perform one interaction: click, type, select, scroll." },
+    { "name": "observe", "description": "List interactable elements matching a description." },
+    { "name": "extract", "description": "Pull structured data out of the current page." },
+    { "name": "end", "description": "Close the current session." }
+  ],
+  "user_config": {
+    "browserbase_api_key": { "type": "string", "title": "Browserbase API Key", "description": "From browserbase.com/settings.", "sensitive": true, "required": true },
+    "browserbase_project_id": { "type": "string", "title": "Browserbase Project ID", "description": "From browserbase.com/settings.", "required": true },
+    "gemini_api_key": { "type": "string", "title": "Gemini API Key", "description": "Powers the default model for act/observe/extract. Optional if you pass --modelName/--modelApiKey another way.", "sensitive": true, "required": false }
+  },
+  "compatibility": { "runtimes": { "node": ">=18.0.0" } }
+}

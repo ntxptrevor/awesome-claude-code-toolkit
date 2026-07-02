@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "browserbase": {
+      "command": "npx",
+      "args": ["-y", "@browserbasehq/mcp"],
+      "env": {
+        "BROWSERBASE_API_KEY": "<your Browserbase API key — https://www.browserbase.com/settings>",
+        "BROWSERBASE_PROJECT_ID": "<your Browserbase project ID — https://www.browserbase.com/settings>",
+        "GEMINI_API_KEY": "<optional — powers the default google/gemini-2.5-flash-lite model used by act/observe/extract; omit and pass --modelName/--modelApiKey args instead to use another provider>"
+      },
+      "description": "Browserbase cloud browser automation via Stagehand: navigate, act, observe, and extract structured data from any web page using real cloud Chrome instances — no local browser install required. Exposes 6 MCP tools: start, end, navigate, act, observe, extract. See plugins/browserbase/ for zero-touch setup, or skills/browserbase-automation/ for usage patterns."
+    }
+  }
+}

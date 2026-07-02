@@ -1,0 +1,11 @@
+{
+  "name": "browserbase",
+  "version": "0.1.0",
+  "description": "Cloud browser automation from Claude via Browserbase + Stagehand: navigate, click, fill forms, and extract structured data from any web page. Zero-touch first-run setup, no local Chrome install.",
+  "commands": [
+    "commands/setup.md",
+    "commands/scrape-page.md",
+    "commands/fill-form.md",
+    "commands/browse-agent.md"
+  ]
+}

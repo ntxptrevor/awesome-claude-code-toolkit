@@ -1,6 +1,6 @@
 # Claude Code Toolkit
 
-**The most comprehensive toolkit for Claude Code -- 135 agents, 35 curated skills (+400,000 via [SkillKit](https://agenstskills.com)), 42 commands, 176+ plugins, 20 hooks, 15 rules, 7 templates, 15 MCP configs, 26 companion apps, 53 ecosystem entries, and more.**
+**The most comprehensive toolkit for Claude Code -- 136 agents, 36 curated skills (+400,000 via [SkillKit](https://agenstskills.com)), 42 commands, 177+ plugins, 20 hooks, 15 rules, 7 templates, 24 MCP configs, 26 companion apps, 53 ecosystem entries, and more.**
 
 <p align="center">
   <a href="https://trendshift.io/repositories/21839" target="_blank"><img src="https://trendshift.io/api/badge/repositories/21839" alt="rohitg00%2Fawesome-claude-code-toolkit | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -46,19 +46,19 @@ curl -fsSL https://raw.githubusercontent.com/rohitg00/awesome-claude-code-toolki
 
 ## Table of Contents
 
-- [Plugins](#plugins) (176+)
-- [Agents](#agents) (135)
-- [Skills](#skills) (35 curated + 28 community)
+- [Plugins](#plugins) (177+)
+- [Agents](#agents) (136)
+- [Skills](#skills) (36 curated + 28 community)
 - [Commands](#commands) (42)
 - [Hooks](#hooks) (24 scripts)
 - [Rules](#rules) (16)
 - [Templates](#templates) (7)
-- [MCP Configs](#mcp-configs) (7)
+- [MCP Configs](#mcp-configs) (24)
 - [Contexts](#contexts) (6)
 - [Hooks](#hooks) (20 scripts)
 - [Rules](#rules) (15)
 - [Templates](#templates) (7)
-- [MCP Configs](#mcp-configs) (14)
+- [MCP Configs](#mcp-configs) (24)
 - [Contexts](#contexts) (5)
 - [Examples](#examples) (3)
 - [Companion Apps & GUIs](#companion-apps--guis)
@@ -72,7 +72,7 @@ curl -fsSL https://raw.githubusercontent.com/rohitg00/awesome-claude-code-toolki
 
 ## Plugins
 
-Over 176 production-ready plugins that extend Claude Code with domain-specific capabilities.
+Over 177 production-ready plugins that extend Claude Code with domain-specific capabilities.
 
 ### Featured
 
@@ -109,6 +109,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [aws-helper](plugins/aws-helper/) | AWS service configuration and deployment automation |
 | [azure-helper](plugins/azure-helper/) | Azure service configuration and deployment automation |
 | [backend-architect](plugins/backend-architect/) | Backend service architecture design with endpoint scaffolding |
+| [browserbase](plugins/browserbase/) | Cloud browser automation from Claude via Browserbase + Stagehand — navigate, act, observe, extract structured data from any web page, no local Chrome required. Zero-touch first-run setup, ships as a plugin, `.mcpb` bundle, and standalone MCP config |
 | [bug-detective](plugins/bug-detective/) | Debug issues systematically with root cause analysis and execution tracing |
 | [Bouncer](https://github.com/buildingopen/bouncer) | Independent quality gate that uses Gemini to audit Claude Code's output. Includes Stop hook (automatic), quick audit skill, and deep audit with full tool access. One-liner install. |
 | [brooks-lint](https://github.com/hyhmrright/brooks-lint) | AI code reviews grounded in six classic engineering books (Brooks, Fowler, Martin, McConnell, Hunt & Thomas, Evans). Diagnoses code across 6 decay risk dimensions with structured findings (Symptom → Source → Consequence → Remedy). Supports PR review, architecture audit, tech debt assessment, and test quality review. v0.6 adds Mermaid dependency graphs. |
@@ -344,7 +345,7 @@ Or install all plugins at once:
 
 ## Agents
 
-One hundred thirty-five specialized agents organized into ten categories. Each agent defines a persona, system instructions, and tool access patterns.
+One hundred thirty-six specialized agents organized into ten categories. Each agent defines a persona, system instructions, and tool access patterns.
 
 ### Core Development (13 agents)
 
@@ -466,7 +467,7 @@ One hundred thirty-five specialized agents organized into ten categories. Each a
 | Testing Infrastructure | [`testing-infrastructure.md`](agents/developer-experience/testing-infrastructure.md) | Test runners, CI splitting, flaky test management |
 | Developer Portal | [`developer-portal.md`](agents/developer-experience/developer-portal.md) | Backstage, service catalogs, self-service infra |
 
-### Specialized Domains (15 agents)
+### Specialized Domains (16 agents)
 
 | Agent | File | Purpose |
 |-------|------|---------|
@@ -485,6 +486,7 @@ One hundred thirty-five specialized agents organized into ten categories. Each a
 | Geospatial Engineer | [`geospatial-engineer.md`](agents/specialized-domains/geospatial-engineer.md) | PostGIS, spatial queries, mapping APIs, tiles |
 | Robotics Engineer | [`robotics-engineer.md`](agents/specialized-domains/robotics-engineer.md) | ROS2, sensor fusion, motion planning, SLAM |
 | Voice Assistant | [`voice-assistant.md`](agents/specialized-domains/voice-assistant.md) | STT, TTS, dialog management, Alexa/Google |
+| Browser Automation Engineer | [`browser-automation-engineer.md`](agents/specialized-domains/browser-automation-engineer.md) | Browserbase/Stagehand scraping, form automation, agentic browsing |
 
 ### Business & Product (12 agents)
 
@@ -549,7 +551,7 @@ Reference an agent in your `CLAUDE.md`:
 
 ## Skills
 
-Thirty-five curated skill modules included in this repo, with access to **400,000+ additional skills** via the [SkillKit marketplace](https://agenstskills.com). Each included skill teaches Claude Code domain-specific patterns with code examples, anti-patterns, and checklists.
+Thirty-six curated skill modules included in this repo, with access to **400,000+ additional skills** via the [SkillKit marketplace](https://agenstskills.com). Each included skill teaches Claude Code domain-specific patterns with code examples, anti-patterns, and checklists.
 
 | Skill | Directory | What It Teaches |
 |-------|-----------|-----------------|
@@ -589,6 +591,7 @@ Thirty-five curated skill modules included in this repo, with access to **400,00
 | Mobile Development | `skills/mobile-development/` | React Native, Flutter, responsive layouts |
 | Data Engineering | `skills/data-engineering/` | ETL pipelines, Spark, star schema, data quality |
 | LLM Integration | `skills/llm-integration/` | Streaming, function calling, RAG, cost optimization |
+| Browserbase Automation | `skills/browserbase-automation/` | Stagehand tool contract, act/observe/extract prompt patterns, session reuse |
 
 ### Community Skills
 
@@ -936,8 +939,7 @@ cp templates/claude-md/standard.md CLAUDE.md
 
 ## MCP Configs
 
-Seven curated Model Context Protocol server configurations.
-Seventeen curated Model Context Protocol server configurations.
+Twenty-four curated Model Context Protocol server configurations.
 
 | Config | File | Servers Included |
 |--------|------|-----------------|
@@ -961,6 +963,7 @@ Seventeen curated Model Context Protocol server configurations.
 | LLM Cost | [`llm-cost.json`](mcp-configs/llm-cost.json) | llm-prices: look up and compare API costs across 167 models from 23 providers before making calls |
 | Tesla | [`tesla.json`](mcp-configs/tesla.json) | Tesla connector ([server](mcp-servers/tesla/)): find my Tesla / drop a pin / navigate-to-car, lock/unlock, climate, charging, sentry — 72 tools + themed dashboard + Siri/ChatGPT bridge |
 | Procurement | [`procurement.json`](mcp-configs/procurement.json) | DeepRFP, NTXP BidWatch (SAM.gov/HigherGov/BidBanana/OpenGov/ESBD/Bonfire/Jaggaer/Ionwave), Filesystem, Fetch |
+| Browserbase | [`browserbase.json`](mcp-configs/browserbase.json) | Browserbase cloud browser automation via Stagehand ([plugin](plugins/browserbase/)): navigate, act, observe, extract — 6 tools, no local Chrome required |
 
 ---
 
