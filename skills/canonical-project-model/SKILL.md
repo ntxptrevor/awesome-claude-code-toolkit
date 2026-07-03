@@ -118,7 +118,7 @@ red = priority focus. Donut/segment colors are a validated categorical palette
 
 ## Data connectors & sync policy
 
-- **One-way in, always.** Every connector (JobTread, OCR4 docs, schedule, contacts)
+- **One-way in, always.** Every connector (JobTread, OCR4 docs, schedule, contacts, workspace intelligence — summarized emails and meeting minutes land in the activity stream and knowledge base with provenance)
   syncs INTO the knowledge base. Prioritize the most recent **five days** of data,
   then backfill quickly. The canonical model is the **single source of truth**.
 - **Two-way only by approval.** After inbound sync and tool updates finish, present
