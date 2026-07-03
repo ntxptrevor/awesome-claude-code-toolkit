@@ -1,0 +1,12 @@
+{
+  "name": "browserbase",
+  "version": "1.0.0",
+  "description": "Cloud browser automation via Browserbase and Stagehand: scrape pages, fill forms, extract structured data, and drive browsers with natural language. Auto-configures the MCP server and browse CLI.",
+  "commands": [
+    "commands/scrape-page.md",
+    "commands/fill-form.md",
+    "commands/browse-agent.md",
+    "commands/setup.md"
+  ],
+  "agents": ["agents/browser-automation-engineer.md"]
+}

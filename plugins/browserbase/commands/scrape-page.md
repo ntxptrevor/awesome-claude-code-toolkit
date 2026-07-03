@@ -1,6 +1,8 @@
+# /browserbase:scrape-page
+
 Scrape a web page using Browserbase cloud browsers and Stagehand extract.
 
-## Steps
+## Process
 
 1. Determine the target URL and what data to extract.
 2. Check whether the target needs a full browser (JavaScript-rendered, interactive) or a lightweight fetch (static HTML). Default to Stagehand for anything uncertain.
