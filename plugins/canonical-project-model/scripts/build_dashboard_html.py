@@ -196,9 +196,20 @@ STYLE = """
 .cpm-root a{color:inherit;text-decoration:none}
 /* 3D ground: navy-black radial vignette + a faint diagonal sheen, with two
    constellation layers (interlinked stars) drifting slower than the foreground. */
-.cpm-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:
+.cpm-bg,.cpm-bg2{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  transition:opacity 1.5s ease}
+/* PROJECT phase: navy */
+.cpm-bg{background:
   linear-gradient(118deg,rgba(120,150,195,.05) 0%,transparent 34%,transparent 70%,rgba(60,80,115,.05) 100%),
   radial-gradient(125% 95% at 50% -12%,#151b28 0%,#0b0f16 46%,#05070c 100%)}
+/* ESTIMATE phase: black -> charcoal starry night */
+.cpm-bg2{background:
+  linear-gradient(118deg,rgba(160,165,175,.04) 0%,transparent 36%,transparent 72%,rgba(120,124,132,.04) 100%),
+  radial-gradient(125% 95% at 50% -12%,#1b1d21 0%,#0c0d10 48%,#040405 100%)}
+.phase-project .cpm-bg2{opacity:0}
+.phase-estimate .cpm-bg{opacity:0}
+.phase-estimate .cpm-stars.s1{opacity:.62}
+.phase-estimate .cpm-stars.s2{opacity:.42}
 .cpm-bg::before,.cpm-bg::after{content:"";position:absolute;width:62vmax;height:62vmax;border-radius:50%;
   filter:blur(95px);opacity:.11;will-change:transform}
 .cpm-bg::before{background:radial-gradient(circle,var(--blue),transparent 60%);top:-24vmax;right:-14vmax;animation:drift1 44s ease-in-out infinite}
@@ -222,6 +233,23 @@ STYLE = """
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(195,205,221,.5)}70%{box-shadow:0 0 0 9px rgba(195,205,221,0)}100%{box-shadow:0 0 0 0 rgba(195,205,221,0)}}
 .cpm-nav a{font-size:13px;color:var(--muted);padding:7px 12px;border-radius:9px;transition:.22s ease;border:1px solid transparent}
 .cpm-nav a:hover{color:#fff;border-color:var(--line2);box-shadow:0 0 20px -2px rgba(79,150,216,.45);transform:translateY(-1px)}
+/* phase toggle — large, glowing, top right */
+.ptoggle{cursor:pointer;position:relative;display:flex;align-items:center;width:196px;height:42px;
+  border-radius:999px;border:1px solid var(--line2);background:var(--panel);box-shadow:var(--raise);
+  margin-left:14px;flex:0 0 auto;transition:.3s ease}
+.ptoggle:hover{box-shadow:var(--raise),0 0 26px -2px rgba(79,150,216,.65)}
+.ptoggle .opt{flex:1;text-align:center;font:700 11px/1 var(--mono);letter-spacing:.12em;z-index:1;
+  color:var(--faint);transition:color .4s ease}
+.ptoggle .knob{position:absolute;top:3px;left:3px;width:94px;height:34px;border-radius:999px;
+  background:linear-gradient(180deg,#5ba4e0,var(--blue-deep));box-shadow:0 0 18px rgba(79,150,216,.75),0 1px 0 rgba(255,255,255,.25) inset;
+  transition:left .45s cubic-bezier(.34,1.4,.5,1),background .45s ease}
+.phase-project .ptoggle .knob{left:99px}
+.phase-estimate .ptoggle .knob{background:linear-gradient(180deg,#454b56,#24282f);box-shadow:0 0 18px rgba(195,205,221,.5),0 1px 0 rgba(255,255,255,.2) inset}
+.phase-estimate .ptoggle .opt.est{color:#fff}
+.phase-project .ptoggle .opt.proj{color:#fff}
+.ptoggle.flip .knob{animation:knobpulse .6s ease}
+@keyframes knobpulse{40%{box-shadow:0 0 34px 6px rgba(79,150,216,.85)}}
+.phase-estimate .segw.profit-seg{display:none}
 
 /* ------- sync pills ------- */
 .syncbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 0 0}
@@ -267,19 +295,18 @@ STYLE = """
 .dcard .dl{font:600 11px/1 var(--mono);color:var(--faint);letter-spacing:.12em;text-transform:uppercase;text-align:center}
 .dwrap{position:relative;width:128px;height:128px;margin:14px auto 10px}
 .dwrap svg{width:128px;height:128px;display:block}
-.dg{transform-origin:60px 60px;transform:rotate(-90deg)}
-.reveal.in .dg{animation:dspin 1s cubic-bezier(.34,1.56,.64,1) both}
-@keyframes dspin{from{transform:rotate(-260deg) scale(.82)}to{transform:rotate(-90deg) scale(1)}}
-.slice{fill:none;stroke-width:17;stroke-linecap:butt;
-  stroke-dashoffset:calc(var(--off)*1px - 120px);opacity:0;
-  transition:stroke-dashoffset .95s cubic-bezier(.3,1.35,.45,1),opacity .3s ease}
-.reveal.in .slice{stroke-dashoffset:calc(var(--off)*1px);opacity:1}
-.dtrack{fill:none;stroke:rgba(255,255,255,.07);stroke-width:17}
-.dcore{position:absolute;inset:22px;border-radius:50%;
+/* exploded pie: wedges roll out around the center, then the number fades in */
+.wedge{transform-origin:60px 60px;transform:rotate(0) translate(var(--tx),var(--ty)) scale(1)}
+.reveal.in .wedge{animation:rollout .85s cubic-bezier(.3,1.3,.45,1) both;animation-delay:var(--d)}
+@keyframes rollout{from{transform:rotate(-130deg) translate(0,0) scale(.55);opacity:0}
+  to{transform:rotate(0) translate(var(--tx),var(--ty)) scale(1);opacity:1}}
+.reveal.in .dnum{animation:numfade .55s ease 1.05s both}
+@keyframes numfade{from{opacity:0;transform:scale(.85)}}
+.dcore{position:absolute;inset:37px;border-radius:50%;
   background:radial-gradient(circle at 38% 32%,#2c323c 0%,#20242c 70%,#1b1f26 100%);
   box-shadow:0 2px 10px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.06) inset;
   display:grid;place-items:center}
-.dnum{font:700 21px/1 var(--sans);font-variant-numeric:tabular-nums;color:#fff;
+.dnum{font:700 17px/1 var(--sans);font-variant-numeric:tabular-nums;color:#fff;
   text-shadow:0 0 14px rgba(79,150,216,.95),0 0 34px rgba(79,150,216,.45)}
 .dnum.goldglow{text-shadow:0 0 14px rgba(216,184,120,.95),0 0 34px rgba(195,205,221,.5)}
 .dleg{display:flex;flex-wrap:wrap;gap:5px 10px;justify-content:center;min-height:18px}
@@ -458,7 +485,6 @@ tr.deliv td:first-child{box-shadow:3px 0 0 var(--blue) inset}
 @media (prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
   .reveal{opacity:1;transform:none}
-  .slice{stroke-dashoffset:calc(var(--off)*1px)!important;opacity:1!important}
 }
 @media print{
   body.print-modal *{visibility:hidden}
@@ -604,6 +630,30 @@ SCRIPT = """
     });
   });
 
+  // phase toggle — flips the view and stages the change for approved two-way sync
+  var root=document.querySelector('.cpm-root')||document.body;
+  var pt=document.getElementById('ptoggle');
+  function setTexts(){
+    var proj=root.classList.contains('phase-project'), k=proj?'proj':'est';
+    ['bt-title','bt-hint','bt-total'].forEach(function(id){
+      var el=document.getElementById(id); if(el)el.textContent=el.getAttribute('data-'+k);
+    });
+    var chip=document.getElementById('phase-chip'); if(chip)chip.textContent=proj?'Project':'Estimate';
+  }
+  if(pt){
+    var flip=function(){
+      var toProj=!root.classList.contains('phase-project');
+      root.classList.toggle('phase-project',toProj);
+      root.classList.toggle('phase-estimate',!toProj);
+      pt.classList.remove('flip'); void pt.offsetWidth; pt.classList.add('flip');
+      setTexts();
+      cpmToast(toProj?'Phase set to Project — buyout view on. Staged for two-way sync approval.'
+                     :'Phase set to Estimate — bid view on. Staged for two-way sync approval.');
+    };
+    pt.addEventListener('click',flip);
+    pt.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();flip();}});
+  }
+
   // critical-path plotter scroll
   document.querySelectorAll('.pbtn').forEach(function(b){
     b.addEventListener('click',function(){
@@ -652,28 +702,34 @@ def reveal(inner, delay=0, cls=""):
 
 
 def donut_card(label, center_html, slices, glow="blue"):
-    """slices: [(name, value, color)]; values need not sum to anything — shares are
-    computed. Slices slide around the ring (dashoffset travel) while the group
-    spins in with an overshoot bounce; a track ring keeps partial gauges legible."""
+    """Exploded pie: filled wedges offset outward along their mid-angle, rolling out
+    around the center on reveal; the value fades in on a small round core after."""
     total = sum(v for _, v, _ in slices if v) or 1
-    circles, legend, start = [], [], 0.0
+    R2 = 52.0
+    wedges, legend, start = [], [], 0.0
     for i, (name, val, color) in enumerate(slices):
-        frac = max(val, 0) / total
-        seg = max(frac * CIRC - GAP, 0.6)
-        off = -start * CIRC
-        circles.append(
-            f'<circle class="slice" cx="60" cy="60" r="{R:g}" stroke="{color}" '
-            f'stroke-dasharray="{seg:.2f} {CIRC:.2f}" style="--off:{off:.2f};'
-            f'transition-delay:{0.12 * i + 0.15:.2f}s" '
+        frac = min(max(val, 0) / total, 0.9999)
+        if frac <= 0:
+            legend.append(f'<span><i style="background:{color}"></i>{esc(name)}</span>')
+            continue
+        a0 = 2 * math.pi * start - math.pi / 2
+        a1 = 2 * math.pi * (start + frac) - math.pi / 2
+        mid = (a0 + a1) / 2
+        tx, ty = math.cos(mid) * 5.5, math.sin(mid) * 5.5
+        x0, y0 = 60 + R2 * math.cos(a0), 60 + R2 * math.sin(a0)
+        x1, y1 = 60 + R2 * math.cos(a1), 60 + R2 * math.sin(a1)
+        laf = 1 if frac > 0.5 else 0
+        wedges.append(
+            f'<path class="wedge" d="M60 60 L{x0:.2f} {y0:.2f} A{R2:g} {R2:g} 0 {laf} 1 {x1:.2f} {y1:.2f} Z" '
+            f'fill="{color}" stroke="#12161d" stroke-width="2" '
+            f'style="--tx:{tx:.2f}px;--ty:{ty:.2f}px;--d:{0.1 * i:.2f}s" '
             f'data-tip="<b>{esc(name)}</b><br>{esc(f"{val:,.0f}" if isinstance(val, (int, float)) else val)}"/>')
         legend.append(f'<span><i style="background:{color}"></i>{esc(name)}</span>')
         start += frac
     gcls = "goldglow" if glow == "gold" else ""
     return f'''<div class="dcard">
       <div class="dl">{esc(label)}</div>
-      <div class="dwrap"><svg viewBox="0 0 120 120" aria-hidden="true">
-        <circle class="dtrack" cx="60" cy="60" r="{R:g}"/>
-        <g class="dg">{"".join(circles)}</g></svg>
+      <div class="dwrap"><svg viewBox="0 0 120 120" aria-hidden="true">{"".join(wedges)}</svg>
         <div class="dcore"><span class="dnum {gcls}">{center_html}</span></div>
       </div>
       <div class="dleg">{"".join(legend[:4])}</div>
@@ -793,6 +849,9 @@ def build_body(model, model_dir, company, titles):
     for nm, href in [("Overview", "#overview"), ("Budget", "#budget"), ("Activity", "#activity"),
                      ("Daily", "#daily"), ("Open Items", "#openitems"), ("Look-ahead", "#lookahead")]:
         nav.append(f'<a href="{href}">{nm}</a>')
+    nav.append('<div class="ptoggle" id="ptoggle" role="switch" tabindex="0" '
+               'data-tip="Flip this record between Estimate and Project (buyout) view — the change stages for two-way sync approval">'
+               '<span class="opt est">ESTIMATE</span><span class="opt proj">PROJECT</span><span class="knob"></span></div>')
     out.append(f'<nav class="cpm-nav">{"".join(nav)}</nav>')
     out.append('<div class="cpm-wrap">')
 
@@ -820,7 +879,7 @@ def build_body(model, model_dir, company, titles):
     chips = []
     if proj.get("number"): chips.append(f'<span class="cpm-chip">No. <b>{esc(proj["number"])}</b></span>')
     if proj.get("location"): chips.append(f'<span class="cpm-chip">Location <b>{esc(proj["location"])}</b></span>')
-    chips.append(f'<span class="cpm-chip">Phase <b>{esc(str(phase).title())}</b></span>')
+    chips.append(f'<span class="cpm-chip">Phase <b id="phase-chip">{esc(str(phase).title())}</b></span>')
     if proj.get("is_joc"):
         joc = ident.get("joc", {}) if isinstance(ident.get("joc"), dict) else {}
         chips.append(f'<span class="cpm-chip joc">JOC coeff. <b>{esc(joc.get("coefficient", "—"))}</b></span>')
@@ -887,14 +946,15 @@ def build_body(model, model_dir, company, titles):
                                 est, company, titles, colors))
     if is_project and profit:
         pct = max(profit / denom * 100, 4)
-        segs.append(f'''<div class="segw" style="width:{pct:.2f}%" data-tip="<b>Profit</b><br>{fmt_money(profit)} held in the buyout">
+        segs.append(f'''<div class="segw profit-seg" style="width:{pct:.2f}%" data-tip="<b>Profit</b><br>{fmt_money(profit)} held in the buyout">
           <span class="amt profit">▲ {fmt_money(profit)}</span>
           <div class="segfill profit"></div><span class="nm">Profit</span></div>''')
     out.append(f'''<section class="cpm-section" id="budget">
-      <h2>{seg_title}{health_dot(health, "budget")}</h2>
-      <div class="hint">{seg_hint}</div>
+      <h2><span id="bt-title" data-est="Budget by Trade" data-proj="Buyout Budget">{seg_title}</span>{health_dot(health, "budget")}</h2>
+      <div class="hint" id="bt-hint" data-est="Click a segment for that trade's budget justification and exportable ITB."
+        data-proj="Committed buyout by trade — profit shown in green. Click a segment for that trade's budget basis and exportable ITB.">{seg_hint}</div>
       {reveal(f'<div class="segbar"><div class="segrow">{"".join(segs)}</div>'
-              f'<div class="segtotal"><span class="t">{"Contract total" if is_project else "Total estimate"}</span>'
+              f'<div class="segtotal"><span class="t" id="bt-total" data-est="Total estimate" data-proj="Contract total">{"Contract total" if is_project else "Total estimate"}</span>'
               f'<span class="v num" data-target="{seg_total}" data-pre="$">${seg_total:,.0f}</span></div></div>')}
     </section>''')
 
@@ -907,6 +967,10 @@ def build_body(model, model_dir, company, titles):
                 thumb = f'<img class="sthumb" src="{esc(e["image"])}" alt="">'
             elif e.get("kind") == "pdf_snip":
                 thumb = '<div class="sdoc">PDF<br>SNIP</div>'
+            elif e.get("kind") == "email_summary":
+                thumb = '<div class="sdoc" style="color:var(--blue);border-color:rgba(79,150,216,.45);background:linear-gradient(160deg,rgba(79,150,216,.12),rgba(79,150,216,.03))">EMAIL</div>'
+            elif e.get("kind") == "meeting_minutes":
+                thumb = '<div class="sdoc" style="color:#a98fd8;border-color:rgba(126,88,194,.5);background:linear-gradient(160deg,rgba(126,88,194,.14),rgba(126,88,194,.04))">MTG<br>MIN</div>'
             else:
                 thumb = '<div class="sdoc" style="color:var(--blue);border-color:rgba(79,150,216,.4)">LOG</div>'
             ts = esc(str(e.get("ts", ""))[:16].replace("T", " · "))
@@ -1093,22 +1157,22 @@ def build(args):
 
     titles = load_division_titles()
     body = build_body(model, model_dir, args.company, titles)
-    bg = ('<div class="cpm-bg"></div>'
+    bg = ('<div class="cpm-bg"></div><div class="cpm-bg2"></div>'
           f'<div class="cpm-stars s1" style="background-image:url(\'{constellation(72, seed=7)}\')"></div>'
           f'<div class="cpm-stars s2" style="background-image:url(\'{constellation(44, seed=23, bright=True)}\')"></div>')
     noscript = ('<noscript><style>.reveal{opacity:1!important;transform:none!important}'
-                '.slice{stroke-dashoffset:calc(var(--off)*1px)!important;opacity:1!important}'
                 '.la-track{transform:translateX(-33.3334%)!important}</style></noscript>')
 
+    phase_cls = "phase-project" if (model.get("project", {}).get("phase") in ("project", "closeout")) else "phase-estimate"
     if args.fragment:
-        doc = f'<style>{STYLE}</style>{noscript}\n<div class="cpm-root">{bg}{body}</div>\n<script>{SCRIPT}</script>'
+        doc = f'<style>{STYLE}</style>{noscript}\n<div class="cpm-root {phase_cls}">{bg}{body}</div>\n<script>{SCRIPT}</script>'
     else:
         title = esc(model.get("project", {}).get("title", "Project Dashboard"))
         doc = (f'<!doctype html><html lang="en"><head><meta charset="utf-8">'
                f'<meta name="viewport" content="width=device-width,initial-scale=1">'
                f'<title>{title} · {esc(args.company)}</title>'
                f'<style>{STYLE}</style>{noscript}</head>'
-               f'<body class="cpm-root">{bg}{body}<script>{SCRIPT}</script></body></html>')
+               f'<body class="cpm-root {phase_cls}">{bg}{body}<script>{SCRIPT}</script></body></html>')
 
     out = Path(args.out) if args.out else model_dir / f'{model.get("project", {}).get("slug", "project")}.html'
     out.parent.mkdir(parents=True, exist_ok=True)
