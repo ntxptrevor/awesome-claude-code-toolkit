@@ -318,8 +318,8 @@ STYLE = """
   border:1px solid var(--line-w);color:var(--muted)}
 
 /* ------- daily report cards ------- */
-.days{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:14px}
-.daycard{position:relative;display:block;aspect-ratio:1/1.04;border-radius:var(--r);overflow:hidden;
+.days{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px}
+.daycard{position:relative;display:block;aspect-ratio:1/1.04;max-width:280px;border-radius:var(--r);overflow:hidden;
   border:1px solid var(--line-w);backdrop-filter:blur(8px);box-shadow:var(--raise);
   transition:.26s cubic-bezier(.2,.7,.2,1);padding:0}
 .daycard:hover{transform:translateY(-4px) scale(1.015);box-shadow:var(--raise-hi)}
