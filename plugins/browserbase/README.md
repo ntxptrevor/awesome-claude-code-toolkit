@@ -5,22 +5,31 @@ Cloud browser automation for Claude Code — scrape pages, fill forms, extract s
 ## Quick Install
 
 1. Copy or symlink this plugin folder into your project's `plugins/` directory
-2. Set your API key:
-   ```bash
-   export BROWSERBASE_API_KEY=bb_live_...
-   # or add to .env
-   ```
-3. The plugin auto-configures:
+2. Run `/browserbase:setup` — it opens a browser popup to log in to Browserbase, validates your key, and auto-saves it everywhere. No manual env var copying.
+3. That's it. The plugin auto-configures everything else:
+   - **OAuth login** — browser popup to sign in and obtain API key automatically
    - **MCP server** registers via `.mcp.json` (no manual settings edit)
-   - **SessionStart hook** verifies CLI + API key on every session
+   - **SessionStart hook** finds your API key across env vars, .env files, MCP configs, Claude settings, and shell profiles — propagates it wherever it's missing
    - **UserPromptSubmit hook** detects browser/scraping intent and routes to the plugin
-   - **Setup command** installs the `browse` CLI and validates everything
+
+## Login Modes
+
+```bash
+# Interactive — opens browser popup (default)
+node plugins/browserbase/auth/login.js
+
+# Headless — prints URL to open manually (for remote/SSH sessions)
+node plugins/browserbase/auth/login.js --headless
+
+# Direct — skip the popup, register a known key
+node plugins/browserbase/auth/login.js --key bb_live_...
+```
 
 ## Commands
 
 | Command | What it does |
 |---------|-------------|
-| `/browserbase:setup` | Install CLI, configure API key, verify access |
+| `/browserbase:setup` | OAuth login + CLI install + credential auto-registration |
 | `/browserbase:scrape-page` | Scrape and extract structured data from a web page |
 | `/browserbase:fill-form` | Fill out and submit a web form |
 | `/browserbase:browse-agent` | Run an open-ended browsing agent |
@@ -32,12 +41,14 @@ browserbase/
 ├── .claude-plugin/plugin.json   # Plugin manifest
 ├── .mcp.json                    # Auto-registers Browserbase MCP server
 ├── README.md
+├── auth/
+│   └── login.js                 # OAuth-style browser login flow
 ├── agents/
 │   └── browser-automation-engineer.md
 ├── agent-skill/
 │   └── SKILL.md                 # Stagehand API reference + patterns
 ├── commands/
-│   ├── setup.md
+│   ├── setup.md                 # Login + install + verify
 │   ├── scrape-page.md
 │   ├── fill-form.md
 │   └── browse-agent.md
@@ -47,13 +58,24 @@ browserbase/
 │       ├── detect-browser-intent.js
 │       └── verify-setup.sh
 └── setup/
-    └── install.sh               # Automated setup script
+    └── install.sh               # Full automated setup script
 ```
+
+## How Credential Auto-Discovery Works
+
+The plugin searches these locations (in order) for `BROWSERBASE_API_KEY`:
+
+1. `BROWSERBASE_API_KEY` environment variable
+2. `.env`, `.env.local`, `.env.development`, `.env.production`
+3. `mcp-configs/browserbase.json`, `.mcp.json`
+4. `.claude/settings.local.json`, `.claude/settings.json`, `~/.claude/settings.json`
+5. `~/.bashrc`, `~/.zshrc`, `~/.bash_profile`, `~/.profile`
+
+When found, the key is auto-registered into any location that's missing it. When not found, the OAuth login flow is triggered. The user is always notified of what changed but never asked for permission.
 
 ## Requirements
 
 - Node.js 18+
-- `BROWSERBASE_API_KEY` (get yours at https://browserbase.com/settings)
 - No `BROWSERBASE_PROJECT_ID` needed — the API key resolves it automatically
 
 ## Free-Tier Notes

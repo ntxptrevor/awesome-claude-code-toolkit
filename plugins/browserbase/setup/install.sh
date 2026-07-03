@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# install.sh — Automated Browserbase plugin setup
-# Discovers credential storage, auto-registers the API key everywhere it belongs,
-# installs the browse CLI, and verifies connectivity.
+# install.sh — Automated Browserbase plugin setup with OAuth login
+# Installs the browse CLI, discovers or obtains credentials via browser login,
+# and auto-registers the key across every credential location.
 # Notifies the user of every change but does not ask permission.
 
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
 
 REGISTERED=()
 SKIPPED=()
@@ -41,27 +44,30 @@ for pkg in @browserbasehq/cli @browserbasehq/browse-cli; do
   fi
 done
 
-# ─── 3. Locate API key ──────────────────────────────────────────────────────
-# Search order: env var → .env → .env.local → MCP configs → Claude settings
+# ─── 3. Locate existing API key ─────────────────────────────────────────────
 API_KEY="${BROWSERBASE_API_KEY:-}"
 
+# Search .env files
 if [ -z "$API_KEY" ]; then
   for envfile in .env .env.local .env.development .env.production; do
     if [ -f "$envfile" ] && grep -q "^BROWSERBASE_API_KEY=" "$envfile" 2>/dev/null; then
-      API_KEY=$(grep "^BROWSERBASE_API_KEY=" "$envfile" | head -1 | cut -d= -f2-)
-      echo "[ok] Found BROWSERBASE_API_KEY in $envfile"
-      break
+      val=$(grep "^BROWSERBASE_API_KEY=" "$envfile" | head -1 | cut -d= -f2-)
+      if [ -n "$val" ] && [[ "$val" != "<"* ]] && [[ "$val" != "\${"* ]]; then
+        API_KEY="$val"
+        echo "[ok] Found BROWSERBASE_API_KEY in $envfile"
+        break
+      fi
     fi
   done
 fi
 
+# Search MCP configs
 if [ -z "$API_KEY" ]; then
-  # Check MCP config files
   for mcpfile in mcp-configs/browserbase.json .mcp.json; do
     if [ -f "$mcpfile" ]; then
-      found=$(grep -oP '"BROWSERBASE_API_KEY"\s*:\s*"\K[^"]+' "$mcpfile" 2>/dev/null || true)
-      if [ -n "$found" ] && [[ "$found" != "<"* ]] && [[ "$found" != "\${"* ]]; then
-        API_KEY="$found"
+      val=$(grep -oP '"BROWSERBASE_API_KEY"\s*:\s*"\K[^"]+' "$mcpfile" 2>/dev/null || true)
+      if [ -n "$val" ] && [[ "$val" != "<"* ]] && [[ "$val" != "\${"* ]]; then
+        API_KEY="$val"
         echo "[ok] Found BROWSERBASE_API_KEY in $mcpfile"
         break
       fi
@@ -69,13 +75,13 @@ if [ -z "$API_KEY" ]; then
   done
 fi
 
+# Search Claude settings
 if [ -z "$API_KEY" ]; then
-  # Check Claude settings files
-  for settings in .claude/settings.json .claude/settings.local.json "$HOME/.claude/settings.json"; do
+  for settings in .claude/settings.local.json .claude/settings.json "$HOME/.claude/settings.json"; do
     if [ -f "$settings" ]; then
-      found=$(grep -oP '"BROWSERBASE_API_KEY"\s*:\s*"\K[^"]+' "$settings" 2>/dev/null || true)
-      if [ -n "$found" ] && [[ "$found" != "<"* ]] && [[ "$found" != "\${"* ]]; then
-        API_KEY="$found"
+      val=$(grep -oP '"BROWSERBASE_API_KEY"\s*:\s*"\K[^"]+' "$settings" 2>/dev/null || true)
+      if [ -n "$val" ] && [[ "$val" != "<"* ]] && [[ "$val" != "\${"* ]]; then
+        API_KEY="$val"
         echo "[ok] Found BROWSERBASE_API_KEY in $settings"
         break
       fi
@@ -83,87 +89,58 @@ if [ -z "$API_KEY" ]; then
   done
 fi
 
+# Search shell profiles
+if [ -z "$API_KEY" ]; then
+  for profile in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.profile"; do
+    if [ -f "$profile" ]; then
+      val=$(grep -oP 'export BROWSERBASE_API_KEY=["'"'"']?\K[^"'"'"'\s]+' "$profile" 2>/dev/null || true)
+      if [ -n "$val" ] && [[ "$val" != "<"* ]]; then
+        API_KEY="$val"
+        echo "[ok] Found BROWSERBASE_API_KEY in $profile"
+        break
+      fi
+    fi
+  done
+fi
+
+# ─── 4. If no key found, launch OAuth login ──────────────────────────────────
 if [ -z "$API_KEY" ]; then
   echo ""
-  echo "BROWSERBASE_API_KEY not found in any known location."
-  echo "Get your key at: https://browserbase.com/settings"
+  echo "No API key found. Launching browser login..."
   echo ""
-  echo "Then either:"
-  echo "  export BROWSERBASE_API_KEY=bb_live_..."
-  echo "  OR add it to your .env file"
-  echo "  OR re-run this setup after setting it"
-  exit 1
+
+  # Detect headless environment
+  if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ] && [[ "$(uname)" != "Darwin" ]]; then
+    echo "[headless environment detected — printing URL instead of opening browser]"
+    node "$PLUGIN_ROOT/auth/login.js" --headless
+  else
+    node "$PLUGIN_ROOT/auth/login.js"
+  fi
+
+  # After login.js completes, check if key was saved
+  if [ -f .env ] && grep -q "^BROWSERBASE_API_KEY=" .env 2>/dev/null; then
+    API_KEY=$(grep "^BROWSERBASE_API_KEY=" .env | head -1 | cut -d= -f2-)
+  fi
+
+  if [ -z "$API_KEY" ]; then
+    echo "ERROR: Login did not produce an API key."
+    echo "You can also set it manually:"
+    echo "  export BROWSERBASE_API_KEY=bb_live_..."
+    exit 1
+  fi
+
+  echo ""
+  echo "[ok] API key obtained via login"
+else
+  # Key was found — auto-register it via the login script for consistency
+  echo "[..] Auto-registering key across credential locations..."
+  node "$PLUGIN_ROOT/auth/login.js" --key "$API_KEY"
 fi
 
 export BROWSERBASE_API_KEY="$API_KEY"
 
-# ─── 4. Auto-register key in all credential locations ────────────────────────
-# Writes the key to every relevant location, skipping if already present.
-
-# 4a. .env (project root)
-if [ -f .env ]; then
-  if grep -q "^BROWSERBASE_API_KEY=" .env 2>/dev/null; then
-    current=$(grep "^BROWSERBASE_API_KEY=" .env | head -1 | cut -d= -f2-)
-    if [ "$current" != "$API_KEY" ] && [[ "$current" == "<"* || -z "$current" ]]; then
-      sed -i "s|^BROWSERBASE_API_KEY=.*|BROWSERBASE_API_KEY=$API_KEY|" .env
-      REGISTERED+=(".env (updated placeholder)")
-    else
-      SKIPPED+=(".env (already set)")
-    fi
-  else
-    echo "BROWSERBASE_API_KEY=$API_KEY" >> .env
-    REGISTERED+=(".env (added)")
-  fi
-else
-  echo "BROWSERBASE_API_KEY=$API_KEY" > .env
-  REGISTERED+=(".env (created)")
-fi
-
-# 4b. mcp-configs/browserbase.json — update placeholder
-if [ -f mcp-configs/browserbase.json ]; then
-  current=$(grep -oP '"BROWSERBASE_API_KEY"\s*:\s*"\K[^"]+' mcp-configs/browserbase.json 2>/dev/null || true)
-  if [[ "$current" == "<"* ]] || [ -z "$current" ]; then
-    sed -i "s|<your-browserbase-api-key>|$API_KEY|" mcp-configs/browserbase.json
-    REGISTERED+=("mcp-configs/browserbase.json (updated placeholder)")
-  else
-    SKIPPED+=("mcp-configs/browserbase.json (already set)")
-  fi
-fi
-
-# 4c. Claude project settings — add env var if settings exist
-for settings_dir in .claude; do
-  settings_file="$settings_dir/settings.local.json"
-  if [ -d "$settings_dir" ]; then
-    if [ -f "$settings_file" ]; then
-      if grep -q "BROWSERBASE_API_KEY" "$settings_file" 2>/dev/null; then
-        SKIPPED+=("$settings_file (already referenced)")
-      else
-        # Add to env section if the file has one, otherwise note it
-        if grep -q '"env"' "$settings_file" 2>/dev/null; then
-          SKIPPED+=("$settings_file (has env block, manual add recommended)")
-        else
-          SKIPPED+=("$settings_file (no env block)")
-        fi
-      fi
-    fi
-  fi
-done
-
-# 4d. Shell profile — add export if not already sourced
-for profile in "$HOME/.bashrc" "$HOME/.zshrc"; do
-  if [ -f "$profile" ]; then
-    if grep -q "BROWSERBASE_API_KEY" "$profile" 2>/dev/null; then
-      SKIPPED+=("$profile (already has export)")
-    else
-      echo "" >> "$profile"
-      echo "# Browserbase API key (added by browserbase plugin setup)" >> "$profile"
-      echo "export BROWSERBASE_API_KEY=\"$API_KEY\"" >> "$profile"
-      REGISTERED+=("$profile (added export)")
-    fi
-  fi
-done
-
 # ─── 5. Verify API access ───────────────────────────────────────────────────
+echo ""
 echo "[..] Verifying API access..."
 result=$(browse cloud projects list --json 2>&1 | grep -v "Update available" | grep -v "npm install" | grep -v "DeprecationWarning")
 if echo "$result" | grep -q '"id"'; then
@@ -177,23 +154,6 @@ fi
 # ─── 6. Summary ─────────────────────────────────────────────────────────────
 echo ""
 echo "=== Setup Complete ==="
-echo ""
-
-if [ ${#REGISTERED[@]} -gt 0 ]; then
-  echo "Auto-registered BROWSERBASE_API_KEY in:"
-  for loc in "${REGISTERED[@]}"; do
-    echo "  + $loc"
-  done
-fi
-
-if [ ${#SKIPPED[@]} -gt 0 ]; then
-  echo ""
-  echo "Already configured (no changes):"
-  for loc in "${SKIPPED[@]}"; do
-    echo "  - $loc"
-  done
-fi
-
 echo ""
 echo "Available commands:"
 echo "  /browserbase:scrape-page   — Scrape and extract data from a web page"
