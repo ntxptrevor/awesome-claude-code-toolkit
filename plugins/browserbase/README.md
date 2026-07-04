@@ -88,3 +88,14 @@ When found, the key is auto-registered into any location that's missing it. When
 - Model Gateway includes $5 of LLM tokens — leave `MODEL_API_KEY` blank to use it
 - No Proxies or Verified sessions — bot-protected sites may block
 - If LLM calls fail on a working script, the $5 cap is likely the cause
+
+## Packaging
+
+`scripts/export.sh` builds two self-contained artifacts under `build/`:
+
+- `browserbase.mcpb` — one-click install in Claude Desktop
+  (`npx @anthropic-ai/mcpb install build/browserbase.mcpb`)
+- `browserbase-plugin.zip` — this plugin with `@browserbasehq/mcp` vendored
+  into `vendor/node_modules`, so the MCP server starts with no npx/network
+  fetch on the target machine (the OAuth login flow, hooks, and commands
+  still run from source as usual — only the MCP server binary is vendored)
