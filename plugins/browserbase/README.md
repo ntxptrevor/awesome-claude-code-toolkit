@@ -33,6 +33,7 @@ node plugins/browserbase/auth/login.js --key bb_live_...
 | `/browserbase:scrape-page` | Scrape and extract structured data from a web page |
 | `/browserbase:fill-form` | Fill out and submit a web form |
 | `/browserbase:browse-agent` | Run an open-ended browsing agent |
+| `/browserbase:capture-design` | Screenshot a site and generate a reusable design.md scaffold |
 
 ## What's Inside
 
@@ -51,7 +52,8 @@ browserbase/
 │   ├── setup.md                 # Login + install + verify
 │   ├── scrape-page.md
 │   ├── fill-form.md
-│   └── browse-agent.md
+│   ├── browse-agent.md
+│   └── capture-design.md
 ├── hooks/
 │   ├── hooks.json               # SessionStart + UserPromptSubmit hooks
 │   └── scripts/

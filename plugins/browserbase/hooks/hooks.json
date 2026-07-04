@@ -24,6 +24,11 @@
       "type": "UserPromptSubmit",
       "description": "Detect multi-page crawl intent and orchestrate paginated scraping with URL deduplication",
       "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/multi-page-crawler.js"
+    },
+    {
+      "type": "UserPromptSubmit",
+      "description": "Detect design capture intent and route to screenshot + design.md generation workflow",
+      "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/capture-design.js"
     }
   ]
 }
