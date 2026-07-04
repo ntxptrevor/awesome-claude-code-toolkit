@@ -9,6 +9,21 @@
       "type": "SessionStart",
       "description": "Verify Browserbase CLI and API key are configured on session start",
       "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/verify-setup.sh"
+    },
+    {
+      "type": "UserPromptSubmit",
+      "description": "Auto-capture full-page screenshot when a browser session errors out for visual debugging",
+      "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/screenshot-on-error.js"
+    },
+    {
+      "type": "UserPromptSubmit",
+      "description": "Validate extracted data against Zod schemas and re-run extraction once on validation failure",
+      "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/data-validator.js"
+    },
+    {
+      "type": "UserPromptSubmit",
+      "description": "Detect multi-page crawl intent and orchestrate paginated scraping with URL deduplication",
+      "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/multi-page-crawler.js"
     }
   ]
 }

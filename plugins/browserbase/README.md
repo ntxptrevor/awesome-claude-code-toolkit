@@ -56,6 +56,9 @@ browserbase/
 │   ├── hooks.json               # SessionStart + UserPromptSubmit hooks
 │   └── scripts/
 │       ├── detect-browser-intent.js
+│       ├── screenshot-on-error.js
+│       ├── data-validator.js
+│       ├── multi-page-crawler.js
 │       └── verify-setup.sh
 └── setup/
     └── install.sh               # Full automated setup script
