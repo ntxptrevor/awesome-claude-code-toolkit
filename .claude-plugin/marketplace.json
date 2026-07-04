@@ -558,6 +558,12 @@
       "version": "1.0.0"
     },
     {
+      "name": "plugin-dev",
+      "source": "plugins/plugin-dev",
+      "description": "Plugin development toolkit with skills for creating agents, commands, hooks, MCP integrations, and comprehensive plugin structure guidance",
+      "version": "1.0.0"
+    },
+    {
       "name": "pr-reviewer",
       "source": "plugins/pr-reviewer",
       "description": "Review pull requests with structured analysis and approve with confidence",
