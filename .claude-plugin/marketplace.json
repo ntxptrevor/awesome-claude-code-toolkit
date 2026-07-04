@@ -36,6 +36,12 @@
       "version": "1.0.0"
     },
     {
+      "name": "agent-development",
+      "source": "plugins/agent-development",
+      "description": "Guidance for creating Claude Code subagents: system prompts, triggering conditions, tool selection, and AI-assisted agent generation",
+      "version": "1.0.0"
+    },
+    {
       "name": "ai-prompt-lab",
       "source": "plugins/ai-prompt-lab",
       "description": "Improve and test AI prompts for better Claude Code interactions",
@@ -165,6 +171,12 @@
       "name": "color-contrast",
       "source": "plugins/color-contrast",
       "description": "Color contrast checking and accessible color suggestions",
+      "version": "1.0.0"
+    },
+    {
+      "name": "command-development",
+      "source": "plugins/command-development",
+      "description": "Guidance for creating Claude Code slash commands: YAML frontmatter, dynamic arguments, bash execution, and interactive command patterns",
       "version": "1.0.0"
     },
     {
@@ -396,6 +408,12 @@
       "version": "1.0.0"
     },
     {
+      "name": "hook-development",
+      "source": "plugins/hook-development",
+      "description": "Guidance for creating Claude Code hooks: PreToolUse/PostToolUse/Stop events, the prompt-based hooks API, and event-driven automation",
+      "version": "1.0.0"
+    },
+    {
       "name": "import-organizer",
       "source": "plugins/import-organizer",
       "description": "Organize, sort, and clean import statements",
@@ -441,6 +459,12 @@
       "name": "load-tester",
       "source": "plugins/load-tester",
       "description": "Load and stress testing for APIs and web services",
+      "version": "1.0.0"
+    },
+    {
+      "name": "mcp-integration",
+      "source": "plugins/mcp-integration",
+      "description": "Guidance for integrating MCP servers into Claude Code plugins: .mcp.json setup, server types (stdio/SSE/HTTP), and authentication",
       "version": "1.0.0"
     },
     {
@@ -564,6 +588,18 @@
       "version": "1.0.0"
     },
     {
+      "name": "plugin-settings",
+      "source": "plugins/plugin-settings",
+      "description": "Guidance for the .claude/plugin-name.local.md pattern for configurable, per-project Claude Code plugin settings",
+      "version": "1.0.0"
+    },
+    {
+      "name": "plugin-structure",
+      "source": "plugins/plugin-structure",
+      "description": "Guidance for Claude Code plugin directory layout, manifest configuration, and component auto-discovery",
+      "version": "1.0.0"
+    },
+    {
       "name": "pr-reviewer",
       "source": "plugins/pr-reviewer",
       "description": "Review pull requests with structured analysis and approve with confidence",
@@ -675,6 +711,12 @@
       "name": "seed-generator",
       "source": "plugins/seed-generator",
       "description": "Database seeding script generation with realistic data",
+      "version": "1.0.0"
+    },
+    {
+      "name": "skill-development",
+      "source": "plugins/skill-development",
+      "description": "Guidance for creating Claude Code skills with progressive disclosure and strong triggering descriptions",
       "version": "1.0.0"
     },
     {

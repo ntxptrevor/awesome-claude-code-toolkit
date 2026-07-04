@@ -1,6 +1,6 @@
 # Claude Code Toolkit
 
-**The most comprehensive toolkit for Claude Code -- 135 agents, 35 curated skills (+400,000 via [SkillKit](https://agenstskills.com)), 42 commands, 176+ plugins, 20 hooks, 15 rules, 7 templates, 15 MCP configs, 26 companion apps, 53 ecosystem entries, and more.**
+**The most comprehensive toolkit for Claude Code -- 135 agents, 42 curated skills (+400,000 via [SkillKit](https://agenstskills.com)), 42 commands, 176+ plugins, 20 hooks, 15 rules, 7 templates, 15 MCP configs, 26 companion apps, 53 ecosystem entries, and more.**
 
 <p align="center">
   <a href="https://trendshift.io/repositories/21839" target="_blank"><img src="https://trendshift.io/api/badge/repositories/21839" alt="rohitg00%2Fawesome-claude-code-toolkit | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -98,6 +98,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [a11y-audit](plugins/a11y-audit/) | Full accessibility audit with WCAG compliance checking |
 | [accessibility-checker](plugins/accessibility-checker/) | Scan for accessibility issues and fix ARIA attributes in web applications |
 | [adr-writer](plugins/adr-writer/) | Architecture Decision Records authoring and management |
+| [agent-development](plugins/agent-development/) | Guidance for creating Claude Code subagents: system prompts, triggering conditions, tool selection, and AI-assisted agent generation |
 | [AgentLint](https://github.com/0xmariowu/AgentLint) | Lint your repo for AI agent compatibility. 33 evidence-backed checks across 5 dimensions. Claude Code plugin. |
 | [ai-prompt-lab](plugins/ai-prompt-lab/) | Improve and test AI prompts for better Claude Code interactions |
 | [analytics-reporter](plugins/analytics-reporter/) | Generate analytics reports and dashboard configurations from project data |
@@ -149,6 +150,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [codebase-documenter](plugins/codebase-documenter/) | Auto-document entire codebase with inline comments and API docs |
 | [codesight](https://github.com/Houseofmvps/codesight) | CLI token optimizer and AI context generator. Scans codebases to extract routes, schema, components, and dependencies for Claude Code, Cursor, Copilot, Codex, and Windsurf. 9x–13x token reduction. Zero runtime dependencies. `npx codesight` |
 | [color-contrast](plugins/color-contrast/) | Color contrast checking and accessible color suggestions |
+| [command-development](plugins/command-development/) | Guidance for creating Claude Code slash commands: YAML frontmatter, dynamic arguments, bash execution, and interactive command patterns |
 | [commit-commands](plugins/commit-commands/) | Advanced commit workflows with smart staging and push automation |
 | [complexity-reducer](plugins/complexity-reducer/) | Reduce cyclomatic complexity and simplify functions |
 | [compliance-checker](plugins/compliance-checker/) | Regulatory compliance verification for GDPR, SOC2, and HIPAA |
@@ -199,6 +201,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [github-issue-manager](plugins/github-issue-manager/) | GitHub issue triage, creation, and management |
 | [harness-evolver](https://github.com/raphaelchristi/harness-evolver) | LangSmith-native autonomous agent optimization. Multi-agent proposers evolve prompts, routing, tools, and architecture in isolated git worktrees. Install: `npx harness-evolver@latest` |
 | [helm-charts](plugins/helm-charts/) | Helm chart generation and upgrade management |
+| [hook-development](plugins/hook-development/) | Guidance for creating Claude Code hooks: PreToolUse/PostToolUse/Stop events, the prompt-based hooks API, and event-driven automation |
 | [idle-timing](https://github.com/clankercode/claude-inject-idle-time) | Injects hidden timing context (local time with UTC offset, idle seconds since last reply, previous-turn duration) into every user prompt so the model knows how long the conversation has been paused. Ships a statusline fragment for a live elapsed-time readout and a visible `[after Xm Ys]` note when you return from >10s idle. 57 tests, dual Unlicense/CC0. |
 | [immich-photo-manager](https://github.com/drolosoft/immich-photo-manager) | Turn your self-hosted Immich photo library into a conversation — natural language search, geographic album curation, duplicate detection via perceptual hashing, library health audits, and interactive HTML galleries. 22 MCP tools, 11 skills, 5 slash commands |
 | [import-organizer](plugins/import-organizer/) | Organize, sort, and clean import statements |
@@ -211,6 +214,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [lightcms](https://github.com/jonradoff/lightcms) | AI-native CMS with 41 MCP tools for managing websites through natural language — pages, templates, assets, themes, collections, redirects, and more with full content versioning |
 | [linear-helper](plugins/linear-helper/) | Linear issue tracking integration and workflow management |
 | [load-tester](plugins/load-tester/) | Load and stress testing for APIs and web services |
+| [mcp-integration](plugins/mcp-integration/) | Guidance for integrating MCP servers into Claude Code plugins: .mcp.json setup, server types (stdio/SSE/HTTP), and authentication |
 | [memory-profiler](plugins/memory-profiler/) | Memory leak detection and heap analysis |
 | [migrate-tool](plugins/migrate-tool/) | Generate database migrations and code migration scripts for framework upgrades |
 | [migration-generator](plugins/migration-generator/) | Database migration generation and rollback management |
@@ -241,6 +245,8 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [performance-monitor](plugins/performance-monitor/) | Profile API endpoints and run benchmarks to identify performance bottlenecks |
 | [plan](plugins/plan/) | Structured planning with risk assessment and time estimation |
 | [plugin-dev](plugins/plugin-dev/) | Plugin development toolkit with skills for creating agents, commands, hooks, MCP integrations, and comprehensive plugin structure guidance |
+| [plugin-settings](plugins/plugin-settings/) | Guidance for the .claude/plugin-name.local.md pattern for configurable, per-project Claude Code plugin settings |
+| [plugin-structure](plugins/plugin-structure/) | Guidance for Claude Code plugin directory layout, manifest configuration, and component auto-discovery |
 | [preflight](https://github.com/preflight-dev/preflight) | 24-tool MCP server that catches vague prompts before they cost 2-3x in wrong→fix cycles. 12-category scorecards, correction pattern learning, cross-service contract awareness, session history search with LanceDB vectors, and cost estimation. `npx preflight-dev` |
 | [pr-reviewer](plugins/pr-reviewer/) | Review pull requests with structured analysis and approve with confidence |
 | [product-shipper](plugins/product-shipper/) | Ship features end-to-end with launch checklists and rollout plans |
@@ -269,6 +275,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [seed-generator](plugins/seed-generator/) | Database seeding script generation with realistic data |
 | [sitemd](https://github.com/sitemd-cc/sitemd) | Build websites from Markdown via MCP. 22 tools for creating pages, generating content, configuring settings, running SEO audits, and deploying static sites to Cloudflare Pages |
 | [simmer](https://github.com/2389-research/simmer) | Iterative artifact refinement using judge subagents that score against user-defined criteria across multiple rounds |
+| [skill-development](plugins/skill-development/) | Guidance for creating Claude Code skills with progressive disclosure and strong triggering descriptions |
 | [slack-notifier](plugins/slack-notifier/) | Slack integration for deployment and build notifications |
 | [smart-commit](plugins/smart-commit/) | Intelligent git commits with conventional format, semantic analysis, and changelog generation |
 | [sprint-prioritizer](plugins/sprint-prioritizer/) | Sprint planning with story prioritization and capacity estimation |

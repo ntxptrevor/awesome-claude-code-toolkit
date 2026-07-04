@@ -1,0 +1,9 @@
+{
+  "name": "plugin-settings",
+  "version": "1.0.0",
+  "description": "Guidance for the .claude/plugin-name.local.md pattern for configurable, per-project Claude Code plugin settings",
+  "author": {
+    "name": "Anthropic",
+    "email": "support@anthropic.com"
+  }
+}
