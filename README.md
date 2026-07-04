@@ -550,7 +550,7 @@ Reference an agent in your `CLAUDE.md`:
 
 ## Skills
 
-Thirty-five curated skill modules included in this repo, with access to **400,000+ additional skills** via the [SkillKit marketplace](https://agenstskills.com). Each included skill teaches Claude Code domain-specific patterns with code examples, anti-patterns, and checklists.
+Forty-two curated skill modules included in this repo, with access to **400,000+ additional skills** via the [SkillKit marketplace](https://agenstskills.com). Each included skill teaches Claude Code domain-specific patterns with code examples, anti-patterns, and checklists.
 
 | Skill | Directory | What It Teaches |
 |-------|-----------|-----------------|
@@ -590,6 +590,13 @@ Thirty-five curated skill modules included in this repo, with access to **400,00
 | Mobile Development | `skills/mobile-development/` | React Native, Flutter, responsive layouts |
 | Data Engineering | `skills/data-engineering/` | ETL pipelines, Spark, star schema, data quality |
 | LLM Integration | `skills/llm-integration/` | Streaming, function calling, RAG, cost optimization |
+| Plugin Structure | `skills/plugin-structure/` | Plugin directory layout, manifest config, auto-discovery, `${CLAUDE_PLUGIN_ROOT}` |
+| Plugin Settings | `skills/plugin-settings/` | `.claude/plugin-name.local.md` pattern, YAML frontmatter parsing, per-project config |
+| Command Development | `skills/command-development/` | Slash command frontmatter, dynamic arguments, bash execution, interactive commands |
+| Agent Development | `skills/agent-development/` | Subagent frontmatter, system prompts, triggering conditions, AI-assisted generation |
+| Hook Development | `skills/hook-development/` | PreToolUse/PostToolUse/Stop hooks, prompt-based hooks API, event-driven automation |
+| MCP Integration | `skills/mcp-integration/` | Adding MCP servers to plugins, `.mcp.json`, SSE/stdio/HTTP transport types |
+| Skill Development | `skills/skill-development/` | Skill structure, progressive disclosure, strong triggering descriptions |
 
 ### Community Skills
 
@@ -696,7 +703,7 @@ npx skillkit@latest install claude-code-toolkit/tdd-mastery
 
 ### 15,000+ Skills via SkillKit Marketplace
 
-This toolkit includes 35 curated skills. For access to **400,000+ additional skills** across every domain, use [SkillKit](https://agenstskills.com):
+This toolkit includes 42 curated skills. For access to **400,000+ additional skills** across every domain, use [SkillKit](https://agenstskills.com):
 
 ```bash
 npx skillkit@latest                    # Launch interactive TUI
