@@ -72,19 +72,7 @@ function registerKey(apiKey) {
     registered.push(".env (created)");
   }
 
-  // 2. mcp-configs/browserbase.json
-  const mcpPath = path.join(root, "mcp-configs", "browserbase.json");
-  if (fs.existsSync(mcpPath)) {
-    const content = fs.readFileSync(mcpPath, "utf8");
-    if (content.includes("<your-browserbase-api-key>")) {
-      fs.writeFileSync(mcpPath, content.replace("<your-browserbase-api-key>", apiKey));
-      registered.push("mcp-configs/browserbase.json");
-    } else {
-      skipped.push("mcp-configs/browserbase.json");
-    }
-  }
-
-  // 3. Shell profiles
+  // 2. Shell profiles
   for (const profile of [".bashrc", ".zshrc", ".bash_profile"].map(f => path.join(os.homedir(), f))) {
     if (fs.existsSync(profile)) {
       const content = fs.readFileSync(profile, "utf8");
@@ -97,7 +85,7 @@ function registerKey(apiKey) {
     }
   }
 
-  // 4. Set in current process
+  // 3. Set in current process
   process.env.BROWSERBASE_API_KEY = apiKey;
 
   return { registered, skipped };

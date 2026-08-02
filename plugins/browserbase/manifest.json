@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "browserbase",
   "display_name": "Browserbase Plugin",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cloud browser automation via Browserbase and Stagehand: scrape pages, fill forms, extract structured data, and drive browsers with natural language — no local Chrome required.",
   "long_description": "Wraps the official @browserbasehq/mcp server for one-click install in Claude Desktop. Exposes 6 tools (start, end, navigate, act, observe, extract) backed by real cloud Chrome sessions. Bring your own Browserbase API key (free tier available) — no project ID needed, the key resolves it automatically.",
   "author": { "name": "awesome-claude-code-toolkit" },

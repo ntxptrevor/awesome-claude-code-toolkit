@@ -61,7 +61,9 @@ browserbase/
 │       ├── screenshot-on-error.js
 │       ├── data-validator.js
 │       ├── multi-page-crawler.js
-│       └── verify-setup.sh
+│       ├── capture-design.js
+│       ├── verify-setup.sh
+│       └── lib/prompt-hook.js       # shared stdin/JSON parsing for the hooks above
 └── setup/
     └── install.sh               # Full automated setup script
 ```
@@ -72,11 +74,13 @@ The plugin searches these locations (in order) for `BROWSERBASE_API_KEY`:
 
 1. `BROWSERBASE_API_KEY` environment variable
 2. `.env`, `.env.local`, `.env.development`, `.env.production`
-3. `mcp-configs/browserbase.json`, `.mcp.json`
+3. `mcp-configs/browserbase.json`, `.mcp.json` (read-only — see note below)
 4. `.claude/settings.local.json`, `.claude/settings.json`, `~/.claude/settings.json`
 5. `~/.bashrc`, `~/.zshrc`, `~/.bash_profile`, `~/.profile`
 
-When found, the key is auto-registered into any location that's missing it. When not found, the OAuth login flow is triggered. The user is always notified of what changed but never asked for permission.
+When found, the key is auto-registered into `.env` (gitignored) and your shell profile if missing there. When not found, the OAuth login flow is triggered. The user is always notified of what changed but never asked for permission.
+
+**Note:** `mcp-configs/browserbase.json` and `.mcp.json` reference the key as `${BROWSERBASE_API_KEY}` (env-var expansion), so they resolve automatically once `.env`/the environment is set. The plugin never writes a literal key into either file — both are tracked in git, and writing a live secret there would risk it getting committed.
 
 ## Requirements
 

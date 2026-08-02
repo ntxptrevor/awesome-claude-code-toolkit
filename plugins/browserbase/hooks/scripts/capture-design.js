@@ -7,32 +7,8 @@
  * to the capture-design command with extraction instructions.
  */
 
-const stdinData = [];
-process.stdin.on("data", (chunk) => stdinData.push(chunk));
-process.stdin.on("end", () => {
-  const input = Buffer.concat(stdinData).toString().trim();
-  let prompt = "";
-  try {
-    const parsed = JSON.parse(input);
-    prompt = parsed.prompt || parsed.message || parsed.user_prompt || input;
-  } catch {
-    prompt = input;
-  }
-
-  const hint = analyze(prompt);
-  if (hint) {
-    console.log(
-      JSON.stringify({
-        hookSpecificOutput: {
-          hookEventName: "UserPromptSubmit",
-          additionalContext: hint,
-        },
-      })
-    );
-  }
-});
-
-if (process.stdin.isTTY) process.exit(0);
+const { run } = require("./lib/prompt-hook");
+run(analyze);
 
 function analyze(promptRaw) {
   const text = String(promptRaw || "").toLowerCase();
@@ -40,7 +16,8 @@ function analyze(promptRaw) {
 
   const designCapture =
     /\b(capture|copy|clone|replicate|reverse.?engineer|extract|analyze|document)\b/.test(text) &&
-    /\b(design|style|theme|look|aesthetic|ui|visual|layout|css|branding)\b/.test(text);
+    /\b(design|style|theme|look|aesthetic|ui|visual|layout|css|branding)\b/.test(text) &&
+    (/\bhttps?:\/\/\S+/.test(text) || /\b(site|website|page|landing|homepage)\b/.test(text));
 
   const screenshotDesign =
     /\b(screenshot|screen.?shot|snap|capture)\b/.test(text) &&
