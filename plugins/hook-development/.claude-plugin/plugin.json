@@ -1,9 +1,0 @@
-{
-  "name": "hook-development",
-  "version": "1.0.0",
-  "description": "Guidance for creating Claude Code hooks: PreToolUse/PostToolUse/Stop events, the prompt-based hooks API, and event-driven automation",
-  "author": {
-    "name": "Anthropic",
-    "email": "support@anthropic.com"
-  }
-}

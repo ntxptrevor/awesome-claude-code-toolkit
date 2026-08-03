@@ -1,9 +1,0 @@
-{
-  "name": "agent-development",
-  "version": "1.0.0",
-  "description": "Guidance for creating Claude Code subagents: system prompts, triggering conditions, tool selection, and AI-assisted agent generation",
-  "author": {
-    "name": "Anthropic",
-    "email": "support@anthropic.com"
-  }
-}
