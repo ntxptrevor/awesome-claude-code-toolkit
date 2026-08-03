@@ -7,34 +7,8 @@
  * the prompt; on a match it injects a short context hint, otherwise stays silent.
  */
 
-const stdinData = [];
-process.stdin.on("data", (chunk) => stdinData.push(chunk));
-process.stdin.on("end", () => {
-  const input = Buffer.concat(stdinData).toString().trim();
-  let prompt = "";
-  try {
-    const parsed = JSON.parse(input);
-    prompt = parsed.prompt || parsed.message || parsed.user_prompt || input;
-  } catch (e) {
-    prompt = input;
-  }
-
-  const hint = analyze(prompt);
-  if (hint) {
-    console.log(
-      JSON.stringify({
-        hookSpecificOutput: {
-          hookEventName: "UserPromptSubmit",
-          additionalContext: hint,
-        },
-      })
-    );
-  }
-});
-
-if (process.stdin.isTTY) {
-  process.exit(0);
-}
+const { run } = require("./lib/prompt-hook");
+run(analyze);
 
 function analyze(promptRaw) {
   const text = String(promptRaw || "").toLowerCase();

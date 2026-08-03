@@ -89,13 +89,10 @@ else
   REGISTERED+=(".env (created)")
 fi
 
-if [ -f mcp-configs/browserbase.json ]; then
-  current=$(grep -oP '"BROWSERBASE_API_KEY"\s*:\s*"\K[^"]+' mcp-configs/browserbase.json 2>/dev/null || true)
-  if [[ "$current" == "<"* ]] || [ -z "$current" ]; then
-    sed -i "s|<your-browserbase-api-key>|$FOUND_KEY|" mcp-configs/browserbase.json
-    REGISTERED+=("mcp-configs/browserbase.json")
-  fi
-fi
+# mcp-configs/browserbase.json and .mcp.json both reference ${BROWSERBASE_API_KEY}
+# by env-var expansion, so they resolve automatically once .env/the environment
+# is set — nothing to write there, and doing so would risk committing a live
+# secret into a tracked repo file.
 
 # ─── Emit notification ──────────────────────────────────────────────────────
 if [ ${#REGISTERED[@]} -gt 0 ]; then

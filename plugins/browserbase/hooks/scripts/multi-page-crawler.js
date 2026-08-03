@@ -7,32 +7,8 @@
  * URL deduplication and aggregated results.
  */
 
-const stdinData = [];
-process.stdin.on("data", (chunk) => stdinData.push(chunk));
-process.stdin.on("end", () => {
-  const input = Buffer.concat(stdinData).toString().trim();
-  let prompt = "";
-  try {
-    const parsed = JSON.parse(input);
-    prompt = parsed.prompt || parsed.message || parsed.user_prompt || input;
-  } catch {
-    prompt = input;
-  }
-
-  const hint = analyze(prompt);
-  if (hint) {
-    console.log(
-      JSON.stringify({
-        hookSpecificOutput: {
-          hookEventName: "UserPromptSubmit",
-          additionalContext: hint,
-        },
-      })
-    );
-  }
-});
-
-if (process.stdin.isTTY) process.exit(0);
+const { run } = require("./lib/prompt-hook");
+run(analyze);
 
 function analyze(promptRaw) {
   const text = String(promptRaw || "").toLowerCase();
@@ -41,12 +17,18 @@ function analyze(promptRaw) {
   const crawlIntent =
     /\b(crawl|spider|scrape all|all pages|every page|paginate|next page|multiple pages|site.?wide|entire site|whole site)\b/.test(text);
 
+  const webContext =
+    /\bhttps?:\/\/\S+/.test(text) ||
+    /\b(site|website|web ?page|url|browser|crawl|scrape)\b/.test(text);
+
   const listIntent =
     /\b(all|every|each|complete list|full list)\b/.test(text) &&
-    /\b(product|item|page|link|article|listing|result)\b/.test(text);
+    /\b(product|item|page|link|article|listing|result)\b/.test(text) &&
+    webContext;
 
   const paginationSignal =
-    /\b(page \d|pagination|load more|show more|next|previous|offset|cursor)\b/.test(text);
+    /\b(page \d|pagination|load more|show more|next|previous|offset|cursor)\b/.test(text) &&
+    webContext;
 
   if (!crawlIntent && !listIntent && !paginationSignal) return null;
 
