@@ -1,9 +1,0 @@
-{
-  "name": "plugin-structure",
-  "version": "1.0.0",
-  "description": "Guidance for Claude Code plugin directory layout, manifest configuration, and component auto-discovery",
-  "author": {
-    "name": "Anthropic",
-    "email": "support@anthropic.com"
-  }
-}

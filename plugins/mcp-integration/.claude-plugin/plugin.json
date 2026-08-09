@@ -1,9 +1,0 @@
-{
-  "name": "mcp-integration",
-  "version": "1.0.0",
-  "description": "Guidance for integrating MCP servers into Claude Code plugins: .mcp.json setup, server types (stdio/SSE/HTTP), and authentication",
-  "author": {
-    "name": "Anthropic",
-    "email": "support@anthropic.com"
-  }
-}

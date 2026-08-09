@@ -1,9 +1,0 @@
-{
-  "name": "skill-development",
-  "version": "1.0.0",
-  "description": "Guidance for creating Claude Code skills with progressive disclosure and strong triggering descriptions",
-  "author": {
-    "name": "Anthropic",
-    "email": "support@anthropic.com"
-  }
-}

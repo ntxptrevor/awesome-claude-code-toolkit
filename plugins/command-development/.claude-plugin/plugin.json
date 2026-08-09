@@ -1,9 +1,0 @@
-{
-  "name": "command-development",
-  "version": "1.0.0",
-  "description": "Guidance for creating Claude Code slash commands: YAML frontmatter, dynamic arguments, bash execution, and interactive command patterns",
-  "author": {
-    "name": "Anthropic",
-    "email": "support@anthropic.com"
-  }
-}
