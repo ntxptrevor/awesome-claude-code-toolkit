@@ -135,6 +135,12 @@ red = priority focus. Donut/segment colors are a validated categorical palette
   stress. **Never make blunt negative statements about the project's success** — a
   customer may be reading. Use constructive framing ("the item to watch this week"),
   and encode urgency in the red/yellow/green lights, not in alarming language.
+- **Parsing council (exception path).** When user input is vague or disengaged, or
+  a draft doesn't read industry-grade, or OCR confidence is low on binding values,
+  convene the limited model council per `reference/model-council.md`: Gemini for
+  vision/Google-OCR second passes, GPT (Luna) for bulk microtasks and the findings
+  report, Claude to adjudicate intent and write the model. Default remains
+  single-model; every convening names its trigger and logs to `normalization_log`.
 
 ## Cross-references
 
