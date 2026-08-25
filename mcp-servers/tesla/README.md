@@ -127,8 +127,9 @@ Claude Desktop / any MCP client — see `../../mcp-configs/tesla.json`.
 | Artifact | Install |
 | --- | --- |
 | `tesla.mcpb` | MCP Bundle: open in Claude Desktop, or `npx @anthropic-ai/mcpb install tesla.mcpb` |
-| `tesla-connector-plugin.zip` | Claude Code plugin (MCP server + `/setup` + `/dashboard` commands + skill + first-run hook): unzip into `~/.claude/plugins/` |
-| `tesla-connector-skill.zip` | Prepackaged Agent Skill (SKILL.md + bundled `tesla-cli`, no MCP needed): unzip into `~/.claude/skills/` or upload to claude.ai |
+| `tesla-connector-plugin.zip` | Claude Code plugin (MCP server + `/setup` + `/dashboard` commands + skill + first-run hook): unzip into `~/.claude/plugins/`, or add via `--plugin-dir`. **Not** installable via claude.ai's web upload — plugins are a Claude Code CLI concept. |
+| `tesla-connector-skill.zip` | Prepackaged Agent Skill (SKILL.md + bundled `tesla-cli`, needs real fs/network): unzip into `~/.claude/skills/` for **Claude Code**, which has real Bash/network access. |
+| `tesla-connector-skill-claudeai.zip` | Minimal connector-only Skill (SKILL.md only, ~2 KB) — upload **this one** at claude.ai → Settings → Capabilities → Skills. It has no bundled code; it just teaches Claude to use the `tesla_*` tools already exposed by the connector (`.mcpb` or the bridge's `/mcp`). claude.ai's Skills sandbox has no persistent config and no guaranteed egress to Tesla's API, so a Skill can't embed the server itself there — it must ride on an already-connected connector. |
 
 There is also a direct CLI over the same registry:
 `node dist/cli.js tesla_find_my_tesla` / `node dist/cli.js list`.

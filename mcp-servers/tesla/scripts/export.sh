@@ -9,8 +9,21 @@
 #                                      bundled copy; MCP server + /setup +
 #                                      /dashboard commands + skill + hook)
 #   build/tesla-connector-skill.zip    Prepackaged Agent Skill — SKILL.md +
-#                                      compiled CLI; drop into ~/.claude/skills/
-#                                      or upload to claude.ai
+#                                      compiled CLI (needs real fs/network);
+#                                      drop into ~/.claude/skills/ for Claude
+#                                      Code. Do NOT upload this one to
+#                                      claude.ai — its sandbox has no
+#                                      persistent config and no guaranteed
+#                                      egress to Tesla's API.
+#   build/tesla-connector-skill-claudeai.zip
+#                                      Minimal connector-only Skill (SKILL.md
+#                                      only, no bundled code) — upload THIS
+#                                      one at claude.ai → Settings →
+#                                      Capabilities → Skills. It just teaches
+#                                      Claude to use the tesla_* tools that
+#                                      the Tesla connector (.mcpb, or the
+#                                      bridge's /mcp custom connector)
+#                                      already exposes.
 #
 # Usage: scripts/export.sh
 set -euo pipefail
@@ -63,5 +76,12 @@ cp skill/SKILL.md "$SKILL/SKILL.md"
 cp -R "$BUILD/payload/server" "$SKILL/server"
 ( cd "$BUILD/skill" && zip -qr "$BUILD/tesla-connector-skill.zip" tesla-connector )
 
+# --- 4. Minimal connector-only Skill (for claude.ai web upload) ---------------
+echo "==> Building tesla-connector-skill-claudeai.zip"
+SKILL_WEB="$BUILD/skill-web/tesla-connector"
+mkdir -p "$SKILL_WEB"
+cp skill-connector-only/SKILL.md "$SKILL_WEB/SKILL.md"
+( cd "$BUILD/skill-web" && zip -qr "$BUILD/tesla-connector-skill-claudeai.zip" tesla-connector )
+
 echo "==> Done:"
-ls -lh "$BUILD"/tesla.mcpb "$BUILD"/tesla-connector-plugin.zip "$BUILD"/tesla-connector-skill.zip
+ls -lh "$BUILD"/tesla.mcpb "$BUILD"/tesla-connector-plugin.zip "$BUILD"/tesla-connector-skill.zip "$BUILD"/tesla-connector-skill-claudeai.zip
