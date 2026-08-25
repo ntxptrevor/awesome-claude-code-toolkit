@@ -128,7 +128,7 @@ Claude Desktop / any MCP client — see `../../mcp-configs/tesla.json`.
 | --- | --- |
 | `tesla.mcpb` | MCP Bundle: open in Claude Desktop, or `npx @anthropic-ai/mcpb install tesla.mcpb` |
 | `tesla-connector-plugin.zip` | Claude Code plugin (MCP server + `/setup` + `/dashboard` commands + skill + first-run hook): unzip into `~/.claude/plugins/` |
-| `tesla-connector-skill.zip` | Prepackaged Agent Skill (SKILL.md + bundled `tesla-cli`, no MCP needed): unzip into `~/.claude/skills/` or upload to claude.ai |
+| `tesla-connector-skill.zip` | Prepackaged Agent Skill (SKILL.md at the zip root + bundled `tesla-cli`, no MCP needed): upload directly to claude.ai, or `mkdir -p ~/.claude/skills/tesla-connector && unzip tesla-connector-skill.zip -d ~/.claude/skills/tesla-connector` |
 
 There is also a direct CLI over the same registry:
 `node dist/cli.js tesla_find_my_tesla` / `node dist/cli.js list`.
