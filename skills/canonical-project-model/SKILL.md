@@ -1,6 +1,6 @@
 ---
 name: canonical-project-model
-description: Normalizes the verbatim project-intake dossier (which Mistral OCR4 produced) into the Canonical Project Record - one reusable, CSI MasterFormat-organized, provenance-carrying source of truth - and renders it as an interlinked Excel workbook plus a self-contained animated HTML command dashboard (donut KPI infographics, click-to-ITB segmented budget bar with buyout/profit mode, activity stream, daily-report cards with intelligence flags, critical-path plotter, editable three-week look-ahead, health lights, one-way connector sync with approval-gated two-way suggestions) in NTXP's navy/platinum/blue brand system. MasterFormat division is the sole classification and universal sort key. It organizes and structures; it never prices, levels, or decides.
+description: Normalizes the verbatim project-intake dossier (which Mistral OCR4 produced) into the Canonical Project Record - one reusable, CSI MasterFormat-organized, provenance-carrying source of truth - and renders it as an interlinked Excel workbook, a self-contained animated HTML command dashboard (donut KPI infographics, click-to-ITB segmented budget bar with buyout/profit mode, activity stream, daily-report cards with intelligence flags, critical-path plotter, editable three-week look-ahead, health lights, one-way connector sync with approval-gated two-way suggestions), and the NTXP Plans Atlas - a navigable, hyperlinked, offline drawing-set viewer (concept rail by trade/spec/phase/area, callout hotspot links with Back navigation, punctuation-insensitive drawing-text search, staged live markups and generated phase images) in NTXP's navy/platinum/blue brand system. MasterFormat division is the sole classification and universal sort key. It organizes and structures; it never prices, levels, or decides. Use for navigating plans fast, finding a trade/spec/phase/area on the drawings, plan atlas, drawing atlas, linked drawing set.
 ---
 
 # Canonical Project Model — the source-of-truth layer
@@ -115,6 +115,38 @@ a scrollable vertical **critical-path plotter** · a **three-week look-ahead**
 **Health lights**: green = on track · yellow = the PM team should work this soon ·
 red = priority focus. Donut/segment colors are a validated categorical palette
 (dataviz six checks, dark surface) assigned to divisions in fixed order.
+
+## The Plans Atlas — navigate the drawing set by concept
+
+The drawing set as a linked web document, without altering the drawings. Adapted from
+the Contractor OS "Interactive Drawing Atlas" (NTXP Forge audit, verdict ADAPT) with its
+faults fixed: **deterministic extraction** (`build_atlas_data.py`, PyMuPDF optional,
+read-only on sources, degrades to manifest-only), NTXP branding, NTXP paths, and links
+emitted only when the target resolves.
+
+- **Section**: `plans_atlas` (schema `plans-atlas.schema.json`) — sheets (number, title,
+  discipline, revision, scale, text-layer check), the callout-link graph (`5/A-501`
+  detail/section/schedule bubbles, `09 51 13` spec references — each with provenance and
+  confidence), the concept index, and a renders ledger. Sorted, like everything, by CSI
+  division.
+- **Viewer** (`build_atlas_html.py`, stdlib-only, fully offline): concept rail
+  (**TRADES / SPECS / PHASES / AREAS**) so a user lands on any trade, spec section,
+  phase, or area in a few clicks; discipline tabs + sheet grid; pan/zoom sheet viewer
+  with glowing callout hotspots and Back-stack navigation; punctuation-insensitive
+  search across sheet numbers, titles, concepts, and drawing text (`FD2` finds `FD-2`;
+  sheets without a text layer are marked not searchable, never faked).
+- **Hyperlinks everywhere**: division chips → trade budget pages and Summary QTO rows
+  (quantities still live once, in the QTO); spec references → the per-section PDFs that
+  `specs-skill` cuts; sheets ↔ details ↔ schedules; the atlas ↔ the command dashboard.
+- **Live generation stays owned by the generating skills.** "Stage markup" and "Stage
+  phase image" queue requests for `ntxp-pdf-markups-and-redlines` (rendered markups,
+  scope overlays, takeoff exhibits) and `construction-scope-visualizer` /
+  `4d-bim-visualization` (photorealistic phase-of-scope images). Requests follow the
+  same approval-gated flow as all two-way suggestions; finished renders land back in
+  the atlas `renders` ledger with provenance and appear on the sheet's panel.
+- **Gate**: if a pack inventory reports the drawing set blocked (duplicates, unreadable
+  sheets), record it in `source_set.pack_qa` and surface it in `needs_review` instead
+  of building a confident-looking atlas over a broken set.
 
 ## Data connectors & sync policy
 

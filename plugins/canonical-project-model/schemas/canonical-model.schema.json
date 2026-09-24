@@ -69,7 +69,8 @@
         "activity_stream": { "description": "activity-stream.schema.json — connector-synced activity (JobTread photos, OCR4 pdf snips).", "type": ["object", "string"] },
         "daily_reports": { "description": "daily-reports.schema.json — JobTread daily-report summaries with intelligence flags.", "type": ["object", "string"] },
         "suggestions": { "description": "suggestions.schema.json — agent-proposed changes staged for user-approved two-way sync.", "type": ["object", "string"] },
-        "connectors": { "description": "connectors.schema.json — data-source sync state (one-way in; last five days prioritized).", "type": ["object", "string"] }
+        "connectors": { "description": "connectors.schema.json — data-source sync state (one-way in; last five days prioritized).", "type": ["object", "string"] },
+        "plans_atlas": { "description": "plans-atlas.schema.json — navigable drawing-set index: sheets, callout-link graph, concept index (trade/spec/phase/area), staged markup/phase-image renders.", "type": ["object", "string"] }
       }
     },
     "health": {

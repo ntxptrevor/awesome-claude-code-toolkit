@@ -56,6 +56,7 @@ SECTIONS = [
     ("daily_reports", "daily-reports.schema.json", "daily_reports", "reports"),
     ("suggestions", "suggestions.schema.json", "suggestions", "items"),
     ("connectors", "connectors.schema.json", "connectors", "sources"),
+    ("plans_atlas", "plans-atlas.schema.json", "plans_atlas", "sheets"),
 ]
 SECTION_BY_KEY = {s[0]: s for s in SECTIONS}
 
