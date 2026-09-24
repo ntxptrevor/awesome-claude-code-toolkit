@@ -43,6 +43,7 @@ projects/<slug>/model/
   model-handoff.json        # downstream contract (schema: schemas/model-handoff.schema.json)
 <slug>.xlsx                 # the interlinked workbook (primary working deliverable)
 <slug>.html                # self-contained animated dashboard (read-only "at a glance" view)
+plans-atlas.html           # self-contained Plans Atlas — navigable, hyperlinked drawing-set viewer
 ```
 
 ### The workbook (sheets, all sorted by MasterFormat division)
@@ -129,6 +130,34 @@ deliverable; this is the wall screen.
 
 `build_workbook.py` flags: `--out` (xlsx path), `--company` (branding, default NTXP),
 `--website` (URL the ITB QR points to, default the NTXP site), `--dry-run`.
+
+### The Plans Atlas (`build_atlas_data.py` + `build_atlas_html.py`)
+
+The drawing set, navigable like a linked web document — without altering the drawings.
+Adapted from the Contractor OS "Interactive Drawing Atlas" concept (audited in NTXP
+Forge, verdict ADAPT) and rebuilt to fix its faults: extraction is a **deterministic
+script**, not hand-rolled code per run; styling is the NTXP brand system; paths follow
+NTXP taxonomy; links are emitted only when their target resolves.
+
+1. `scripts/build_atlas_data.py` (PyMuPDF optional; degrades to manifest-only) reads the
+   drawing PDFs read-only and writes `sections/plans_atlas.json` + an `atlas-words.json`
+   search sidecar + page images: sheets (number/title/discipline/rev/scale, text-layer
+   check), the **callout-link graph** (detail/section/schedule bubbles like `5/A-501`,
+   spec references like `09 51 13` — resolved-targets only, with provenance and
+   confidence), and the **concept index** (trades by CSI division, spec sections,
+   phases, areas) cross-linked into the canonical model (takeoff_ids, budget pages,
+   per-section spec PDFs from `specs-skill`).
+2. `scripts/build_atlas_html.py` (stdlib-only, self-contained output) renders the
+   viewer: a **concept rail** (TRADES / SPECS / PHASES / AREAS) for finding anything in
+   a few clicks · discipline tabs + sheet grid · **pan/zoom viewer** with glowing
+   **callout hotspots** that hyperlink plan → section/detail/schedule/spec with Back
+   navigation · **punctuation-insensitive search** across sheet numbers, titles,
+   concepts, and the drawing text index (`FD2` finds `FD-2`; sheets without a text
+   layer are marked not-searchable, never faked) · a per-sheet **renders panel** where
+   rendered markups and generated phase-of-scope images appear, plus **Stage markup /
+   Stage phase image** buttons that queue requests for `ntxp-pdf-markups-and-redlines`
+   and `construction-scope-visualizer` to produce — generation stays approval-gated in
+   those skills; the atlas only records and links the results.
 
 ## Dependencies
 
