@@ -1115,8 +1115,13 @@ def build_search_payload(sheets, concepts, words_by_sheet):
         if not isinstance(words, list):
             continue
         for w in words[:MAX_WORDS_PER_SHEET]:
-            txt = w.get("t") or w.get("text") or ""
-            box = w.get("b") or w.get("box")
+            if isinstance(w, list) and len(w) == 5:  # build_atlas_data form: [x0,y0,x1,y1,"WORD"]
+                txt, box = str(w[4]), list(w[:4])
+            elif isinstance(w, dict):
+                txt = w.get("t") or w.get("text") or ""
+                box = w.get("b") or w.get("box")
+            else:
+                continue
             if not txt:
                 continue
             item = {"type": "word", "id": sid, "label": txt, "norm": norm_txt(txt)}

@@ -18,6 +18,7 @@ It is stdlib-only.
 """
 import argparse
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -63,9 +64,10 @@ def pack_flat(target, out):
     return count
 
 
-def pack_claude(out):
+def pack_claude(out, name=None):
     """Claude skill folder: root SKILL.md is Claude-native, so the nested adapter
-    SKILL.md is left out to keep exactly one SKILL.md in the upload."""
+    SKILL.md is left out to keep exactly one SKILL.md in the upload. `name`
+    rewrites the frontmatter name (for example to install as ntxp-plans-atlas)."""
     if out.exists():
         shutil.rmtree(out)
     skill_md = ROOT.parent.parent / "skills" / "canonical-project-model" / "SKILL.md"
@@ -74,6 +76,10 @@ def pack_claude(out):
     shutil.copytree(ROOT, out, ignore=shutil.ignore_patterns(
         "__pycache__", "*.pyc", ".claude-plugin", "hooks", "commands", "claude"))
     shutil.copy2(skill_md, out / "SKILL.md")
+    if name:
+        text = (out / "SKILL.md").read_text()
+        text = re.sub(r"^name: .*$", f"name: {name}", text, count=1, flags=re.M)
+        (out / "SKILL.md").write_text(text)
     count = sum(1 for p in out.rglob("*") if p.is_file())
     log(f"claude: {count} files -> {out}")
     return count
@@ -113,12 +119,13 @@ def main():
     p = sub.add_parser("pack", help="Build an upload set for a platform.")
     p.add_argument("--target", required=True, choices=["chatgpt", "grok", "claude"])
     p.add_argument("--out", required=True, type=Path)
+    p.add_argument("--name", help="Claude target only: skill name to write into SKILL.md.")
     s = sub.add_parser("setup", help="Restore the folder layout from a flat upload.")
     s.add_argument("--src", required=True, type=Path)
     s.add_argument("--to", required=True, type=Path)
     a = ap.parse_args()
     if a.cmd == "pack":
-        n = pack_claude(a.out) if a.target == "claude" else pack_flat(a.target, a.out)
+        n = pack_claude(a.out, a.name) if a.target == "claude" else pack_flat(a.target, a.out)
         print(json.dumps({"status": "packed", "target": a.target, "files": n, "out": str(a.out)}))
     else:
         setup(a.src, a.to)
