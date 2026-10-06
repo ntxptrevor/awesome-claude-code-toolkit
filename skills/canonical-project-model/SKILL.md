@@ -148,6 +148,41 @@ emitted only when the target resolves.
   sheets), record it in `source_set.pack_qa` and surface it in `needs_review` instead
   of building a confident-looking atlas over a broken set.
 
+### Automatic deployment & as-needed updating
+
+The atlas is not an on-request deliverable — it **deploys itself** as part of the
+project record, through `scripts/deploy_atlas.py` (idempotent orchestrator:
+discover plans → extract → assemble → render → file → record state).
+
+**Fire it automatically, without being asked, when:**
+1. **A bid is confirmed** (NTXP is bidding the job) — during initial knowledge-base
+   creation and review, while the records, plans, specs, and dossier are being
+   assessed, run the deployment with `--event bid_confirmed`. The atlas is created as
+   part of the Canonical Project Record and **filed under the project's Construction
+   Documents folder** (resolve the exact folder with `ntxp-folder-system` when filing
+   to Drive; locally the script auto-detects or creates `Construction Documents/` and
+   writes `Construction Documents/Plans Atlas/plans-atlas.html`).
+2. **A project is confirmed** (awarded; `phase` flips estimate → project) — rerun with
+   `--event project_confirmed` so the atlas reflects the conformed set and the record
+   links shift from bid pages to buyout/budget pages.
+3. **The drawing set changes** — addenda, ASIs, revised or conformed sheets landing in
+   the Construction Documents folder. The deployer keeps a SHA-256 manifest of the
+   drawing PDFs in `model/.atlas-state.json`; any difference triggers a rebuild
+   (`--event addendum`), identical sets exit "up to date" without rebuilding. Never
+   rebuild for cosmetic reasons; never skip a rebuild when a sheet changed.
+
+**Placement rule:** the rendered atlas (plus its README and any non-inlined assets)
+lives in `<project>/Construction Documents/Plans Atlas/`; the data (`plans_atlas`
+section, word sidecar, state file) lives in `<project>/model/` with the rest of the
+Canonical Project Record. The atlas ships beside the drawings it indexes, so whoever
+opens the const docs folder finds the navigable set first.
+
+**Boundaries unchanged:** deployment is one-way creation of record + deliverable.
+Staged markups/phase images inside the atlas remain approval-gated; the deployer never
+writes to external systems, never modifies source PDFs, and reports — calmly — what it
+built, skipped, or is waiting on (`no_drawings` is a normal state for a brand-new bid,
+not an error).
+
 ## Data connectors & sync policy
 
 - **One-way in, always.** Every connector (JobTread, OCR4 docs, schedule, contacts, workspace intelligence — summarized emails and meeting minutes land in the activity stream and knowledge base with provenance)
