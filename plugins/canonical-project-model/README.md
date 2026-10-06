@@ -168,6 +168,27 @@ NTXP taxonomy; links are emitted only when their target resolves.
    (`--event bid_confirmed|project_confirmed|addendum`, `--check`, `--force`,
    `--dry-run`).
 
+## Deploy on any model: Claude, ChatGPT, Grok
+
+`AGENTS.md` is the model-agnostic operating contract, and platform adapters add
+only mechanics. Build each platform's upload set with
+`scripts/platform_pack.py`:
+
+| Platform | Adapter | Build | Install |
+| --- | --- | --- | --- |
+| Claude Code | `claude/SKILL.md` | plugin | `/plugin install canonical-project-model`, or copy to `~/.claude/skills/ntxp-plans-atlas/` |
+| claude.ai / Cowork | `claude/SKILL.md` | `pack --target claude` | zip the folder, then upload it in Settings → Capabilities → Skills |
+| Claude API | `claude/SKILL.md` | — | `tools/functions.json` (`parameters` → `input_schema`) + `scripts/run_tool.py` |
+| ChatGPT Custom GPT / Project | `chatgpt/gpt-instructions.md` | `pack --target chatgpt` | paste the instructions, upload the 13 files as Knowledge, enable Code Interpreter |
+| Codex | `AGENTS.md` | — | read natively from the repository |
+| OpenAI API | `chatgpt/gpt-instructions.md` | — | `tools/functions.json` + `scripts/run_tool.py` |
+| Grok Project | `grok/grok-instructions.md` | `pack --target grok` | paste the custom instructions, add the 13 files |
+| xAI API | `grok/grok-instructions.md` | — | `tools/functions.json` (OpenAI-compatible) + `scripts/run_tool.py` |
+
+In a sandbox, restore the flat upload's folder layout with
+`python platform_pack.py setup --src <files> --to <workdir>` before running any
+script.
+
 ## Dependencies
 
 `assemble_model.py` and `build_dashboard_html.py` are **stdlib-only**. Only
