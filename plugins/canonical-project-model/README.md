@@ -158,6 +158,15 @@ NTXP taxonomy; links are emitted only when their target resolves.
    Stage phase image** buttons that queue requests for `ntxp-pdf-markups-and-redlines`
    and `construction-scope-visualizer` to produce — generation stays approval-gated in
    those skills; the atlas only records and links the results.
+3. `scripts/deploy_atlas.py` (stdlib-only) **deploys the atlas automatically** when a
+   bid or project is confirmed (initial KB creation/review) and keeps it current
+   as-needed: discovers the drawing PDFs under the project's **Construction
+   Documents** folder (auto-detected or `--const-docs`), runs extract → assemble →
+   render, files the result at `Construction Documents/Plans Atlas/plans-atlas.html`,
+   and records a SHA-256 drawing manifest in `model/.atlas-state.json` so unchanged
+   sets exit "up to date" and any addendum/revision triggers a rebuild
+   (`--event bid_confirmed|project_confirmed|addendum`, `--check`, `--force`,
+   `--dry-run`).
 
 ## Dependencies
 
