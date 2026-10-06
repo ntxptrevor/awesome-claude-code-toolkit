@@ -1,6 +1,6 @@
 ---
 name: canonical-project-model
-description: Normalizes the verbatim project-intake dossier (which Mistral OCR4 produced) into the Canonical Project Record - one reusable, CSI MasterFormat-organized, provenance-carrying source of truth - and renders it as an interlinked Excel workbook, a self-contained animated HTML command dashboard (donut KPI infographics, click-to-ITB segmented budget bar with buyout/profit mode, activity stream, daily-report cards with intelligence flags, critical-path plotter, editable three-week look-ahead, health lights, one-way connector sync with approval-gated two-way suggestions), and the NTXP Plans Atlas - a navigable, hyperlinked, offline drawing-set viewer (concept rail by trade/spec/phase/area, callout hotspot links with Back navigation, punctuation-insensitive drawing-text search, staged live markups and generated phase images) in NTXP's navy/platinum/blue brand system. MasterFormat division is the sole classification and universal sort key. It organizes and structures; it never prices, levels, or decides. Use for navigating plans fast, finding a trade/spec/phase/area on the drawings, plan atlas, drawing atlas, linked drawing set.
+description: Normalizes the OCR4 project-intake dossier into the Canonical Project Record - one CSI MasterFormat-organized, provenance-carrying source of truth - and renders an interlinked Excel workbook, an animated HTML command dashboard (KPI donuts, click-to-ITB budget bar with buyout/profit mode, activity stream, daily reports, critical-path plotter, editable look-ahead, health lights, approval-gated two-way sync), and the NTXP Plans Atlas: an offline, hyperlinked drawing-set viewer navigable by trade, spec, phase, or area, with callout links, drawing-text search, and staged markups and phase images. Auto-deploys the atlas to Construction Documents when a bid or project is confirmed and rebuilds when drawings change. Organizes only; never prices, levels, or decides. Use for project records, dashboards, plan atlas, finding a trade or spec on the drawings.
 ---
 
 # Canonical Project Model — the source-of-truth layer
@@ -182,6 +182,30 @@ Staged markups/phase images inside the atlas remain approval-gated; the deployer
 writes to external systems, never modifies source PDFs, and reports — calmly — what it
 built, skipped, or is waiting on (`no_drawings` is a normal state for a brand-new bid,
 not an error).
+
+## Cross-platform deployment (Claude, ChatGPT, Grok)
+
+The rules live once, in the model-agnostic contract `AGENTS.md`. Every platform
+follows it, and the platform adapters add mechanics only:
+
+- **Claude** (`claude/SKILL.md`): Claude Code plugin or `~/.claude/skills`
+  install, claude.ai/Cowork skill upload, Claude API tool use with a cached
+  system prompt.
+- **ChatGPT** (`chatgpt/gpt-instructions.md`, `agents/openai.yaml`): Custom GPT
+  or Project instructions within the 8,000-character limit, Code Interpreter
+  runs, Codex via `AGENTS.md`, and the API.
+- **Grok** (`grok/grok-instructions.md`): Grok Projects and the xAI API, with
+  web/X search kept out of project facts, a tone override to customer-safe
+  language, long-context loading, and Grok Imagine for staged phase images.
+
+Shared assets: `tools/functions.json` (function-tool schema; OpenAI and xAI
+format, with Anthropic `input_schema` conversion), `scripts/run_tool.py`
+(executes any platform's tool call through the same deterministic scripts),
+`scripts/platform_pack.py` (builds each platform's upload set; ChatGPT and Grok
+get 13 flat files under the 20-file Knowledge limit, plus a `setup` command
+that restores the folder layout inside the sandbox), and `config/defaults.yaml`.
+A model that cannot execute code hand-builds the atlas data per `AGENTS.md`
+section 4 and says the viewer still needs a render pass.
 
 ## Data connectors & sync policy
 
