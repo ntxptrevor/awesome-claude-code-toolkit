@@ -225,7 +225,9 @@ def build(args):
     ident = sections_payload.get("project_identity", {})
     joc = ident.get("joc") if isinstance(ident, dict) else None
     model_project = {
-        "title": project.get("title") or ident.get("title") or "Untitled Project",
+        "title": (project.get("title") or ident.get("title")
+                  or dossier.name.replace("_", " ").replace("-", " ").strip()
+                  or "Untitled Project"),
         "slug": project.get("slug") or dossier.name,
         "number": project.get("number") or ident.get("number"),
         "owner": project.get("owner") or ident.get("owner"),

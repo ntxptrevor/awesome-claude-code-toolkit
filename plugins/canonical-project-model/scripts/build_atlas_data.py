@@ -40,11 +40,15 @@ import sys
 from pathlib import Path
 
 try:
-    import fitz  # PyMuPDF — optional
+    import pymupdf as fitz  # PyMuPDF — optional; current import name
     FITZ_AVAILABLE = True
 except ImportError:
-    fitz = None
-    FITZ_AVAILABLE = False
+    try:
+        import fitz  # older PyMuPDF releases
+        FITZ_AVAILABLE = True
+    except ImportError:
+        fitz = None
+        FITZ_AVAILABLE = False
 
 HERE = Path(__file__).resolve().parent
 PLUGIN_DIR = HERE.parent
@@ -67,6 +71,10 @@ SPEC_RE = re.compile(r"\b(\d{2})\s?(\d{2})\s?(\d{2})\b")
 
 # Declared scale in a title block: "1/4\" = 1'-0\"", "1\" = 20'", "1:100".
 SCALE_RE = re.compile(r"(\d+/\d+\"\s*=\s*1'-?0?\"|1\"\s*=\s*\d+'|\d+:\d+)")
+
+# Title-block lines that are metadata, never the sheet title.
+NOT_A_TITLE = re.compile(r"\bSCALE\b|\bDATE\b|\bDRAWN\b|\bCHECKED\b|\bPROJECT\s+(NO|#)|"
+                         + SCALE_RE.pattern, re.I)
 
 PHASE_RE = re.compile(r"PHASE\s+([0-9A-Z]+)")
 ROOM_RE = re.compile(r"(RM|ROOM)\s*[-#]?\s*(\w{1,6})")
@@ -280,6 +288,8 @@ def detect_sheet_and_title(lines, pw, ph):
         if not in_block:
             continue
         text = " ".join(w["text"] for w in line).strip()
+        if NOT_A_TITLE.search(text):
+            continue
         if text and text.upper() != sheet_no and len(text) > len(best_title):
             best_title = text
     return sheet_no, best_title
@@ -395,8 +405,8 @@ def build_sheets_from_pdfs(pdf_paths, out_dir, render_images, dpi, model_divisio
             words_store[sheet_id] = [
                 [*norm_box(w["bbox"], pw, ph), w["text"]] for w in words_flat
             ]
-        doc.close()
         log(f"extracted {doc.page_count} page(s) from {pdf_path.name}")
+        doc.close()
     return sheets, lines_by_sheet, words_store, review
 
 
