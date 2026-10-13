@@ -56,6 +56,7 @@ SECTIONS = [
     ("daily_reports", "daily-reports.schema.json", "daily_reports", "reports"),
     ("suggestions", "suggestions.schema.json", "suggestions", "items"),
     ("connectors", "connectors.schema.json", "connectors", "sources"),
+    ("plans_atlas", "plans-atlas.schema.json", "plans_atlas", "sheets"),
 ]
 SECTION_BY_KEY = {s[0]: s for s in SECTIONS}
 
@@ -224,7 +225,9 @@ def build(args):
     ident = sections_payload.get("project_identity", {})
     joc = ident.get("joc") if isinstance(ident, dict) else None
     model_project = {
-        "title": project.get("title") or ident.get("title") or "Untitled Project",
+        "title": (project.get("title") or ident.get("title")
+                  or dossier.name.replace("_", " ").replace("-", " ").strip()
+                  or "Untitled Project"),
         "slug": project.get("slug") or dossier.name,
         "number": project.get("number") or ident.get("number"),
         "owner": project.get("owner") or ident.get("owner"),

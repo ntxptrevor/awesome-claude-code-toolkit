@@ -1,6 +1,6 @@
 ---
 name: canonical-project-model
-description: Normalizes the verbatim project-intake dossier (which Mistral OCR4 produced) into the Canonical Project Record - one reusable, CSI MasterFormat-organized, provenance-carrying source of truth - and renders it as an interlinked Excel workbook plus a self-contained animated HTML command dashboard (donut KPI infographics, click-to-ITB segmented budget bar with buyout/profit mode, activity stream, daily-report cards with intelligence flags, critical-path plotter, editable three-week look-ahead, health lights, one-way connector sync with approval-gated two-way suggestions) in NTXP's navy/platinum/blue brand system. MasterFormat division is the sole classification and universal sort key. It organizes and structures; it never prices, levels, or decides.
+description: Normalizes the OCR4 project-intake dossier into the Canonical Project Record - one CSI MasterFormat-organized, provenance-carrying source of truth - and renders an interlinked Excel workbook, an animated HTML command dashboard (KPI donuts, click-to-ITB budget bar with buyout/profit mode, activity stream, daily reports, critical-path plotter, editable look-ahead, health lights, approval-gated two-way sync), and the NTXP Plans Atlas: an offline, hyperlinked drawing-set viewer navigable by trade, spec, phase, or area, with callout links, drawing-text search, and staged markups and phase images. Auto-deploys the atlas to Construction Documents when a bid or project is confirmed and rebuilds when drawings change. Organizes only; never prices, levels, or decides. Use for project records, dashboards, plan atlas, finding a trade or spec on the drawings.
 ---
 
 # Canonical Project Model — the source-of-truth layer
@@ -116,9 +116,100 @@ a scrollable vertical **critical-path plotter** · a **three-week look-ahead**
 red = priority focus. Donut/segment colors are a validated categorical palette
 (dataviz six checks, dark surface) assigned to divisions in fixed order.
 
+## The Plans Atlas — navigate the drawing set by concept
+
+The drawing set as a linked web document, without altering the drawings. Adapted from
+the Contractor OS "Interactive Drawing Atlas" (NTXP Forge audit, verdict ADAPT) with its
+faults fixed: **deterministic extraction** (`build_atlas_data.py`, PyMuPDF optional,
+read-only on sources, degrades to manifest-only), NTXP branding, NTXP paths, and links
+emitted only when the target resolves.
+
+- **Section**: `plans_atlas` (schema `plans-atlas.schema.json`) — sheets (number, title,
+  discipline, revision, scale, text-layer check), the callout-link graph (`5/A-501`
+  detail/section/schedule bubbles, `09 51 13` spec references — each with provenance and
+  confidence), the concept index, and a renders ledger. Sorted, like everything, by CSI
+  division.
+- **Viewer** (`build_atlas_html.py`, stdlib-only, fully offline): concept rail
+  (**TRADES / SPECS / PHASES / AREAS**) so a user lands on any trade, spec section,
+  phase, or area in a few clicks; discipline tabs + sheet grid; pan/zoom sheet viewer
+  with glowing callout hotspots and Back-stack navigation; punctuation-insensitive
+  search across sheet numbers, titles, concepts, and drawing text (`FD2` finds `FD-2`;
+  sheets without a text layer are marked not searchable, never faked).
+- **Hyperlinks everywhere**: division chips → trade budget pages and Summary QTO rows
+  (quantities still live once, in the QTO); spec references → the per-section PDFs that
+  `specs-skill` cuts; sheets ↔ details ↔ schedules; the atlas ↔ the command dashboard.
+- **Live generation stays owned by the generating skills.** "Stage markup" and "Stage
+  phase image" queue requests for `ntxp-pdf-markups-and-redlines` (rendered markups,
+  scope overlays, takeoff exhibits) and `construction-scope-visualizer` /
+  `4d-bim-visualization` (photorealistic phase-of-scope images). Requests follow the
+  same approval-gated flow as all two-way suggestions; finished renders land back in
+  the atlas `renders` ledger with provenance and appear on the sheet's panel.
+- **Gate**: if a pack inventory reports the drawing set blocked (duplicates, unreadable
+  sheets), record it in `source_set.pack_qa` and surface it in `needs_review` instead
+  of building a confident-looking atlas over a broken set.
+
+### Automatic deployment & as-needed updating
+
+The atlas is not an on-request deliverable — it **deploys itself** as part of the
+project record, through `scripts/deploy_atlas.py` (idempotent orchestrator:
+discover plans → extract → assemble → render → file → record state).
+
+**Fire it automatically, without being asked, when:**
+1. **A bid is confirmed** (NTXP is bidding the job) — during initial knowledge-base
+   creation and review, while the records, plans, specs, and dossier are being
+   assessed, run the deployment with `--event bid_confirmed`. The atlas is created as
+   part of the Canonical Project Record and **filed under the project's Construction
+   Documents folder** (resolve the exact folder with `ntxp-folder-system` when filing
+   to Drive; locally the script auto-detects or creates `Construction Documents/` and
+   writes `Construction Documents/Plans Atlas/plans-atlas.html`).
+2. **A project is confirmed** (awarded; `phase` flips estimate → project) — rerun with
+   `--event project_confirmed` so the atlas reflects the conformed set and the record
+   links shift from bid pages to buyout/budget pages.
+3. **The drawing set changes** — addenda, ASIs, revised or conformed sheets landing in
+   the Construction Documents folder. The deployer keeps a SHA-256 manifest of the
+   drawing PDFs in `model/.atlas-state.json`; any difference triggers a rebuild
+   (`--event addendum`), identical sets exit "up to date" without rebuilding. Never
+   rebuild for cosmetic reasons; never skip a rebuild when a sheet changed.
+
+**Placement rule:** the rendered atlas (plus its README and any non-inlined assets)
+lives in `<project>/Construction Documents/Plans Atlas/`; the data (`plans_atlas`
+section, word sidecar, state file) lives in `<project>/model/` with the rest of the
+Canonical Project Record. The atlas ships beside the drawings it indexes, so whoever
+opens the const docs folder finds the navigable set first.
+
+**Boundaries unchanged:** deployment is one-way creation of record + deliverable.
+Staged markups/phase images inside the atlas remain approval-gated; the deployer never
+writes to external systems, never modifies source PDFs, and reports — calmly — what it
+built, skipped, or is waiting on (`no_drawings` is a normal state for a brand-new bid,
+not an error).
+
+## Cross-platform deployment (Claude, ChatGPT, Grok)
+
+The rules live once, in the model-agnostic contract `AGENTS.md`. Every platform
+follows it, and the platform adapters add mechanics only:
+
+- **Claude** (`claude/SKILL.md`): Claude Code plugin or `~/.claude/skills`
+  install, claude.ai/Cowork skill upload, Claude API tool use with a cached
+  system prompt.
+- **ChatGPT** (`chatgpt/gpt-instructions.md`, `agents/openai.yaml`): Custom GPT
+  or Project instructions within the 8,000-character limit, Code Interpreter
+  runs, Codex via `AGENTS.md`, and the API.
+- **Grok** (`grok/grok-instructions.md`): Grok Projects and the xAI API, with
+  web/X search kept out of project facts, a tone override to customer-safe
+  language, long-context loading, and Grok Imagine for staged phase images.
+
+Shared assets: `tools/functions.json` (function-tool schema; OpenAI and xAI
+format, with Anthropic `input_schema` conversion), `scripts/run_tool.py`
+(executes any platform's tool call through the same deterministic scripts),
+`scripts/platform_pack.py` (builds each platform's upload set; ChatGPT and Grok
+get 13 flat files under the 20-file Knowledge limit, plus a `setup` command
+that restores the folder layout inside the sandbox), and `config/defaults.yaml`.
+A model that cannot execute code hand-builds the atlas data per `AGENTS.md`
+section 4 and says the viewer still needs a render pass.
+
 ## Data connectors & sync policy
 
-- **One-way in, always.** Every connector (JobTread, OCR4 docs, schedule, contacts)
+- **One-way in, always.** Every connector (JobTread, OCR4 docs, schedule, contacts, workspace intelligence — summarized emails and meeting minutes land in the activity stream and knowledge base with provenance)
   syncs INTO the knowledge base. Prioritize the most recent **five days** of data,
   then backfill quickly. The canonical model is the **single source of truth**.
 - **Two-way only by approval.** After inbound sync and tool updates finish, present
@@ -135,6 +226,12 @@ red = priority focus. Donut/segment colors are a validated categorical palette
   stress. **Never make blunt negative statements about the project's success** — a
   customer may be reading. Use constructive framing ("the item to watch this week"),
   and encode urgency in the red/yellow/green lights, not in alarming language.
+- **Parsing council (exception path).** When user input is vague or disengaged, or
+  a draft doesn't read industry-grade, or OCR confidence is low on binding values,
+  convene the limited model council per `reference/model-council.md`: Gemini for
+  vision/Google-OCR second passes, GPT (Luna) for bulk microtasks and the findings
+  report, Claude to adjudicate intent and write the model. Default remains
+  single-model; every convening names its trigger and logs to `normalization_log`.
 
 ## Cross-references
 

@@ -40,3 +40,7 @@ yarn.lock
 .cache/
 tmp/
 temp/
+
+# Browserbase runtime data
+.browserbase/
+stagehand-cache/

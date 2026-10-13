@@ -1,0 +1,46 @@
+{
+  "_about": "Function-tool definitions for API deployments of the NTXP Plans Atlas. Written in the OpenAI function-calling shape, which the xAI (Grok) API also accepts. For the Anthropic Messages API, use each function's name and description unchanged and pass its 'parameters' object as 'input_schema'. The host executes a call with: python scripts/run_tool.py <name> '<arguments-json>'",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "deploy_plans_atlas",
+        "description": "Deploy or update the NTXP Plans Atlas for a project. It discovers the drawing PDFs under the project's Construction Documents folder, extracts sheets, callout links and the trade/spec/phase/area index, renders the offline viewer to 'Construction Documents/Plans Atlas/plans-atlas.html', and records a SHA-256 drawing manifest. It is idempotent: an unchanged drawing set returns status 'up_to_date' without rebuilding. Call it automatically when a bid is confirmed, when a project is confirmed, and when addenda or revised sheets arrive. Returns JSON: status (built | up_to_date | no_drawings), atlas path, sheets, event, atlas_version.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "project": { "type": "string", "description": "Project root directory." },
+            "event": { "type": "string", "enum": ["bid_confirmed", "project_confirmed", "kb_initial_review", "addendum", "manual"], "description": "Why the deployment is running; recorded in the atlas state." },
+            "const_docs": { "type": "string", "description": "Construction Documents folder. Omit to auto-detect it, or to create it if absent." },
+            "pdf_dir": { "type": "string", "description": "Folder holding the drawing PDFs. Defaults to the Construction Documents folder." },
+            "dossier": { "type": "string", "description": "Dossier directory for model assembly. Defaults to the project root." },
+            "company": { "type": "string", "description": "Branding name. Default NTXP." },
+            "force": { "type": "boolean", "description": "Rebuild even when the drawing set is unchanged." },
+            "check": { "type": "boolean", "description": "Only report whether a rebuild is needed; change nothing." },
+            "dry_run": { "type": "boolean", "description": "Print the deployment plan; change nothing." }
+          },
+          "required": ["project", "event"],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "render_plans_atlas_viewer",
+        "description": "Re-render only the Plans Atlas viewer HTML from an already-built Canonical Project Record, for example to embed it as a fragment or to restyle it without re-extracting drawings. Prefer deploy_plans_atlas for normal deployments.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "model": { "type": "string", "description": "Path to canonical-model.json." },
+            "out": { "type": "string", "description": "Output .html path." },
+            "company": { "type": "string", "description": "Branding name. Default NTXP." },
+            "fragment": { "type": "boolean", "description": "Emit body-only HTML for embedding in another page." }
+          },
+          "required": ["model"],
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

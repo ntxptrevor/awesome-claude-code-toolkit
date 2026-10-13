@@ -1,7 +1,7 @@
 {
   "name": "claude-code-toolkit",
   "displayName": "Claude Code Toolkit",
-  "description": "The most comprehensive toolkit for Claude Code -- 135 agents, 35 skills, 42 commands, 120 plugins, 19 hooks, 15 rules, 7 templates, and 6 MCP configs.",
+  "description": "The most comprehensive toolkit for Claude Code -- 135 agents, 42 skills, 42 commands, 120 plugins, 19 hooks, 15 rules, 7 templates, and 6 MCP configs.",
   "owner": { "name": "Rohit Ghumare" },
   "repository": "https://github.com/rohitg00/awesome-claude-code-toolkit",
   "license": "Apache-2.0",
@@ -110,7 +110,7 @@
     {
       "name": "canonical-project-model",
       "source": "plugins/canonical-project-model",
-      "description": "Normalization layer of the construction-doc-intelligence pipeline: turns the verbatim project-intake dossier (which Mistral OCR4 produced) into the Canonical Project Record - one reusable, CSI MasterFormat-organized, provenance-carrying source of truth - and renders it as an interlinked Excel workbook (dashboard + sub-pages for project bio, contacts, quick links, trades, Summary QTO as single source of truth, per-trade budget pages with ITB/QR, submittal register, schedule, critical path, bid log, editable budget rollup). MasterFormat division is the sole classification and universal sort key. Parallel agents normalize each section; deterministic scripts assemble canonical-model.json and build the workbook. It organizes - it never prices, levels, or decides.",
+      "description": "Normalization layer of the construction-doc-intelligence pipeline: turns the OCR4 project-intake dossier into the Canonical Project Record - one CSI MasterFormat-organized, provenance-carrying source of truth - rendered as an interlinked Excel workbook, an animated HTML command dashboard, and the NTXP Plans Atlas, an offline hyperlinked drawing-set viewer navigable by trade, spec, phase, or area. The atlas auto-deploys to Construction Documents when a bid or project is confirmed and rebuilds when drawings change. Model-agnostic: AGENTS.md contract plus Claude, ChatGPT (Custom GPT/Codex/API) and Grok (Projects/xAI API) adapters, function-tool schemas, and a platform packer. It organizes - it never prices, levels, or decides.",
       "version": "1.0.0"
     },
     {
@@ -555,6 +555,12 @@
       "name": "plan",
       "source": "plugins/plan",
       "description": "Structured planning with risk assessment and time estimation",
+      "version": "1.0.0"
+    },
+    {
+      "name": "plugin-dev",
+      "source": "plugins/plugin-dev",
+      "description": "Plugin development toolkit with skills for creating agents, commands, hooks, MCP integrations, and comprehensive plugin structure guidance",
       "version": "1.0.0"
     },
     {

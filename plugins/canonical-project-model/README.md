@@ -43,6 +43,7 @@ projects/<slug>/model/
   model-handoff.json        # downstream contract (schema: schemas/model-handoff.schema.json)
 <slug>.xlsx                 # the interlinked workbook (primary working deliverable)
 <slug>.html                # self-contained animated dashboard (read-only "at a glance" view)
+plans-atlas.html           # self-contained Plans Atlas — navigable, hyperlinked drawing-set viewer
 ```
 
 ### The workbook (sheets, all sorted by MasterFormat division)
@@ -129,6 +130,64 @@ deliverable; this is the wall screen.
 
 `build_workbook.py` flags: `--out` (xlsx path), `--company` (branding, default NTXP),
 `--website` (URL the ITB QR points to, default the NTXP site), `--dry-run`.
+
+### The Plans Atlas (`build_atlas_data.py` + `build_atlas_html.py`)
+
+The drawing set, navigable like a linked web document — without altering the drawings.
+Adapted from the Contractor OS "Interactive Drawing Atlas" concept (audited in NTXP
+Forge, verdict ADAPT) and rebuilt to fix its faults: extraction is a **deterministic
+script**, not hand-rolled code per run; styling is the NTXP brand system; paths follow
+NTXP taxonomy; links are emitted only when their target resolves.
+
+1. `scripts/build_atlas_data.py` (PyMuPDF optional; degrades to manifest-only) reads the
+   drawing PDFs read-only and writes `sections/plans_atlas.json` + an `atlas-words.json`
+   search sidecar + page images: sheets (number/title/discipline/rev/scale, text-layer
+   check), the **callout-link graph** (detail/section/schedule bubbles like `5/A-501`,
+   spec references like `09 51 13` — resolved-targets only, with provenance and
+   confidence), and the **concept index** (trades by CSI division, spec sections,
+   phases, areas) cross-linked into the canonical model (takeoff_ids, budget pages,
+   per-section spec PDFs from `specs-skill`).
+2. `scripts/build_atlas_html.py` (stdlib-only, self-contained output) renders the
+   viewer: a **concept rail** (TRADES / SPECS / PHASES / AREAS) for finding anything in
+   a few clicks · discipline tabs + sheet grid · **pan/zoom viewer** with glowing
+   **callout hotspots** that hyperlink plan → section/detail/schedule/spec with Back
+   navigation · **punctuation-insensitive search** across sheet numbers, titles,
+   concepts, and the drawing text index (`FD2` finds `FD-2`; sheets without a text
+   layer are marked not-searchable, never faked) · a per-sheet **renders panel** where
+   rendered markups and generated phase-of-scope images appear, plus **Stage markup /
+   Stage phase image** buttons that queue requests for `ntxp-pdf-markups-and-redlines`
+   and `construction-scope-visualizer` to produce — generation stays approval-gated in
+   those skills; the atlas only records and links the results.
+3. `scripts/deploy_atlas.py` (stdlib-only) **deploys the atlas automatically** when a
+   bid or project is confirmed (initial KB creation/review) and keeps it current
+   as-needed: discovers the drawing PDFs under the project's **Construction
+   Documents** folder (auto-detected or `--const-docs`), runs extract → assemble →
+   render, files the result at `Construction Documents/Plans Atlas/plans-atlas.html`,
+   and records a SHA-256 drawing manifest in `model/.atlas-state.json` so unchanged
+   sets exit "up to date" and any addendum/revision triggers a rebuild
+   (`--event bid_confirmed|project_confirmed|addendum`, `--check`, `--force`,
+   `--dry-run`).
+
+## Deploy on any model: Claude, ChatGPT, Grok
+
+`AGENTS.md` is the model-agnostic operating contract, and platform adapters add
+only mechanics. Build each platform's upload set with
+`scripts/platform_pack.py`:
+
+| Platform | Adapter | Build | Install |
+| --- | --- | --- | --- |
+| Claude Code | `claude/SKILL.md` | plugin | `/plugin install canonical-project-model`, or copy to `~/.claude/skills/ntxp-plans-atlas/` |
+| claude.ai / Cowork | `claude/SKILL.md` | `pack --target claude` | zip the folder, then upload it in Settings → Capabilities → Skills |
+| Claude API | `claude/SKILL.md` | — | `tools/functions.json` (`parameters` → `input_schema`) + `scripts/run_tool.py` |
+| ChatGPT Custom GPT / Project | `chatgpt/gpt-instructions.md` | `pack --target chatgpt` | paste the instructions, upload the 13 files as Knowledge, enable Code Interpreter |
+| Codex | `AGENTS.md` | — | read natively from the repository |
+| OpenAI API | `chatgpt/gpt-instructions.md` | — | `tools/functions.json` + `scripts/run_tool.py` |
+| Grok Project | `grok/grok-instructions.md` | `pack --target grok` | paste the custom instructions, add the 13 files |
+| xAI API | `grok/grok-instructions.md` | — | `tools/functions.json` (OpenAI-compatible) + `scripts/run_tool.py` |
+
+In a sandbox, restore the flat upload's folder layout with
+`python platform_pack.py setup --src <files> --to <workdir>` before running any
+script.
 
 ## Dependencies
 

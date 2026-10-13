@@ -1,6 +1,6 @@
 # Claude Code Toolkit
 
-**The most comprehensive toolkit for Claude Code -- 135 agents, 35 curated skills (+400,000 via [SkillKit](https://agenstskills.com)), 42 commands, 176+ plugins, 20 hooks, 15 rules, 7 templates, 15 MCP configs, 26 companion apps, 53 ecosystem entries, and more.**
+**The most comprehensive toolkit for Claude Code -- 135 agents, 42 curated skills (+400,000 via [SkillKit](https://agenstskills.com)), 42 commands, 176+ plugins, 20 hooks, 15 rules, 7 templates, 15 MCP configs, 26 companion apps, 53 ecosystem entries, and more.**
 
 <p align="center">
   <a href="https://trendshift.io/repositories/21839" target="_blank"><img src="https://trendshift.io/api/badge/repositories/21839" alt="rohitg00%2Fawesome-claude-code-toolkit | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -240,6 +240,7 @@ Over 176 production-ready plugins that extend Claude Code with domain-specific c
 | [perf-profiler](plugins/perf-profiler/) | Performance analysis, profiling, and optimization recommendations |
 | [performance-monitor](plugins/performance-monitor/) | Profile API endpoints and run benchmarks to identify performance bottlenecks |
 | [plan](plugins/plan/) | Structured planning with risk assessment and time estimation |
+| [plugin-dev](plugins/plugin-dev/) | Plugin development toolkit with skills for creating agents, commands, hooks, MCP integrations, and comprehensive plugin structure guidance |
 | [preflight](https://github.com/preflight-dev/preflight) | 24-tool MCP server that catches vague prompts before they cost 2-3x in wrong→fix cycles. 12-category scorecards, correction pattern learning, cross-service contract awareness, session history search with LanceDB vectors, and cost estimation. `npx preflight-dev` |
 | [pr-reviewer](plugins/pr-reviewer/) | Review pull requests with structured analysis and approve with confidence |
 | [product-shipper](plugins/product-shipper/) | Ship features end-to-end with launch checklists and rollout plans |
@@ -549,7 +550,7 @@ Reference an agent in your `CLAUDE.md`:
 
 ## Skills
 
-Thirty-five curated skill modules included in this repo, with access to **400,000+ additional skills** via the [SkillKit marketplace](https://agenstskills.com). Each included skill teaches Claude Code domain-specific patterns with code examples, anti-patterns, and checklists.
+Forty-two curated skill modules included in this repo, with access to **400,000+ additional skills** via the [SkillKit marketplace](https://agenstskills.com). Each included skill teaches Claude Code domain-specific patterns with code examples, anti-patterns, and checklists.
 
 | Skill | Directory | What It Teaches |
 |-------|-----------|-----------------|
@@ -589,6 +590,13 @@ Thirty-five curated skill modules included in this repo, with access to **400,00
 | Mobile Development | `skills/mobile-development/` | React Native, Flutter, responsive layouts |
 | Data Engineering | `skills/data-engineering/` | ETL pipelines, Spark, star schema, data quality |
 | LLM Integration | `skills/llm-integration/` | Streaming, function calling, RAG, cost optimization |
+| Plugin Structure | `skills/plugin-structure/` | Plugin directory layout, manifest config, auto-discovery, `${CLAUDE_PLUGIN_ROOT}` |
+| Plugin Settings | `skills/plugin-settings/` | `.claude/plugin-name.local.md` pattern, YAML frontmatter parsing, per-project config |
+| Command Development | `skills/command-development/` | Slash command frontmatter, dynamic arguments, bash execution, interactive commands |
+| Agent Development | `skills/agent-development/` | Subagent frontmatter, system prompts, triggering conditions, AI-assisted generation |
+| Hook Development | `skills/hook-development/` | PreToolUse/PostToolUse/Stop hooks, prompt-based hooks API, event-driven automation |
+| MCP Integration | `skills/mcp-integration/` | Adding MCP servers to plugins, `.mcp.json`, SSE/stdio/HTTP transport types |
+| Skill Development | `skills/skill-development/` | Skill structure, progressive disclosure, strong triggering descriptions |
 
 ### Community Skills
 
@@ -695,7 +703,7 @@ npx skillkit@latest install claude-code-toolkit/tdd-mastery
 
 ### 15,000+ Skills via SkillKit Marketplace
 
-This toolkit includes 35 curated skills. For access to **400,000+ additional skills** across every domain, use [SkillKit](https://agenstskills.com):
+This toolkit includes 42 curated skills. For access to **400,000+ additional skills** across every domain, use [SkillKit](https://agenstskills.com):
 
 ```bash
 npx skillkit@latest                    # Launch interactive TUI
