@@ -1,5 +1,25 @@
 # ChatGPT Configuration — NTXP Plans Atlas & Canonical Project Record
 
+> **Use the plugin, not a Custom GPT.** OpenAI is retiring custom GPTs on
+> **December 11, 2026** (reported dates; check OpenAI's FAQ for your workspace)
+> and moving creators to **plugins**. A plugin carries a real skill folder, so
+> the scripts keep their layout and need no flatten-and-restore step.
+>
+> **Plugin install (preferred):** build the plugin-ready skill with
+> `python scripts/platform_pack.py pack --target claude --name ntxp-plans-atlas --out dist/ntxp-plans-atlas`
+> and zip the folder, or use `dist/ntxp-plans-atlas/ntxp-plans-atlas.skill.zip`.
+> In ChatGPT open *Plugins → Create plugin* (or *Edit plugin* on an existing
+> one), attach the zip, and ask Plugin Creator to replace the skill with it,
+> preserving the folder layout and keeping it private. Verified 2026-10-13: the
+> migrated plugin opened `AGENTS.md`, all 25 schemas and all eight scripts, and
+> ran `scripts/deploy_atlas.py --help` from its own folder. A migrated GPT alone
+> is not enough: its knowledge files arrive flattened under `references/` and
+> its instructions still point at the old `/mnt/data` layout, so replace the
+> skill as above.
+>
+> The rest of this file is the **legacy Custom GPT** path, kept until the GPT
+> program ends.
+
 Paste the section **"GPT Instructions"** below into a Custom GPT's *Instructions*
 field (it fits the 8,000-character limit) or into a ChatGPT Project's
 instructions. Build the Knowledge upload set with
