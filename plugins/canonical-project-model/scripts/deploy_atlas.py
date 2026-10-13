@@ -100,6 +100,38 @@ def discover_pdfs(pdf_dir):
     return sorted(out)
 
 
+MIN_DRAWING_EDGE_IN = 16.9   # ARCH B / 11x17 and larger; letter-size pages are documents
+
+
+def split_drawings(pdfs):
+    """Separate drawing sets from other PDFs (specs, subcontracts, emails, photos).
+
+    Drawing sheets are large format. A PDF counts as a drawing set when the
+    majority of up to 5 sampled pages have a long edge of at least 17 inches.
+    Without PyMuPDF the sizes cannot be read, so every PDF is kept (the
+    extractor then runs in manifest-only mode, as before)."""
+    try:
+        import pymupdf as fitz
+    except ImportError:
+        try:
+            import fitz
+        except ImportError:
+            return list(pdfs), [], False
+    drawings, documents = [], []
+    for p in pdfs:
+        try:
+            doc = fitz.open(str(p))
+            n = doc.page_count
+            idx = sorted({0, n // 4, n // 2, (3 * n) // 4, n - 1}) if n else []
+            big = sum(1 for i in idx if max(doc[i].rect.width, doc[i].rect.height) / 72.0 >= MIN_DRAWING_EDGE_IN)
+            doc.close()
+            (drawings if idx and big * 2 > len(idx) else documents).append(p)
+        except Exception as exc:  # unreadable PDFs stay visible rather than vanish
+            log(f"could not read {p.name} to classify it ({exc}); treating it as a document")
+            documents.append(p)
+    return drawings, documents, True
+
+
 def sha256_file(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -197,7 +229,11 @@ def main():
         const_docs, created = find_const_docs(project)
     pdf_dir = Path(args.pdf_dir).resolve() if args.pdf_dir else const_docs
 
-    pdfs = discover_pdfs(pdf_dir) if pdf_dir.is_dir() else []
+    all_pdfs = discover_pdfs(pdf_dir) if pdf_dir.is_dir() else []
+    pdfs, documents, classified = split_drawings(all_pdfs)
+    if documents:
+        log(f"{len(documents)} PDF(s) are documents, not drawings, and are not indexed: "
+            + ", ".join(d.name for d in documents[:6]) + (" ..." if len(documents) > 6 else ""))
     manifest = build_manifest(pdfs, pdf_dir)
     state = load_json(state_path)
     plan = plan_for(args, project, const_docs, created, pdf_dir, pdfs, manifest, state, state_path)
@@ -238,7 +274,9 @@ def main():
     py = sys.executable
     model_json = model_dir / "canonical-model.json"
 
-    cmd = [py, SCRIPTS_DIR / "build_atlas_data.py", "--dir", pdf_dir, "--out", model_dir]
+    cmd = [py, SCRIPTS_DIR / "build_atlas_data.py", "--out", model_dir]
+    for pdf in pdfs:
+        cmd += ["--pdf", pdf]
     if model_json.exists():
         cmd += ["--model", model_dir]
     proc = run_step("step 1/4 extract drawings", cmd)
@@ -248,6 +286,12 @@ def main():
 
     section_path = model_dir / "sections" / "plans_atlas.json"
     section = load_json(section_path) or {}
+    if pdfs and not (section.get("sheets") or []):
+        msg = (f"extracted 0 sheets from {len(pdfs)} drawing PDF(s); the atlas was NOT deployed "
+               "and no state was recorded, so the next run will try again")
+        log("FAILED: " + msg)
+        print(json.dumps({"status": "error", "error": msg, "event": args.event}, indent=2))
+        sys.exit(3)
     pack_qa = (section.get("source_set") or {}).get("pack_qa")
     if pack_qa == "blocked":
         log("WARNING: pack_qa is 'blocked' - review the drawing pack inventory; continuing so the state is visible.")

@@ -7,7 +7,7 @@ Atlas concept away from: "no extraction script; the model must build atlas
 data by hand-rolled code each run." THIS script IS that extraction. Given the
 same PDF drawing set (and the same optional --model cross-links), it always
 produces the same sections/plans_atlas.json, atlas-words.json sidecar, and
-atlas/img/*.png images — replayable in CI, never re-derived by hand.
+atlas/img/*.jpg images — replayable in CI, never re-derived by hand.
 
 Pipeline position (mirrors assemble_model.py's philosophy: deterministic code
 does the mechanical work, agents/Claude do any real judgement elsewhere):
@@ -16,7 +16,7 @@ does the mechanical work, agents/Claude do any real judgement elsewhere):
     per-page word/box extraction + title-block heuristics    ->
     deterministic callout/spec/sheet-reference link graph    ->
     concepts index (trades / specs / phases / areas)          ->
-    sections/plans_atlas.json + atlas-words.json + atlas/img/*.png
+    sections/plans_atlas.json + atlas-words.json + atlas/img/*.jpg
 
 Conforms to schemas/plans-atlas.schema.json (sheets/links/concepts/search),
 using schemas/common.defs.schema.json's provenance + csi_ref shapes. CSI
@@ -76,8 +76,12 @@ SCALE_RE = re.compile(r"(\d+/\d+\"\s*=\s*1'-?0?\"|1\"\s*=\s*\d+'|\d+:\d+)")
 NOT_A_TITLE = re.compile(r"\bSCALE\b|\bDATE\b|\bDRAWN\b|\bCHECKED\b|\bPROJECT\s+(NO|#)|"
                          + SCALE_RE.pattern, re.I)
 
-PHASE_RE = re.compile(r"PHASE\s+([0-9A-Z]+)")
-ROOM_RE = re.compile(r"(RM|ROOM)\s*[-#]?\s*(\w{1,6})")
+PHASE_RE = re.compile(r"\bPHASE\s+(\d{1,2}[A-Z]?|[A-D])\b")
+ROOM_RE = re.compile(r"\b(RM|ROOM)\s*[-#]?\s*(\d{3,4}[A-Z]?)\b")
+AREA_RE = re.compile(r"\bAREA\s+([A-H])\b")
+# Title-block lines that are never a sheet title (stamps, addresses, key plans).
+TITLE_NOISE = re.compile(r"AUTODESK|DOCS://|ISSUE\s+FOR|KEY\s*PLAN|\bNORTH\b|\bSTREET\b|\bST\.|"
+                         r"\bDRIVE\b|\bTX\b|\b\d{5}\b|\bREVISION|\bARCHITECT|\bENGINEER|\bSEAL\b|COPYRIGHT|INTERIM|NOT\s+TO\s+BE\s+USED|INCOMPLETE|REGULATORY|PERMIT", re.I)
 
 # Discipline -> likely MasterFormat divisions (low-confidence heuristic; see
 # divisions_with_confidence()). Order-sensitive lookup handles 2-letter
@@ -280,18 +284,38 @@ def detect_sheet_and_title(lines, pw, ph):
     sheet_no = candidates[0][3]
     sheet_line_idx = candidates[0][4]
 
-    best_title = ""
+    # Real title blocks put the sheet title in the lowest-right corner in the
+    # second-largest type (the number is the largest). Collect those lines first,
+    # join wrapped lines top-to-bottom, and fall back to the longest-line rule.
+    cands = []
     for li, line in enumerate(lines):
         if li == sheet_line_idx:
             continue
-        in_block = any(is_title_block(norm_box(w["bbox"], pw, ph)) for w in line)
-        if not in_block:
-            continue
         text = " ".join(w["text"] for w in line).strip()
-        if NOT_A_TITLE.search(text):
+        if not text or text.upper() == sheet_no or NOT_A_TITLE.search(text) or TITLE_NOISE.search(text):
             continue
-        if text and text.upper() != sheet_no and len(text) > len(best_title):
-            best_title = text
+        boxes = [norm_box(w["bbox"], pw, ph) for w in line]
+        if min(b[0] for b in boxes) < 0.80 or min(b[1] for b in boxes) < 0.86:
+            continue
+        if sum(c.isalpha() for c in text) < 3:
+            continue
+        cands.append((max(w["size"] for w in line), boxes[0][1], boxes[0][0], text))
+    best_title = ""
+    if cands:
+        top = max(c[0] for c in cands)
+        keep = sorted((c for c in cands if c[0] >= 0.85 * top), key=lambda c: (round(c[1], 3), c[2]))
+        best_title = " ".join(c[3] for c in keep)[:90].strip()
+    if not best_title:
+        for li, line in enumerate(lines):
+            if li == sheet_line_idx:
+                continue
+            if not any(is_title_block(norm_box(w["bbox"], pw, ph)) for w in line):
+                continue
+            text = " ".join(w["text"] for w in line).strip()
+            if NOT_A_TITLE.search(text) or TITLE_NOISE.search(text):
+                continue
+            if text and text.upper() != sheet_no and len(text) > len(best_title):
+                best_title = text
     return sheet_no, best_title
 
 
@@ -305,7 +329,8 @@ def detect_scale(lines, pw, ph):
 def scan_phases_areas(words_flat):
     full_text = " ".join(w["text"] for w in words_flat).upper()
     phases = sorted({m.group(1) for m in PHASE_RE.finditer(full_text)})
-    areas = sorted({m.group(2) for m in ROOM_RE.finditer(full_text)})
+    areas = sorted({m.group(2) for m in ROOM_RE.finditer(full_text)}
+                   | {"Area " + m.group(1) for m in AREA_RE.finditer(full_text)})
     return phases, areas
 
 
@@ -319,12 +344,12 @@ def render_page_images(page, sheet_id, img_dir, dpi):
     safe = sanitize_filename(sheet_id)
 
     pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
-    img_path = img_dir / f"{safe}.png"
-    pix.save(str(img_path))
+    img_path = img_dir / f"{safe}.jpg"
+    pix.save(str(img_path), jpg_quality=72)
 
     thumb_dpi = min(eff_dpi, THUMB_EDGE_PX * 72.0 / long_edge_pt)
     tpix = page.get_pixmap(matrix=fitz.Matrix(thumb_dpi / 72.0, thumb_dpi / 72.0))
-    thumb_path = img_dir / f"{safe}.thumb.png"
+    thumb_path = img_dir / f"{safe}.thumb.jpg"
     tpix.save(str(thumb_path))
     return img_path, thumb_path
 
@@ -702,7 +727,7 @@ def build(args):
             "fitz_available": FITZ_AVAILABLE,
             "render_images": render_images,
             "dpi": args.dpi,
-            "outputs": ["sections/plans_atlas.json", "atlas-words.json", "atlas/img/*.png"],
+            "outputs": ["sections/plans_atlas.json", "atlas-words.json", "atlas/img/*.jpg"],
         }, indent=2))
         return
 

@@ -55,6 +55,8 @@ CAT = ["#3f78b5", "#bd6428", "#17948a", "#7e58c2", "#1d7fa8", "#a44e94", "#5563c
 CAT_OTHER = "#5f6a78"
 
 MAX_INLINE_BYTES = int(2.5 * 1024 * 1024)   # per-file cap for base64 inlining
+TOTAL_INLINE_BYTES = 12 * 1024 * 1024        # whole-viewer budget; past it, inline the thumbnail
+_inlined = [0]
 MAX_WORDS_PER_SHEET = 4000                   # search-index cap per sheet
 
 KIND_LABELS = {
@@ -206,17 +208,19 @@ def sheet_image(model_dir, sheet):
     """Inline as base64 when the referenced file exists and is small enough; keep
     the relative path when it exists but is too large; otherwise a placeholder.
     Returns (src, is_placeholder, width, height)."""
-    rel = sheet.get("image")
-    if rel:
+    for key in ("image", "thumbnail"):
+        rel = sheet.get(key)
+        if not rel:
+            continue
         p = Path(model_dir) / rel
         try:
             if p.is_file():
                 size = p.stat().st_size
-                if size <= MAX_INLINE_BYTES:
+                if size <= MAX_INLINE_BYTES and _inlined[0] + size <= TOTAL_INLINE_BYTES:
                     mime = mimetypes.guess_type(str(p))[0] or "application/octet-stream"
                     b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+                    _inlined[0] += size
                     return f"data:{mime};base64,{b64}", False, None, None
-                return rel, False, None, None
         except OSError:
             pass
     uri, w, h = placeholder_data_uri(sheet.get("sheet_no", ""), sheet.get("title", ""))
