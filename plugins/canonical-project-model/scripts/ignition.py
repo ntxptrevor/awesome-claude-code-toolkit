@@ -134,11 +134,14 @@ def load_project(project):
     cm = load_json(model / "canonical-model.json", {}) or {}
     ident = sec.get("project_identity") or {}
     cmp_ = cm.get("project", {})
+    loc = ident.get("location") or cmp_.get("location") or ""
+    if isinstance(loc, dict):
+        loc = ", ".join(x for x in (loc.get("city"), loc.get("state")) if x) or loc.get("address") or ""
     facts = {
         "title": ident.get("title") or cmp_.get("title") or project.name.replace("_", " ").replace("-", " "),
         "number": ident.get("number") or cmp_.get("number") or "",
         "owner": ident.get("owner") or cmp_.get("owner") or "",
-        "location": ident.get("location") or cmp_.get("location") or "",
+        "location": str(loc),
         "market_sector": ident.get("market_sector") or "",
         "project_type": ident.get("project_type") or "unknown",
         "delivery_method": ident.get("delivery_method") or cmp_.get("delivery_method") or "",
@@ -186,10 +189,16 @@ def build_packets(sec, labels):
         d = div_of(it.get("csi"))
         if d:
             r = it.get("unit_rate")
+            rate = r.get("amount") if isinstance(r, dict) else r
+            joc = it.get("joc_line")
+            upb = ((joc or {}).get("upb_unit_price") or {}) if isinstance(joc, dict) else {}
+            upb = upb.get("amount") if isinstance(upb, dict) else upb
+            anchor_src = "unit_rate" if rate is not None else ("upb_unit_price" if upb is not None else None)
             pk(d)["cost_lines"].append({"id": it.get("cost_line_id"), "description": it.get("description"),
                                         "quantity": it.get("quantity") if not isinstance(it.get("quantity"), dict) else it["quantity"].get("value"),
-                                        "unit_rate": r.get("amount") if isinstance(r, dict) else r,
-                                        "joc_line": bool(it.get("joc_line"))})
+                                        "unit_rate": rate if rate is not None else upb,
+                                        "anchor_source": anchor_src,
+                                        "joc_line": bool(joc) and anchor_src is not None})
     for tr in (sec.get("trades") or {}).get("trades") or []:
         d = (str(tr.get("masterformat_division") or "")[:2]) or None
         if d:
@@ -222,11 +231,11 @@ def build_packets(sec, labels):
         for it in p["cost_lines"]:
             hit = next((l for l in lines if l["line_id"] == it["id"]), None)
             if hit:
-                hit["anchor"], hit["joc_line"] = it["unit_rate"], it["joc_line"]
+                hit["anchor"], hit["joc_line"], hit["anchor_source"] = it["unit_rate"], it["joc_line"], it["anchor_source"]
             else:
                 lines.append({"line_id": it["id"], "description": it["description"], "uom": "",
                               "quantity": it["quantity"], "quantity_source": "cost_line",
-                              "anchor": it["unit_rate"], "joc_line": it["joc_line"]})
+                              "anchor": it["unit_rate"], "joc_line": it["joc_line"], "anchor_source": it["anchor_source"]})
         for l in lines:
             if l["line_id"] in seen:
                 continue
@@ -447,6 +456,7 @@ def run_pert(bp, items, jev, na=frozenset()):
 def run_cpm(bp, pert):
     finish, via = {}, {}
     byid = {t["task_id"]: t for t in bp["tasks"]}
+    missing = [tid for tid, p in pert.items() if p.get("decision") == "no_data"]
     for t in bp["tasks"]:   # tasks are emitted in dependency order
         preds = [p for p in t["predecessors"] if p in finish]
         start = max((finish[p] for p in preds), default=0.0)
@@ -462,13 +472,20 @@ def run_cpm(bp, pert):
     total = finish.get(end, 0.0)
     var = sum(((pert.get(t) or {}).get("sd") or 0) ** 2 for t in path)
     sd = math.sqrt(var)
-    res = {"critical_path": path, "expected_working_days": round(total, 1), "sd_working_days": round(sd, 1),
-           "expected_calendar_days": round(total * 7 / 5), "p80_working_days": round(total + Z80 * sd, 1),
-           "p80_calendar_days": round((total + Z80 * sd) * 7 / 5)}
+    res = {"status": "complete", "critical_path": path, "expected_working_days": round(total, 1),
+           "sd_working_days": round(sd, 1), "expected_calendar_days": round(total * 7 / 5),
+           "p80_working_days": round(total + Z80 * sd, 1), "p80_calendar_days": round((total + Z80 * sd) * 7 / 5)}
     tgt = bp.get("target_days")
     if tgt and sd > 0:
         res["target_working_days"] = round(tgt, 1)
         res["p_finish_by_target"] = round(normal_cdf((tgt - total) / sd), 3)
+    if missing:
+        # A task with no usable duration is not a zero-day task: withhold the roll-up.
+        res = {"status": "incomplete", "missing_tasks": missing,
+               "note": "No expected or P80 duration is published until every applicable task has a usable duration.",
+               "lower_bound_working_days": round(total, 1), "critical_path": [],
+               "expected_working_days": None, "expected_calendar_days": None,
+               "p80_working_days": None, "p80_calendar_days": None}
     return res, byid
 
 
@@ -509,6 +526,10 @@ def run_prices(bp, items, jev, now, na=frozenset()):
             if l["anchor"] is not None and l["joc_line"]:
                 rec.update(decision="contract_price", unit_price=l["anchor"], reason="JOC contract unit price is never overridden")
                 rec["confidence"], rec["stance"] = 1.0, "contract"
+                if l.get("anchor_source") == "upb_unit_price":
+                    rec["confidence"] = 0.9
+                    rec["reason"] += "; taken from the unit-price-book line, so the adjusted contract rate (coefficient) is not applied"
+                    flags.append(f"{lid}: contract price is the UPB base rate; confirm the adjusted rate with the PM")
                 lines.append(rec)
                 continue
             if len(got) == 2:
@@ -716,6 +737,8 @@ def cmd_process(args):
     benches = load_benchmarks(args.benchmarks or out / "benchmarks.csv")
     sanity = run_sanity(bp["project"], total, by_div, benches, jev, now, args.markup_pct)
     needs = problems + pert_notes + flags
+    if cpm["status"] == "incomplete":
+        needs.append("schedule roll-up withheld: no usable duration for " + ", ".join(cpm["missing_tasks"]))
     if sanity.get("verdict") in ("below_band", "above_band"):
         needs.append(f"$/SF check: {sanity['verdict']} ({sanity['estimate_psf']}/SF vs {sanity['band_psf']})")
     uncovered = [d["division"] for d in bp["divisions"] if d["division"] not in na
@@ -732,7 +755,7 @@ def cmd_process(args):
     write_json(out / "processed.json", processed)
     (out / "jev-judgments.jsonl").write_text("\n".join(json.dumps(j) for j in jev.log) + "\n")
     write_json(out / "benchmark-template.json", {"columns": BENCH_COLS})
-    print(json.dumps({"status": "processed", "seats": present, "expected_calendar_days": cpm["expected_calendar_days"],
+    print(json.dumps({"status": "processed", "seats": present, "schedule": cpm["status"], "expected_calendar_days": cpm["expected_calendar_days"],
                       "p80_calendar_days": cpm["p80_calendar_days"], "direct_cost": total["extended"],
                       "psf_verdict": sanity.get("verdict"), "needs_human_review": len(needs),
                       "out": str(out / "processed.json")}, indent=2))
@@ -871,9 +894,10 @@ def cmd_itb(args):
         rows = "".join(f"<li>{esc(n)}</li>" for n in pr["needs_human_review"][:60])
         internal = (f"<html><head><meta charset='utf-8'><style>@page{{size:8.5in 11in;margin:0.6in}}{css}</style></head><body>"
                     + header("PROJECT IGNITION SUMMARY", "INTERNAL ONLY: contains pricing")
-                    + f"<h3>SCHEDULE</h3><ul><li><b>Expected:</b> {s['expected_calendar_days']} calendar days</li><li><b>P80:</b> {s['p80_calendar_days']} calendar days</li>"
+                    + ("<h3>SCHEDULE</h3><ul><li><b>Roll-up withheld:</b> no usable duration for " + esc(", ".join(s.get("missing_tasks", []))) + "</li></ul><ul>" if s.get("status") == "incomplete" else
+                       f"<h3>SCHEDULE</h3><ul><li><b>Expected:</b> {s['expected_calendar_days']} calendar days</li><li><b>P80:</b> {s['p80_calendar_days']} calendar days</li>")
                     + (f"<li><b>Chance of meeting the stated duration:</b> {s['p_finish_by_target']:.0%}</li>" if "p_finish_by_target" in s else "")
-                    + f"<li><b>Critical path:</b> {esc(' > '.join(s['critical_path']))}</li></ul>"
+                    + (f"<li><b>Critical path:</b> {esc(' > '.join(s['critical_path']))}</li></ul>" if s.get("status") != "incomplete" else "</ul>")
                     + f"<h3>COST (DRAFT)</h3><ul><li><b>Direct cost:</b> ${c['extended']:,.0f}</li><li><b>Range:</b> ${c['low']:,.0f} to ${c['high']:,.0f}</li>"
                     + f"<li><b>$/SF check:</b> {esc(p.get('verdict'))}" + (f" at ${p['estimate_psf']:,.0f}/SF" if p.get("estimate_psf") else "") + "</li></ul>"
                     + f"<h3>NEEDS PM REVIEW ({len(pr['needs_human_review'])})</h3><ul>{rows}</ul></body></html>")
@@ -922,6 +946,7 @@ def selftest():
              "itb": {"scope_narrative": "", "inclusions": ["Relocate panelboard"], "exclusions": [], "clarifications": [],
                      "required_submittals": [], "alternates": [], "risks": []}},
             {"division": "34", "not_applicable": True, "reason": "stray spec mention"},
+            {"division": "00", "pert": [{"task_id": "T-CLOSE", "optimistic": 1, "most_likely": 2, "pessimistic": 3, "basis": "fixture"}]},
             {"division": "01", "pert": [{"task_id": "T-NOPE", "optimistic": 5, "most_likely": 2, "pessimistic": 1}]}], "project": {}}
     write_json(out / "raw" / "astra.json", seat("astra", (4, 6, 14), 5.0, "vendor_quote"))
     write_json(out / "raw" / "opus.json", seat("opus", (5, 7, 12), 5.2, "book"))
@@ -941,6 +966,7 @@ def selftest():
     assert line["C1"]["decision"] == "contract_price" and line["C1"]["unit_price"] == 5000, line["C1"]
     assert line["Q1"]["valid_through"] == "2027-02-28" and 0.8 < line["Q1"]["confidence"] <= 1.0, line["Q1"]
     assert pr["sanity"]["checked"] and pr["sanity"]["verdict"] == "above_band", pr["sanity"]   # 15,200 / 10,000 SF vs fixture band
+    assert pr["pert"]["schedule"]["status"] == "complete", pr["pert"]["schedule"]
     assert any("T-NOPE" in n for n in pr["needs_human_review"]), "bad task id should be flagged"
     assert pr["not_applicable_divisions"] == ["34"] and not any("34" in n for n in pr["needs_human_review"] if "$/SF" not in n), pr["needs_human_review"]
     assert next(t for t in pr["pert"]["tasks"] if t["task_id"] == "T-34")["decision"] == "not_applicable"
@@ -948,6 +974,26 @@ def selftest():
     page = (out / "itb" / "itb-packages.html").read_text()
     assert "DIVISION 34" not in page and "Remove existing tile" in page and "9999" not in page and "5.1" not in page and "5000" not in page, "ITB must not leak prices"
     assert "Select" not in page and (out / "jev-judgments.jsonl").read_text().strip()
+    # a task with no usable duration must withhold the roll-up, never count as zero days
+    res, _ = run_cpm(bp, {"T-09": {"e": 7.0, "sd": 1.0, "decision": "accept_mean"}, "T-26": {"decision": "no_data", "e": None, "sd": None},
+                          "T-34": {"decision": "not_applicable", "e": 0.0, "sd": 0.0}, "T-CLOSE": {"e": 2.0, "sd": 0.5, "decision": "accept_mean"}})
+    assert res["status"] == "incomplete" and res["expected_calendar_days"] is None and res["missing_tasks"] == ["T-26"], res
+    # structured location and nested JOC rate (schema-valid shapes)
+    write_json(sec / "project_identity.json", {"section": "project_identity", "title": "Selftest Clinic", "market_sector": "healthcare", "project_type": "renovation",
+               "location": {"city": "Dallas", "state": "TX", "zip": "75201"}, "building": {"gross_sf": 10000}})
+    write_json(sec / "estimate_sov.json", {"section": "estimate_sov", "cost_lines": [
+        {"cost_line_id": "C1", "csi": {"masterformat_division": "26"}, "description": "JOC panel line", "quantity": 1,
+         "unit_rate": {"amount": None}, "joc_line": {"upb_line_number": "26 24 16", "upb_unit_price": {"amount": 4200}}}]})
+    cmd_blueprint(ns)
+    bp2 = load_json(out / "blueprint.json")
+    assert bp2["project"]["location"] == "Dallas, TX"
+    c1 = next(l for d in bp2["divisions"] for l in d["price_lines"] if l["line_id"] == "C1")
+    assert c1["anchor"] == 4200 and c1["joc_line"] and c1["anchor_source"] == "upb_unit_price", c1
+    cmd_process(ns)                       # must not raise on a structured location
+    pr2 = load_json(out / "processed.json")
+    l2 = next(l for l in pr2["prices"]["lines"] if l["line_id"] == "C1")
+    assert l2["decision"] == "contract_price" and l2["unit_price"] == 4200 and l2["confidence"] == 0.9, l2
+    assert pr2["sanity"]["checked"], pr2["sanity"]
     print("selftest passed:", tmp)
 
 

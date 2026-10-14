@@ -209,6 +209,16 @@ def plan_for(args, project, const_docs, created, pdf_dir, pdfs, manifest, state,
             "atlas_version": (state or {}).get("atlas_version", 0)}
 
 
+def run_ignition(project):
+    """Deterministic Project Ignition blueprint. Safe to rerun; never raises."""
+    proc = subprocess.run([sys.executable, str(SCRIPTS_DIR / "ignition.py"), "blueprint", "--project", str(project)],
+                          capture_output=True, text=True)
+    try:
+        return json.loads(proc.stdout)
+    except ValueError:
+        return {"status": "error", "detail": (proc.stderr.strip().splitlines() or [""])[-1]}
+
+
 def main():
     ap = argparse.ArgumentParser(description="Idempotently deploy the NTXP Plans Atlas for a project.")
     ap.add_argument("--project", required=True, help="Project root directory.")
@@ -263,17 +273,22 @@ def main():
         write_json(state_path, {"schema": 1, "last_built": (state or {}).get("last_built"),
                                 "event": args.event, "pdf_manifest": {}, "outputs": [],
                                 "atlas_version": version})
-        print(json.dumps({"status": "no_drawings", "atlas": None, "sheets": 0,
-                          "event": args.event, "atlas_version": version,
-                          "note": f"No drawing PDFs found under {pdf_dir} yet - the atlas will build on the next sync that brings plans."},
-                         indent=2))
+        result = {"status": "no_drawings", "atlas": None, "sheets": 0,
+                  "event": args.event, "atlas_version": version,
+                  "note": f"No drawing PDFs found under {pdf_dir} yet - the atlas will build on the next sync that brings plans."}
+        if args.ignite:
+            result["ignition"] = run_ignition(project)   # scope from the RFP can still be blueprinted
+        print(json.dumps(result, indent=2))
         return
 
     if plan["action"] == "up_to_date":
         n = sheet_count(model_dir)
         log(f"Plans Atlas up to date ({n} sheets, no drawing changes)")
-        print(json.dumps({"status": "up_to_date", "atlas": str(atlas_path), "sheets": n,
-                          "event": args.event, "atlas_version": version}, indent=2))
+        result = {"status": "up_to_date", "atlas": str(atlas_path), "sheets": n,
+                  "event": args.event, "atlas_version": version}
+        if args.ignite:
+            result["ignition"] = run_ignition(project)
+        print(json.dumps(result, indent=2))
         return
 
     # ---- rebuild -----------------------------------------------------------
@@ -359,12 +374,7 @@ def main():
     result = {"status": "built", "atlas": str(atlas_path), "sheets": n,
               "event": args.event, "atlas_version": version}
     if args.ignite:
-        proc = subprocess.run([sys.executable, str(SCRIPTS_DIR / "ignition.py"), "blueprint", "--project", str(project)],
-                              capture_output=True, text=True)
-        try:
-            result["ignition"] = json.loads(proc.stdout)
-        except ValueError:
-            result["ignition"] = {"status": "error", "detail": (proc.stderr.strip().splitlines() or [""])[-1]}
+        result["ignition"] = run_ignition(project)
     print(json.dumps(result, indent=2))
 
 
