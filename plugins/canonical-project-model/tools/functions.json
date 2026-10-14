@@ -9,17 +9,54 @@
         "parameters": {
           "type": "object",
           "properties": {
-            "project": { "type": "string", "description": "Project root directory." },
-            "event": { "type": "string", "enum": ["bid_confirmed", "project_confirmed", "kb_initial_review", "addendum", "manual"], "description": "Why the deployment is running; recorded in the atlas state." },
-            "const_docs": { "type": "string", "description": "Construction Documents folder. Omit to auto-detect it, or to create it if absent." },
-            "pdf_dir": { "type": "string", "description": "Folder holding the drawing PDFs. Defaults to the Construction Documents folder." },
-            "dossier": { "type": "string", "description": "Dossier directory for model assembly. Defaults to the project root." },
-            "company": { "type": "string", "description": "Branding name. Default NTXP." },
-            "force": { "type": "boolean", "description": "Rebuild even when the drawing set is unchanged." },
-            "check": { "type": "boolean", "description": "Only report whether a rebuild is needed; change nothing." },
-            "dry_run": { "type": "boolean", "description": "Print the deployment plan; change nothing." }
+            "project": {
+              "type": "string",
+              "description": "Project root directory."
+            },
+            "event": {
+              "type": "string",
+              "enum": [
+                "bid_confirmed",
+                "project_confirmed",
+                "kb_initial_review",
+                "addendum",
+                "manual"
+              ],
+              "description": "Why the deployment is running; recorded in the atlas state."
+            },
+            "const_docs": {
+              "type": "string",
+              "description": "Construction Documents folder. Omit to auto-detect it, or to create it if absent."
+            },
+            "pdf_dir": {
+              "type": "string",
+              "description": "Folder holding the drawing PDFs. Defaults to the Construction Documents folder."
+            },
+            "dossier": {
+              "type": "string",
+              "description": "Dossier directory for model assembly. Defaults to the project root."
+            },
+            "company": {
+              "type": "string",
+              "description": "Branding name. Default NTXP."
+            },
+            "force": {
+              "type": "boolean",
+              "description": "Rebuild even when the drawing set is unchanged."
+            },
+            "check": {
+              "type": "boolean",
+              "description": "Only report whether a rebuild is needed; change nothing."
+            },
+            "dry_run": {
+              "type": "boolean",
+              "description": "Print the deployment plan; change nothing."
+            }
           },
-          "required": ["project", "event"],
+          "required": [
+            "project",
+            "event"
+          ],
           "additionalProperties": false
         }
       }
@@ -32,13 +69,116 @@
         "parameters": {
           "type": "object",
           "properties": {
-            "model": { "type": "string", "description": "Path to canonical-model.json." },
-            "out": { "type": "string", "description": "Output .html path." },
-            "company": { "type": "string", "description": "Branding name. Default NTXP." },
-            "fragment": { "type": "boolean", "description": "Emit body-only HTML for embedding in another page." }
+            "model": {
+              "type": "string",
+              "description": "Path to canonical-model.json."
+            },
+            "out": {
+              "type": "string",
+              "description": "Output .html path."
+            },
+            "company": {
+              "type": "string",
+              "description": "Branding name. Default NTXP."
+            },
+            "fragment": {
+              "type": "boolean",
+              "description": "Emit body-only HTML for embedding in another page."
+            }
           },
-          "required": ["model"],
+          "required": [
+            "model"
+          ],
           "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "project_ignition_blueprint",
+        "description": "Project Ignition stage 1 (deterministic, free). Reads the Canonical Project Record and Plans Atlas and writes model/ignition/blueprint.json plus typed work orders for the two frontier seats (Astra = gpt-6-astra, Opus = claude-opus-5-5) and a Compass work order for public $/SF benchmarks. Call it when a bid is confirmed, after the atlas deploys. Returns JSON: status, divisions, tasks, price_lines, gaps, next steps.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "project": {
+              "type": "string",
+              "description": "Project root directory."
+            },
+            "today": {
+              "type": "string",
+              "description": "ISO date to treat as today (optional)."
+            }
+          },
+          "required": [
+            "project"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "project_ignition_process",
+        "description": "Project Ignition stage 3 (the Jev work). Reads the raw Astra and Opus outputs saved in model/ignition/raw/, validates them, compares PERT durations and rolls up a CPM schedule, decides unit prices with confidence and valid-through dates, and sanity-checks cost per square foot against localized public benchmarks. Everything is a DRAFT for PM approval. Returns JSON summary; full results in model/ignition/processed.json and jev-judgments.jsonl.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "project": {
+              "type": "string",
+              "description": "Project root directory."
+            },
+            "today": {
+              "type": "string",
+              "description": "ISO date to treat as today (optional)."
+            },
+            "astra": {
+              "type": "string",
+              "description": "Astra output JSON path (default model/ignition/raw/astra.json)."
+            },
+            "opus": {
+              "type": "string",
+              "description": "Opus output JSON path (default model/ignition/raw/opus.json)."
+            },
+            "benchmarks": {
+              "type": "string",
+              "description": "Public $/SF CSV with citations (default model/ignition/benchmarks.csv)."
+            },
+            "markup_pct": {
+              "type": "number",
+              "description": "Markup fraction added before the $/SF check, for example 0.18."
+            }
+          },
+          "required": [
+            "project"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "project_ignition_itb",
+        "description": "Project Ignition stage 4. Generates 8.5 x 11 ITB packages, one per CSI division, plus a bid-package index and an internal ignition summary. ITB pages carry scope, quantities and schedule only, never our prices. Drafts only; nothing is sent.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "project": {
+              "type": "string",
+              "description": "Project root directory."
+            },
+            "today": {
+              "type": "string",
+              "description": "ISO date to treat as today (optional)."
+            },
+            "pdf": {
+              "type": "boolean",
+              "description": "Also write a letter-size PDF."
+            }
+          },
+          "required": [
+            "project"
+          ]
         }
       }
     }

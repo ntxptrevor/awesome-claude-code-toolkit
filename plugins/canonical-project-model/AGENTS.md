@@ -13,7 +13,10 @@ Atlas**, a navigable, hyperlinked drawing-set viewer, as part of that record.
 
 Pipeline doctrine: **OCR extracts → intake gathers → this tool normalizes →
 downstream tools reason.** You organize and structure. You **never** price, level
-bids, validate a low bid, judge compliance, score, or recommend an award.
+bids, validate a low bid, judge compliance, score, or recommend an award. The one
+bounded exception is **Project Ignition** (section 3b): a separate, rule-driven,
+approval-gated stage that compares the frontier models' own numbers and lays out
+drafts. The CPR itself still never carries a price you made up.
 
 ## 2. Non-negotiable rules (every model, every platform)
 
@@ -68,6 +71,31 @@ Deploy the atlas **without being asked** when any of these happens:
   atlas will build when the plans arrive.
 - Report the outcome in one calm line: status, sheet count, version, and location.
 
+## 3b. Project Ignition (Jev platform)
+
+Runs after the atlas, when a bid is confirmed (`deploy_atlas.py --ignite`). Full
+detail in `reference/project-ignition.md`.
+
+1. **Blueprint (deterministic, free):** `scripts/ignition.py blueprint --project <dir>`
+   builds division packets, a CPM task skeleton and typed work orders in
+   `model/ignition/`.
+2. **Magic (frontier seats):** run `work-orders/astra.json` on **Astra**
+   (`gpt-6-astra`) and `work-orders/opus.json` on **Opus** (`claude-opus-5-5`);
+   save replies to `raw/astra.json` and `raw/opus.json`. Have **Compass**
+   (Perplexity) fill `benchmarks.csv` with cited public $/SF rows from
+   `work-orders/compass.json`. Never send these work orders to Ledger (DeepSeek)
+   or Mason (GLM): they carry owner, bid and pricing content.
+3. **Jev processing (deterministic, typed):** `ignition.py process` validates both
+   replies, compares PERT durations, rolls up CPM, decides unit prices, dates the
+   confidence, and checks $/SF against the benchmarks. Every judgment is a typed
+   enum answer in `jev-judgments.jsonl`.
+4. **ITB pages:** `ignition.py itb [--pdf]` writes 8.5 x 11 packages per division.
+   ITB pages never contain our prices.
+5. **Everything is a DRAFT** (`status: draft_pending_pm_approval`). Nothing is sent
+   outward until the PM approves. Divergent or undocumented numbers go to
+   `needs_human_review`; a JOC contract unit price is never overridden; a missing
+   gross SF or benchmark is reported, never guessed.
+
 ## 4. If you cannot execute code
 
 Some deployments (a chat with no code tool, a locked-down API) cannot run
@@ -104,9 +132,12 @@ Some deployments (a chat with no code tool, a locked-down API) cannot run
 | `scripts/build_atlas_html.py` | offline Plans Atlas viewer (stdlib) |
 | `scripts/build_atlas_pdf.py` | embeds atlas links and index pages into the drawing PDF (PyMuPDF) |
 | `scripts/atlas_ocr.py` | OCR fallback for sheets with no text layer: RapidOCR (offline, `pip install rapidocr-onnxruntime`) or Mistral OCR title-block strips (`MISTRAL_API_KEY`); `NTXP_OCR=none` disables. OCR-read sheets are flagged for verification |
+| `scripts/ignition.py` | Project Ignition: blueprint, Jev processing (PERT, prices, confidence, $/SF sanity), ITB pages (stdlib) |
 | `scripts/deploy_atlas.py` | idempotent auto-deploy and update orchestrator (stdlib) |
 | `scripts/run_tool.py` | maps a function or tool call (OpenAI, xAI, Anthropic) onto the scripts |
 | `scripts/platform_pack.py` | builds each platform's upload set; `setup` restores the folder layout in a sandbox |
 | `tools/functions.json` | function-tool definitions for API deployments |
+| `schemas/ignition-output.schema.json` | the reply shape Astra and Opus must return |
+| `resources/benchmarks/` | public $/SF benchmark CSV template (Compass fills it with cited rows) |
 | `config/defaults.yaml` | shared defaults for every platform |
 | `reference/model-council.md` | when to convene the multi-model parsing council |

@@ -217,6 +217,8 @@ def main():
     ap.add_argument("--pdf-dir", help="Drawing PDF folder (default: the const-docs folder).")
     ap.add_argument("--company", default="NTXP")
     ap.add_argument("--force", action="store_true", help="Rebuild regardless of state.")
+    ap.add_argument("--ignite", action="store_true",
+                    help="After a build, run the deterministic Project Ignition blueprint (work orders for Astra and Opus).")
     ap.add_argument("--check", action="store_true", help="Report would-rebuild/up-to-date as JSON; no changes.")
     ap.add_argument("--dry-run", action="store_true", help="Print the plan JSON; change nothing.")
     ap.add_argument("--event", default="manual",
@@ -354,8 +356,16 @@ def main():
     write_json(state_path, {"schema": 1, "last_built": now_iso(), "event": args.event,
                             "pdf_manifest": manifest, "outputs": rel_outputs, "atlas_version": version})
     log(f"Plans Atlas built: {atlas_path} ({n} sheets, version {version})")
-    print(json.dumps({"status": "built", "atlas": str(atlas_path), "sheets": n,
-                      "event": args.event, "atlas_version": version}, indent=2))
+    result = {"status": "built", "atlas": str(atlas_path), "sheets": n,
+              "event": args.event, "atlas_version": version}
+    if args.ignite:
+        proc = subprocess.run([sys.executable, str(SCRIPTS_DIR / "ignition.py"), "blueprint", "--project", str(project)],
+                              capture_output=True, text=True)
+        try:
+            result["ignition"] = json.loads(proc.stdout)
+        except ValueError:
+            result["ignition"] = {"status": "error", "detail": (proc.stderr.strip().splitlines() or [""])[-1]}
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":

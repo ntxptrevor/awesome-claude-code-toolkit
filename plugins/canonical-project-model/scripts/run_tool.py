@@ -31,17 +31,32 @@ TOOLS = {
         {"model": "--model", "out": "--out", "company": "--company"},
         {"fragment": "--fragment"},
     ),
+    "project_ignition_blueprint": (
+        "ignition.py", {"project": "--project", "today": "--today"}, {}, "blueprint",
+    ),
+    "project_ignition_process": (
+        "ignition.py",
+        {"project": "--project", "today": "--today", "astra": "--astra", "opus": "--opus",
+         "benchmarks": "--benchmarks", "markup_pct": "--markup-pct"},
+        {}, "process",
+    ),
+    "project_ignition_itb": (
+        "ignition.py", {"project": "--project", "today": "--today"}, {"pdf": "--pdf"}, "itb",
+    ),
 }
 
 
 def build_argv(name, args):
     if name not in TOOLS:
         raise ValueError(f"unknown tool {name!r}; expected one of {sorted(TOOLS)}")
-    script, valued, flags = TOOLS[name]
+    script, valued, flags, *rest = TOOLS[name]
+    sub = rest[0] if rest else None
     unknown = set(args) - set(valued) - set(flags)
     if unknown:
         raise ValueError(f"unknown argument(s) for {name}: {sorted(unknown)}")
     argv = [sys.executable, str(SCRIPTS / script)]
+    if sub:
+        argv.append(sub)
     for key, flag in valued.items():
         if args.get(key) not in (None, ""):
             argv += [flag, str(args[key])]

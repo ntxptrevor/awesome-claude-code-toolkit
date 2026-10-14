@@ -1,6 +1,6 @@
 ---
 name: canonical-project-model
-description: Normalizes the OCR4 project-intake dossier into the Canonical Project Record - one CSI MasterFormat-organized, provenance-carrying source of truth - and renders an interlinked Excel workbook, an animated HTML command dashboard (KPI donuts, click-to-ITB budget bar with buyout/profit mode, activity stream, daily reports, critical-path plotter, editable look-ahead, health lights, approval-gated two-way sync), and the NTXP Plans Atlas: an offline, hyperlinked drawing-set viewer navigable by trade, spec, phase, or area, with callout links, drawing-text search, and staged markups and phase images. Auto-deploys the atlas to Construction Documents when a bid or project is confirmed and rebuilds when drawings change. Organizes only; never prices, levels, or decides. Use for project records, dashboards, plan atlas, finding a trade or spec on the drawings.
+description: Normalizes the OCR4 project-intake dossier into the Canonical Project Record - one CSI MasterFormat-organized, provenance-carrying source of truth - and renders an interlinked Excel workbook, an animated HTML command dashboard (KPI donuts, click-to-ITB budget bar with buyout/profit mode, activity stream, daily reports, critical-path plotter, editable look-ahead, health lights, approval-gated two-way sync), and the NTXP Plans Atlas: an offline, hyperlinked drawing-set viewer navigable by trade, spec, phase, or area, with callout links, drawing-text search, and staged markups and phase images. Auto-deploys the atlas to Construction Documents when a bid or project is confirmed and rebuilds when drawings change. Organizes; never prices or decides, except the approval-gated draft Project Ignition stage. Use for project records, dashboards, plan atlas, finding a trade or spec on the drawings.
 ---
 
 # Canonical Project Model — the source-of-truth layer
@@ -182,6 +182,27 @@ Staged markups/phase images inside the atlas remain approval-gated; the deployer
 writes to external systems, never modifies source PDFs, and reports — calmly — what it
 built, skipped, or is waiting on (`no_drawings` is a normal state for a brand-new bid,
 not an error).
+
+## Project Ignition — Jev platform (blueprint, magic, processing)
+
+When a bid is confirmed and the atlas has deployed, run **Project Ignition**
+(`scripts/ignition.py`, full rules in `reference/project-ignition.md`):
+
+1. **Blueprint (deterministic, free):** `ignition.py blueprint` (or
+   `deploy_atlas.py --ignite`) builds division packets, a CPM skeleton and typed work
+   orders under `model/ignition/`.
+2. **Magic:** **Astra** (`gpt-6-astra`) and **Opus** (`claude-opus-5-5`) each answer
+   the work order independently; **Compass** supplies cited public $/SF rows. Never
+   route these to Ledger (DeepSeek) or Mason (GLM): they hold owner, bid and
+   pricing content.
+3. **Jev processing:** `ignition.py process` compares the two PERT sets, rolls up CPM,
+   decides unit prices, dates confidence and sanity-checks $/SF. Every judgment is a
+   typed enum in `jev-judgments.jsonl`.
+4. **ITB pages:** `ignition.py itb --pdf` writes 8.5 x 11 packages per division. No
+   prices ever appear on ITB pages.
+
+Everything is a **draft for PM approval**. A JOC contract unit price is never
+overridden; a missing gross SF or benchmark is reported, never guessed.
 
 ## Cross-platform deployment (Claude, ChatGPT, Grok)
 
