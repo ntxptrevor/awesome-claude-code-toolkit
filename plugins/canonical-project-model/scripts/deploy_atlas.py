@@ -89,12 +89,21 @@ def find_const_docs(project, create=True):
     return project / "Construction Documents", True
 
 
+# Derived copies of a drawing set (compressed, atlas-linked) must never be
+# indexed as a second set; the original is the source of truth.
+DERIVED_RE = re.compile(r"\(compressed\)|compressed|\bv\d+(\.\d+)?\b|atlas-linked", re.I)
+
+
 def discover_pdfs(pdf_dir):
     out = []
     for p in sorted(pdf_dir.glob("**/*.pdf")) + sorted(pdf_dir.glob("**/*.PDF")):
         rel_parts = p.relative_to(pdf_dir).parts
         if OUT_SUBDIR in rel_parts[:-1] or p.name.lower().startswith("plans-atlas"):
             continue
+        if DERIVED_RE.search(p.stem) and any(
+                q.stem != p.stem and q.parent == p.parent and q.stem.lower() in p.stem.lower()
+                for q in pdf_dir.glob("**/*.pdf")):
+            continue   # derived copy sitting beside its original
         if p not in out:
             out.append(p)
     return sorted(out)

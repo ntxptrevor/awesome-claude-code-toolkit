@@ -57,7 +57,7 @@ DIVISIONS_FILE = PLUGIN_DIR / "resources" / "masterformat-divisions.json"
 # ----------------------------------------------------------------- constants
 
 # Sheet number: whole-token match, e.g. "A-101", "M2.01A", "FP101".
-SHEET_NO_STRICT = re.compile(r"^[A-Z]{1,3}[-.]?\d{1,3}(\.\d{1,2})?[A-Z]?$")
+SHEET_NO_STRICT = re.compile(r"^(?:[A-Z]{1,3}[-.]?\d{1,3}(\.\d{1,2})?[A-Z]?|0\d{2})$")
 # Same shape, unanchored, for scanning a token out of free-flowing line text
 # (bounded by whitespace so it only ever matches a whole "word").
 _SHEET_CORE = r"[A-Z]{1,3}[-.]?\d{1,3}(?:\.\d{1,2})?[A-Z]?"
@@ -235,6 +235,7 @@ def extract_page_structure(page):
     reading-order text; 'words_flat' is the full per-page word list used for
     the search sidecar and the searchable-word-count check."""
     raw = page.get_text("dict")
+    rot_m = page.rotation_matrix if page.rotation else None
     lines = []
     for block in raw.get("blocks", []):
         for line in block.get("lines", []):
@@ -243,6 +244,8 @@ def extract_page_structure(page):
                 text = span.get("text", "")
                 size = span.get("size", 0.0)
                 bx0, by0, bx1, by1 = span.get("bbox", (0, 0, 0, 0))
+                if rot_m is not None:   # PyMuPDF reports unrotated coords on rotated pages
+                    bx0, by0, bx1, by1 = tuple(fitz.Rect(bx0, by0, bx1, by1) * rot_m)
                 span_w = bx1 - bx0
                 tokens = text.split()
                 if not tokens:
@@ -281,6 +284,12 @@ def detect_sheet_and_title(lines, pw, ph):
     if not candidates:
         return None, ""
     candidates.sort(key=lambda c: (-c[0], c[1], c[2]))
+    # A real title-block sheet number is set far larger than body text; a
+    # same-size token (e.g. in a drawing index or notes) is not the number.
+    sizes = sorted(w["size"] for line in lines for w in line)
+    median = sizes[len(sizes) // 2] if sizes else 0
+    if median and candidates[0][0] < 2.5 * median:
+        return None, ""
     sheet_no = candidates[0][3]
     sheet_line_idx = candidates[0][4]
 
@@ -387,6 +396,10 @@ def build_sheets_from_pdfs(pdf_paths, out_dir, render_images, dpi, model_divisio
                         f"duplicate sheet number '{sheet_no}' in {pdf_path.name} "
                         f"p{page_no} — disambiguated as '{sheet_id}'")
                 id_conf = 0.95
+            elif page_no == 1:
+                sheet_no, title = "COVER", "Cover Sheet"
+                sheet_id = dedupe_id("COVER", used_ids)
+                id_conf = 0.6
             else:
                 sheet_id = dedupe_id(f"{pdf_path.stem}-p{page_no}", used_ids)
                 id_conf = 0.4
