@@ -91,6 +91,8 @@ class Index:
         x, line_h = MARGIN + 14, 13
         for sid in items:
             tp = target_of(sid)
+            if tp is None:
+                continue          # sheet belongs to another source PDF
             w = fitz.get_text_length(sid, fontname="helv", fontsize=7.5) + 8
             if x + w > PW - MARGIN:
                 x = MARGIN + 14
@@ -139,7 +141,11 @@ def main():
     doc = fitz.open(str(a.pdf))
     n_orig = doc.page_count
     toc_before = doc.get_toc()
-    sheets = atlas["sheets"]
+    # Page numbers restart at 1 in every source PDF; only this PDF's sheets map here.
+    sheets = [x for x in atlas["sheets"] if x.get("source_doc") == a.pdf.name]
+    if not sheets:
+        sys.exit(f"no sheets in plans_atlas.json come from {a.pdf.name}; run deploy_atlas.py on this set first")
+    mine = {x["sheet_id"] for x in sheets}
     page_of = {}
     for s in sheets:
         pg = int(s.get("page") or 0)
@@ -152,6 +158,8 @@ def main():
     added = skipped = 0
     why = {"unresolved": 0, "same_sheet": 0, "overlaps_original": 0}
     for l in atlas.get("links", []):
+        if l.get("from_sheet") not in mine:
+            continue
         src, dst = page_of.get(l.get("from_sheet")), page_of.get(l.get("to_sheet"))
         box = l.get("from_box")
         if src is None or dst is None or not box:

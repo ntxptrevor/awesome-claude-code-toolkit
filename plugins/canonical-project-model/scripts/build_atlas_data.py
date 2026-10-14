@@ -76,6 +76,8 @@ SCALE_RE = re.compile(r"(\d+/\d+\"\s*=\s*1'-?0?\"|1\"\s*=\s*\d+'|\d+:\d+)")
 NOT_A_TITLE = re.compile(r"\bSCALE\b|\bDATE\b|\bDRAWN\b|\bCHECKED\b|\bPROJECT\s+(NO|#)|"
                          + SCALE_RE.pattern, re.I)
 
+# A first page counts as the cover only when its own text says so.
+COVER_RE = re.compile(r"\bCOVER\s+SHEET\b|\bDRAWING\s+INDEX\b|\bSHEET\s+INDEX\b")
 PHASE_RE = re.compile(r"\bPHASE\s+(\d{1,2}[A-Z]?|[A-D])\b")
 ROOM_RE = re.compile(r"\b(RM|ROOM)\s*[-#]?\s*(\d{3,4}[A-Z]?)\b")
 AREA_RE = re.compile(r"\bAREA\s+([A-H])\b")
@@ -249,20 +251,26 @@ def extract_page_structure(page):
                 text = span.get("text", "")
                 size = span.get("size", 0.0)
                 bx0, by0, bx1, by1 = span.get("bbox", (0, 0, 0, 0))
-                if rot_m is not None:   # PyMuPDF reports unrotated coords on rotated pages
-                    bx0, by0, bx1, by1 = tuple(fitz.Rect(bx0, by0, bx1, by1) * rot_m)
-                span_w = bx1 - bx0
                 tokens = text.split()
                 if not tokens:
                     continue
+                # Split along the text direction in the span's own (unrotated)
+                # space, then rotate each token box into the displayed page.
+                dx, dy = line.get("dir", (1.0, 0.0))
+                vertical = abs(dy) > abs(dx)
+                lo, hi = (by0, by1) if vertical else (bx0, bx1)
+                reverse = (dy < 0) if vertical else (dx < 0)
+                extent = hi - lo
                 total_chars = sum(len(t) for t in tokens) or 1
-                cursor = bx0
+                pos = hi if reverse else lo
                 for tok in tokens:
-                    frac = len(tok) / total_chars
-                    w = span_w * frac
-                    line_words.append({"bbox": (cursor, by0, cursor + w, by1),
-                                        "text": tok, "size": size})
-                    cursor += w
+                    step = extent * len(tok) / total_chars
+                    a0, a1 = (pos - step, pos) if reverse else (pos, pos + step)
+                    pos = a0 if reverse else a1
+                    box = (bx0, a0, bx1, a1) if vertical else (a0, by0, a1, by1)
+                    if rot_m is not None:
+                        box = tuple(fitz.Rect(*box) * rot_m)
+                    line_words.append({"bbox": box, "text": tok, "size": size})
             if line_words:
                 lines.append(line_words)
     words_flat = [w for line in lines for w in line]
@@ -411,7 +419,8 @@ def build_sheets_from_pdfs(pdf_paths, out_dir, render_images, dpi, model_divisio
                         f"duplicate sheet number '{sheet_no}' in {pdf_path.name} "
                         f"p{page_no} — disambiguated as '{sheet_id}'")
                 id_conf = 0.95
-            elif page_no == 1:
+            elif (page_no == 1 and not ocr_used
+                  and COVER_RE.search(" ".join(w["text"] for w in words_flat).upper())):
                 sheet_no, title = "COVER", "Cover Sheet"
                 sheet_id = dedupe_id("COVER", used_ids)
                 id_conf = 0.6

@@ -95,17 +95,17 @@ DERIVED_RE = re.compile(r"\(compressed\)|compressed|\bv\d+(\.\d+)?\b|atlas-linke
 
 
 def discover_pdfs(pdf_dir):
+    candidates = sorted(set(pdf_dir.glob("**/*.pdf")) | set(pdf_dir.glob("**/*.PDF")))
     out = []
-    for p in sorted(pdf_dir.glob("**/*.pdf")) + sorted(pdf_dir.glob("**/*.PDF")):
+    for p in candidates:
         rel_parts = p.relative_to(pdf_dir).parts
         if OUT_SUBDIR in rel_parts[:-1] or p.name.lower().startswith("plans-atlas"):
             continue
         if DERIVED_RE.search(p.stem) and any(
                 q.stem != p.stem and q.parent == p.parent and q.stem.lower() in p.stem.lower()
-                for q in pdf_dir.glob("**/*.pdf")):
+                for q in candidates):
             continue   # derived copy sitting beside its original
-        if p not in out:
-            out.append(p)
+        out.append(p)
     return sorted(out)
 
 
