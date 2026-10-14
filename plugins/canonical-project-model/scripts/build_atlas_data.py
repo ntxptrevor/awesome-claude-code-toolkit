@@ -94,6 +94,11 @@ DISC_TO_DIV = {
 
 TITLE_BLOCK_X = 0.86   # right-edge strip
 TITLE_BLOCK_Y = 0.90   # bottom strip
+try:
+    import atlas_ocr
+except ImportError:   # OCR fallback is optional
+    atlas_ocr = None
+
 MIN_SEARCHABLE_WORDS = 25
 LONG_EDGE_PX = 2000
 THUMB_EDGE_PX = 320
@@ -288,7 +293,7 @@ def detect_sheet_and_title(lines, pw, ph):
     # same-size token (e.g. in a drawing index or notes) is not the number.
     sizes = sorted(w["size"] for line in lines for w in line)
     median = sizes[len(sizes) // 2] if sizes else 0
-    if median and candidates[0][0] < 2.5 * median:
+    if median and candidates[0][0] < 1.6 * median:
         return None, ""
     sheet_no = candidates[0][3]
     sheet_line_idx = candidates[0][4]
@@ -387,6 +392,16 @@ def build_sheets_from_pdfs(pdf_paths, out_dir, render_images, dpi, model_divisio
             page = doc.load_page(page_index)
             pw, ph = page.rect.width, page.rect.height
             lines, words_flat = extract_page_structure(page)
+            ocr_used = ""
+            if len(words_flat) < MIN_SEARCHABLE_WORDS and atlas_ocr is not None:
+                ocr_lines, ocr_used = atlas_ocr.ocr_page_lines(page)
+                if ocr_lines:
+                    lines = ocr_lines
+                    words_flat = [w for ln in ocr_lines for w in ln]
+                    review.append(f"page {page_index + 1} of {pdf_path.name} had no text layer; "
+                                  f"read with OCR ({ocr_used}) - verify sheet number and title")
+                else:
+                    ocr_used = ""
             sheet_no, title = detect_sheet_and_title(lines, pw, ph)
             page_no = page_index + 1
             if sheet_no:
@@ -424,6 +439,7 @@ def build_sheets_from_pdfs(pdf_paths, out_dir, render_images, dpi, model_divisio
                 "height_in": round(ph / 72.0, 2),
                 "declared_scale": detect_scale(lines, pw, ph) or "",
                 "searchable": searchable,
+                "ocr": ocr_used or False,
                 "phases": phases,
                 "areas": areas,
                 "_div_conf": div_conf,

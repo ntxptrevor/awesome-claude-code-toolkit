@@ -36,6 +36,7 @@
           "width_in": { "type": "number" },
           "height_in": { "type": "number" },
           "declared_scale": { "type": "string" },
+          "ocr": { "type": ["string", "boolean"], "description": "Provider name when the sheet text came from OCR (rapidocr, mistral-titleblock); false when read from the PDF text layer." },
           "searchable": { "type": "boolean", "description": "False when the sheet has no text layer — the viewer marks it 'not searchable' instead of pretending." },
           "revision": { "type": "string" },
           "phases": { "type": "array", "items": { "type": "string" } },

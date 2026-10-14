@@ -102,6 +102,8 @@ Some deployments (a chat with no code tool, a locked-down API) cannot run
 | `scripts/build_dashboard_html.py` | animated command dashboard (stdlib) |
 | `scripts/build_atlas_data.py` | deterministic drawing extraction (PyMuPDF optional) |
 | `scripts/build_atlas_html.py` | offline Plans Atlas viewer (stdlib) |
+| `scripts/build_atlas_pdf.py` | embeds atlas links and index pages into the drawing PDF (PyMuPDF) |
+| `scripts/atlas_ocr.py` | OCR fallback for sheets with no text layer: RapidOCR (offline, `pip install rapidocr-onnxruntime`) or Mistral OCR title-block strips (`MISTRAL_API_KEY`); `NTXP_OCR=none` disables. OCR-read sheets are flagged for verification |
 | `scripts/deploy_atlas.py` | idempotent auto-deploy and update orchestrator (stdlib) |
 | `scripts/run_tool.py` | maps a function or tool call (OpenAI, xAI, Anthropic) onto the scripts |
 | `scripts/platform_pack.py` | builds each platform's upload set; `setup` restores the folder layout in a sandbox |
