@@ -182,7 +182,7 @@ def build_packets(sec, labels):
         d = div_of(it.get("csi"))
         if d:
             q = it.get("quantity")
-            pk(d)["takeoff"].append({"id": it.get("takeoff_id"), "description": it.get("description"),
+            pk(d)["takeoff"].append({"id": it.get("takeoff_id"), "scope_item_id": it.get("scope_item_id"), "description": it.get("description"),
                                      "quantity": q.get("value") if isinstance(q, dict) else q,
                                      "uom": (q.get("uom") if isinstance(q, dict) else "") or ""})
     for it in (sec.get("estimate_sov") or {}).get("cost_lines") or []:
@@ -194,7 +194,7 @@ def build_packets(sec, labels):
             upb = ((joc or {}).get("upb_unit_price") or {}) if isinstance(joc, dict) else {}
             upb = upb.get("amount") if isinstance(upb, dict) else upb
             anchor_src = "unit_rate" if rate is not None else ("upb_unit_price" if upb is not None else None)
-            pk(d)["cost_lines"].append({"id": it.get("cost_line_id"), "description": it.get("description"),
+            pk(d)["cost_lines"].append({"id": it.get("cost_line_id"), "scope_item_id": it.get("scope_item_id"), "description": it.get("description"),
                                         "quantity": it.get("quantity") if not isinstance(it.get("quantity"), dict) else it["quantity"].get("value"),
                                         "unit_rate": rate if rate is not None else upb,
                                         "anchor_source": anchor_src,
@@ -222,18 +222,27 @@ def build_packets(sec, labels):
     for d, p in packets.items():
         lines, seen = [], set()
         for it in p["takeoff"]:
-            lines.append({"line_id": it["id"], "description": it["description"], "uom": it["uom"],
-                          "quantity": it["quantity"], "quantity_source": "takeoff", "anchor": None, "joc_line": False})
+            lines.append({"line_id": it["id"], "scope_item_id": it.get("scope_item_id"), "description": it["description"],
+                          "uom": it["uom"], "quantity": it["quantity"], "quantity_source": "takeoff",
+                          "anchor": None, "joc_line": False, "anchor_source": None})
+        # A scope item gets its own line only when no takeoff line already covers it.
+        covered = {l["scope_item_id"] for l in lines if l.get("scope_item_id")}
         for it in p["scope_items"]:
-            if it["id"] and not any(l["line_id"] == it["id"] for l in lines) and not p["takeoff"]:
-                lines.append({"line_id": it["id"], "description": it["description"], "uom": it["uom"],
-                              "quantity": None, "quantity_source": "unquantified", "anchor": None, "joc_line": False})
+            if it["id"] and it["id"] not in covered and not any(l["line_id"] == it["id"] for l in lines):
+                lines.append({"line_id": it["id"], "scope_item_id": it["id"], "description": it["description"], "uom": it["uom"],
+                              "quantity": None, "quantity_source": "unquantified", "anchor": None, "joc_line": False,
+                              "anchor_source": None})
+        # Cost lines and takeoff lines live in separate ID spaces; they join on scope_item_id.
         for it in p["cost_lines"]:
-            hit = next((l for l in lines if l["line_id"] == it["id"]), None)
+            hit = next((l for l in lines if l["line_id"] == it["id"]), None) or \
+                next((l for l in lines if it.get("scope_item_id") and l.get("scope_item_id") == it["scope_item_id"]
+                      and l["anchor"] is None), None)
             if hit:
                 hit["anchor"], hit["joc_line"], hit["anchor_source"] = it["unit_rate"], it["joc_line"], it["anchor_source"]
+                if hit["quantity"] is None:
+                    hit["quantity"] = it["quantity"]
             else:
-                lines.append({"line_id": it["id"], "description": it["description"], "uom": "",
+                lines.append({"line_id": it["id"], "scope_item_id": it.get("scope_item_id"), "description": it["description"], "uom": "",
                               "quantity": it["quantity"], "quantity_source": "cost_line",
                               "anchor": it["unit_rate"], "joc_line": it["joc_line"], "anchor_source": it["anchor_source"]})
         for l in lines:
@@ -916,12 +925,15 @@ def selftest():
                "building": {"gross_sf": 10000}, "key_dates": [{"label": "NTXP Sub Bids Due", "date": "2026-11-05"}]})
     write_json(sec / "scope.json", {"section": "scope", "items": [
         {"scope_item_id": "S1", "csi": {"masterformat_division": "09"}, "description": "Replace ceiling tile", "uom": "SF"},
-        {"scope_item_id": "S2", "csi": {"masterformat_division": "26"}, "description": "Relocate panelboard", "uom": "EA"}]})
+        {"scope_item_id": "S2", "csi": {"masterformat_division": "26"}, "description": "Relocate panelboard", "uom": "EA"},
+        {"scope_item_id": "S3", "csi": {"masterformat_division": "09"}, "description": "Paint walls (no takeoff yet)", "uom": "SF"}]})
     write_json(sec / "quantity_takeoff.json", {"section": "quantity_takeoff", "items": [
-        {"takeoff_id": "Q1", "csi": {"masterformat_division": "09"}, "description": "ACT ceiling", "quantity": 2000}]})
+        {"takeoff_id": "Q1", "scope_item_id": "S1", "csi": {"masterformat_division": "09"}, "description": "ACT ceiling", "quantity": 2000}]})
     write_json(sec / "estimate_sov.json", {"section": "estimate_sov", "cost_lines": [
         {"cost_line_id": "C1", "csi": {"masterformat_division": "26"}, "description": "JOC panel line", "quantity": 1,
-         "unit_rate": 5000, "joc_line": True}]})
+         "unit_rate": 5000, "joc_line": True},
+        {"cost_line_id": "EL-9", "scope_item_id": "S1", "csi": {"masterformat_division": "09"}, "description": "ACT cost line",
+         "quantity": 2000, "unit_rate": 4.9}]})
     write_json(sec / "plans_atlas.json", {"section": "plans_atlas", "sheets": [{"sheet_id": "A-101", "sheet_no": "A-101", "title": "PLAN", "page": 1}],
                "concepts": {"trades": [{"division": "09", "label": "Finishes", "sheet_ids": ["A-101"], "spec_sections": ["09 51 13"]}],
                             "specs": [{"section": "09 51 13", "division": "09", "title": "Acoustical Panel Ceilings"},
@@ -931,6 +943,10 @@ def selftest():
     out = tmp / "model" / "ignition"
     bp = load_json(out / "blueprint.json")
     assert {t["task_id"] for t in bp["tasks"]} == {"T-09", "T-26", "T-34", "T-CLOSE"}
+    d09 = next(d for d in bp["divisions"] if d["division"] == "09")
+    # cost line EL-9 joins takeoff Q1 on scope_item_id (no double count); S3 stays because it has no takeoff
+    assert {l["line_id"] for l in d09["price_lines"]} == {"Q1", "S3"}, d09["price_lines"]
+    assert next(l for l in d09["price_lines"] if l["line_id"] == "Q1")["anchor"] == 4.9
     assert len(bp["divisions"]) == 3 and next(d for d in bp["divisions"] if d["division"] == "34")["low_evidence"]
     assert not next(d for d in bp["divisions"] if d["division"] == "09")["low_evidence"] and "gross_sf missing" not in " ".join(bp["gaps"])
 
