@@ -165,6 +165,13 @@
                 }
               }
             }
+          },
+          "not_applicable": {
+            "type": "boolean",
+            "description": "True when no work belongs in this division; then omit pert and prices."
+          },
+          "reason": {
+            "type": "string"
           }
         }
       }

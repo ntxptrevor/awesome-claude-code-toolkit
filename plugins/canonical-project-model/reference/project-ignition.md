@@ -59,6 +59,13 @@ One seat only: used, sd widened 25%, flagged.
 and enclosure, P3 rough-in, P4 finishes, P5 closeout). Output: critical path,
 expected and P80 duration, and the chance of meeting a stated contract duration.
 
+**Not applicable.** Each division packet carries an `evidence` count (sheets, spec
+sections, scope items, takeoff, cost lines, trade package). A packet with none of
+those but a stray spec mention is `low_evidence`, and the work order tells the seats
+to return it `not_applicable` with a reason. When every answering seat agrees, Jev
+records `not_applicable`, the task drops to zero days, and the division gets no
+price lines and no ITB page.
+
 **Unit prices, in order:**
 1. A JOC contract unit price is **never overridden** (`contract_price`).
 2. Seats within 10%: mean. Within 25%: mean, unless only one cites a dated source.

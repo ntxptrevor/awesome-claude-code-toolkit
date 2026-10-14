@@ -235,6 +235,11 @@ def build_packets(sec, labels):
         if not p["price_lines"]:
             p["price_lines"].append({"line_id": f"L-{d}-LS", "description": f"Division {d} {p['label']} lump sum (no takeoff yet)",
                                      "uom": "LS", "quantity": 1, "quantity_source": "lump_sum", "anchor": None, "joc_line": False})
+        p["evidence"] = {"sheets": len({x["sheet_no"] for x in p["sheets"]}), "spec_sections": len(p["spec_sections"]),
+                         "scope_items": len(p["scope_items"]), "takeoff": len(p["takeoff"]),
+                         "cost_lines": len(p["cost_lines"]), "trade_package": bool(p["trade"])}
+        p["low_evidence"] = not (p["evidence"]["sheets"] or p["evidence"]["scope_items"] or p["evidence"]["takeoff"]
+                                 or p["evidence"]["cost_lines"] or p["evidence"]["trade_package"])
         p["sheets"] = sorted({(s["sheet_no"], s["title"], s["page"]): s for s in p["sheets"]}.values(), key=lambda s: s["page"] or 0)
         p["spec_sections"] = sorted({s["section"]: s for s in p["spec_sections"]}.values(), key=lambda s: s["section"] or "")
     return packets
@@ -265,6 +270,7 @@ OUTPUT_CONTRACT = {
     "seat": "astra | opus", "model": "model id", "generated_at": "ISO-8601 timestamp",
     "divisions": [{
         "division": "two-digit CSI division from the blueprint",
+        "not_applicable": "true when no work belongs in this division (then give reason and omit pert and prices)", "reason": "",
         "pert": [{"task_id": "from blueprint.tasks", "optimistic": "working days", "most_likely": "working days",
                   "pessimistic": "working days", "basis": "one sentence"}],
         "prices": [{"line_id": "from price_lines", "quantity": "number or null", "uom": "unit",
@@ -284,6 +290,7 @@ RULES = [
     "Every unit_price needs price_basis, price_date and source. If you cannot cite one, use price_basis 'model_estimate', price_date null and say so.",
     "Give working-day durations as optimistic <= most_likely <= pessimistic for every task listed.",
     "Prices are installed unit costs before general-contractor overhead, profit, bond and insurance.",
+    "A division with low_evidence true has no sheet, scope, takeoff, cost line or trade package, only a stray spec mention. Return it with not_applicable true and a one-sentence reason unless the spec text clearly puts work in it.",
     "ITB text is for subcontractors: describe scope and responsibilities, never our budget, our unit prices or our margins.",
 ]
 
@@ -392,10 +399,24 @@ def normal_cdf(x):
     return 0.5 * (1 + math.erf(x / math.sqrt(2)))
 
 
-def run_pert(bp, items, jev):
+def na_divisions(bp, raws):
+    """Divisions every answering seat marked not applicable."""
+    na = set()
+    for d in bp["divisions"]:
+        votes = [any(x.get("division") == d["division"] and x.get("not_applicable") for x in raw.get("divisions", []))
+                 for raw in raws.values()]
+        if votes and all(votes):
+            na.add(d["division"])
+    return na
+
+
+def run_pert(bp, items, jev, na=frozenset()):
     out, notes = {}, []
     for t in bp["tasks"]:
         tid = t["task_id"]
+        if t.get("division") in na:
+            out[tid] = {"task_id": tid, "e": 0.0, "sd": 0.0, "decision": "not_applicable", "stance": None}
+            continue
         got = {s: items[s][0].get(tid) for s in items if items[s][0].get(tid)}
         if not got:
             notes.append(f"{tid}: no duration from any seat")
@@ -467,9 +488,11 @@ def documented(p):
     return bool(p and p.get("source") and p.get("price_date") and p.get("price_basis") != "model_estimate")
 
 
-def run_prices(bp, items, jev, now):
+def run_prices(bp, items, jev, now, na=frozenset()):
     lines, flags = [], []
     for d in bp["divisions"]:
+        if d["division"] in na:
+            continue
         for l in d["price_lines"]:
             lid = l["line_id"]
             got = {s: items[s][1][lid] for s in items if lid in items[s][1]}
@@ -669,7 +692,7 @@ def cmd_process(args):
     if not bp:
         sys.exit("no blueprint.json: run 'ignition.py blueprint' first")
     now = today(args)
-    items, problems, present = {}, [], []
+    items, problems, present, raws = {}, [], [], {}
     for seat in SEATS:
         path = Path(getattr(args, seat) or out / "raw" / f"{seat}.json")
         raw = load_json(path)
@@ -678,24 +701,30 @@ def cmd_process(args):
         pr = validate_output(raw, bp)
         problems += [f"{seat}: {p}" for p in pr]
         items[seat] = good_items(raw)
+        raws[seat] = raw
         present.append(seat)
     if not items:
         sys.exit("no seat output found: save replies to model/ignition/raw/astra.json and opus.json")
     jev = Jev()
-    pert, pert_notes = run_pert(bp, items, jev)
+    na = na_divisions(bp, raws)
+    for d in sorted(na):
+        jev.judge("division_applicability", f"Does division {d} carry work on this project?", {"seats": present},
+                  ["applicable", "not_applicable"], "not_applicable", "every seat that answered marked it not applicable")
+    pert, pert_notes = run_pert(bp, items, jev, na)
     cpm, _ = run_cpm(bp, pert)
-    lines, by_div, total, flags = run_prices(bp, items, jev, now)
+    lines, by_div, total, flags = run_prices(bp, items, jev, now, na)
     benches = load_benchmarks(args.benchmarks or out / "benchmarks.csv")
     sanity = run_sanity(bp["project"], total, by_div, benches, jev, now, args.markup_pct)
     needs = problems + pert_notes + flags
     if sanity.get("verdict") in ("below_band", "above_band"):
         needs.append(f"$/SF check: {sanity['verdict']} ({sanity['estimate_psf']}/SF vs {sanity['band_psf']})")
-    uncovered = [d["division"] for d in bp["divisions"]
+    uncovered = [d["division"] for d in bp["divisions"] if d["division"] not in na
                  if not any(l["division"] == d["division"] and l["unit_price"] is not None for l in lines)]
     if uncovered:
         needs.append("no price for any line in division(s): " + ", ".join(uncovered))
     processed = {"stage": "processed", "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                  "status": "draft_pending_pm_approval", "as_of": now.isoformat(), "seats_present": present,
+                 "not_applicable_divisions": sorted(na),
                  "pert": {"tasks": list(pert.values()), "schedule": cpm},
                  "prices": {"lines": lines, "by_division": by_div, "totals": total},
                  "sanity": sanity, "needs_human_review": needs,
@@ -790,12 +819,15 @@ def cmd_itb(args):
     bid_dates = {k.get("label"): k.get("date") for k in facts["key_dates"] if isinstance(k, dict)}
     max_lines = max((len(d["price_lines"]) for d in bp["divisions"]), default=1)
     max_days = max((t.get("e") or 0 for t in pert.values()), default=1)
+    na = set((pr or {}).get("not_applicable_divisions", []))
     pages = []
     for d in bp["divisions"]:
+        if d["division"] in na:
+            continue
         merged = merge_itb({s: seat_items[s].get(d["division"]) for s in seat_items})
         pages.append(itb_page(d, merged, pert.get(f"T-{d['division']}"), bp["project"], bid_dates, max_lines, max_days))
     idx = header("BID PACKAGE INDEX", f"{bp['project']['title']}  |  {len(pages)} divisions") + "<ul>" + "".join(
-        f"<li><b>Division {esc(d['division'])}</b> {esc(d['label'])}: {len(d['price_lines'])} line item(s)</li>" for d in bp["divisions"]) + "</ul>"
+        f"<li><b>Division {esc(d['division'])}</b> {esc(d['label'])}: {len(d['price_lines'])} line item(s)</li>" for d in bp["divisions"] if d["division"] not in na) + "</ul>"
     body = idx + "".join(f'<div style="page-break-before:always">{p}</div>' for p in pages)
     css = "body{font-family:Helvetica,Arial,sans-serif;font-size:10pt;color:#1d2330}h3{color:#17304f;border-bottom:1px solid #bd9440}"
     doc = f"<html><head><meta charset='utf-8'><title>ITB packages</title><style>@page{{size:8.5in 11in;margin:0.6in}}{css}</style></head><body>{body}</body></html>"
@@ -868,13 +900,15 @@ def selftest():
          "unit_rate": 5000, "joc_line": True}]})
     write_json(sec / "plans_atlas.json", {"section": "plans_atlas", "sheets": [{"sheet_id": "A-101", "sheet_no": "A-101", "title": "PLAN", "page": 1}],
                "concepts": {"trades": [{"division": "09", "label": "Finishes", "sheet_ids": ["A-101"], "spec_sections": ["09 51 13"]}],
-                            "specs": [{"section": "09 51 13", "division": "09", "title": "Acoustical Panel Ceilings"}]}})
+                            "specs": [{"section": "09 51 13", "division": "09", "title": "Acoustical Panel Ceilings"},
+                                      {"section": "34 11 00", "division": "34", "title": "Stray mention"}]}})
     ns = argparse.Namespace(project=str(tmp), today="2026-10-14", astra=None, opus=None, benchmarks=None, markup_pct=0.0, pdf=False)
     cmd_blueprint(ns)
     out = tmp / "model" / "ignition"
     bp = load_json(out / "blueprint.json")
-    assert [t["task_id"] for t in bp["tasks"]] == ["T-09", "T-26", "T-CLOSE"] or {t["task_id"] for t in bp["tasks"]} == {"T-09", "T-26", "T-CLOSE"}
-    assert len(bp["divisions"]) == 2 and "gross_sf missing" not in " ".join(bp["gaps"])
+    assert {t["task_id"] for t in bp["tasks"]} == {"T-09", "T-26", "T-34", "T-CLOSE"}
+    assert len(bp["divisions"]) == 3 and next(d for d in bp["divisions"] if d["division"] == "34")["low_evidence"]
+    assert not next(d for d in bp["divisions"] if d["division"] == "09")["low_evidence"] and "gross_sf missing" not in " ".join(bp["gaps"])
 
     def seat(seat, dur09, price09, basis):
         return {"seat": seat, "model": SEATS[seat]["model"], "generated_at": "2026-10-14T00:00:00Z", "divisions": [
@@ -887,6 +921,7 @@ def selftest():
              "prices": [{"line_id": "C1", "unit_price": 9999, "price_basis": "book", "price_date": "2026-09-01", "source": "fixture"}],
              "itb": {"scope_narrative": "", "inclusions": ["Relocate panelboard"], "exclusions": [], "clarifications": [],
                      "required_submittals": [], "alternates": [], "risks": []}},
+            {"division": "34", "not_applicable": True, "reason": "stray spec mention"},
             {"division": "01", "pert": [{"task_id": "T-NOPE", "optimistic": 5, "most_likely": 2, "pessimistic": 1}]}], "project": {}}
     write_json(out / "raw" / "astra.json", seat("astra", (4, 6, 14), 5.0, "vendor_quote"))
     write_json(out / "raw" / "opus.json", seat("opus", (5, 7, 12), 5.2, "book"))
@@ -907,9 +942,11 @@ def selftest():
     assert line["Q1"]["valid_through"] == "2027-02-28" and 0.8 < line["Q1"]["confidence"] <= 1.0, line["Q1"]
     assert pr["sanity"]["checked"] and pr["sanity"]["verdict"] == "above_band", pr["sanity"]   # 15,200 / 10,000 SF vs fixture band
     assert any("T-NOPE" in n for n in pr["needs_human_review"]), "bad task id should be flagged"
+    assert pr["not_applicable_divisions"] == ["34"] and not any("34" in n for n in pr["needs_human_review"] if "$/SF" not in n), pr["needs_human_review"]
+    assert next(t for t in pr["pert"]["tasks"] if t["task_id"] == "T-34")["decision"] == "not_applicable"
     cmd_itb(ns)
     page = (out / "itb" / "itb-packages.html").read_text()
-    assert "Remove existing tile" in page and "9999" not in page and "5.1" not in page and "5000" not in page, "ITB must not leak prices"
+    assert "DIVISION 34" not in page and "Remove existing tile" in page and "9999" not in page and "5.1" not in page and "5000" not in page, "ITB must not leak prices"
     assert "Select" not in page and (out / "jev-judgments.jsonl").read_text().strip()
     print("selftest passed:", tmp)
 
