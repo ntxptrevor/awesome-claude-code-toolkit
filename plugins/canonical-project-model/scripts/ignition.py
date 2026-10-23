@@ -449,8 +449,10 @@ def cmd_seats(args):
             if r.returncode != 0 and not text.strip():
                 sys.exit(f"{seat}: {cmd[0]} failed ({r.returncode}): {r.stderr.strip()[:400]}")
             raw = extract_json(text)
-            problems = ["reply contained no JSON object"] if raw is None else validate_output(raw, bp)
+            problems = [f"reply contained no JSON object (CLI said: {' '.join(text.split())[:200]!r})"] if raw is None else validate_output(raw, bp)
             if not problems:
+                break
+            if raw is None and len(text) < 400:     # a short non-JSON reply is an error message (expired login), not a bad answer
                 break
         raw = raw if isinstance(raw, dict) else {}
         raw.update(seat=seat, model=mid, generated_at=t0.isoformat(timespec="seconds"),
