@@ -95,6 +95,25 @@ def parse_location(raw):
     return {"address": raw}
 
 
+DELIVERY_PATTERNS = (
+    (r"design[\s-]*build|\bd/b\b", "design_build"), (r"cm\s*(?:at|@)\s*r|cmar|construction manager at[\s-]*risk", "cm_at_risk"),
+    (r"cm\s*agen|cm as agent", "cm_agency"), (r"\bjoc\b|job order", "joc"), (r"idiq|indefinite", "idiq"),
+    (r"design[\s-]*assist", "design_assist"), (r"\bipd\b|integrated project", "ipd"),
+    (r"design[\s-]*bid[\s-]*build|\bdbb\b|hard bid|sealed bid|low bid", "design_bid_build"))
+
+
+def map_delivery(raw):
+    """Phase 1 keeps the delivery method as written (CSP, CMAR, ...); the CPR wants its enum.
+    Returns an enum value, or None for a blank (the key is then omitted)."""
+    t = str(raw or "").strip().lower()
+    if not t:
+        return None
+    for pat, val in DELIVERY_PATTERNS:
+        if re.search(pat, t):
+            return val
+    return "other"
+
+
 def parse_date(text):
     t = str(text or "").strip()
     for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%B %d, %Y", "%b %d, %Y", "%B %d %Y"):
@@ -115,8 +134,10 @@ def seed_sections(kb_dir, model_dir):
     sections = {}
 
     ident = {"section": "project_identity", "title": project.get("title") or kb_dir.name,
-             "number": project.get("number") or "", "owner": project.get("owner") or "",
-             "delivery_method": project.get("delivery_method") or ""}
+             "number": project.get("number") or "", "owner": project.get("owner") or ""}
+    dm = map_delivery(project.get("delivery_method"))
+    if dm:
+        ident["delivery_method"] = dm
     loc = parse_location(project.get("location"))
     if loc:
         ident["location"] = loc
@@ -133,8 +154,12 @@ def seed_sections(kb_dir, model_dir):
 
     assigned = {}
     for a in curation.get("division_assignments") or []:
-        if isinstance(a, dict) and a.get("record") and a.get("csi_division"):
-            assigned[str(a["record"]).strip().lower()] = str(a["csi_division"])[:2]
+        if not (isinstance(a, dict) and a.get("record") and a.get("csi_division")):
+            continue
+        rec = a["record"]      # the schema makes this the exact extract record (an object)
+        key = (rec.get("text") or rec.get("item") or rec.get("name") or "") if isinstance(rec, dict) else str(rec)
+        if str(key).strip():
+            assigned[str(key).strip().lower()] = str(a["csi_division"])[:2]
     items = []
     for rec in load_json(ex / "scope-items.json", []) or []:
         text = (rec.get("text") or "").strip()
@@ -442,6 +467,22 @@ def selftest():
     # seeded trades follow the schema (spec_notes is an array of objects)
     trades = load_json(kb / "atlas" / "project" / "model" / "sections" / "trades.json")
     assert isinstance(trades["trades"][0]["spec_notes"], list) and trades["trades"][0]["spec_notes"][0]["spec_section"] == "09 51 13", trades
+    assert [map_delivery(x) for x in ("Design-Build", "CMAR", "CM at Risk", "JOC", "Competitive Sealed Proposal", "", None, "Design Bid Build")] == \
+        ["design_build", "cm_at_risk", "cm_at_risk", "joc", "other", None, None, "design_bid_build"]
+    assert "delivery_method" in load_json(kb / "atlas" / "project" / "model" / "sections" / "project_identity.json"), "CSP maps to a valid enum value"
+    cur = load_json(kb / "curation.json")
+    cur["division_assignments"] = [{"record": {"text": "Seal expansion joints"}, "csi_division": "07", "why": "joint sealants"}]
+    write_json(kb / "curation.json", cur)
+    ex = kb / "extracts" / "scope-items.json"
+    items = load_json(ex)
+    items.append({"text": "Seal expansion joints", "_doc": "demo-clinic-drawings"})
+    write_json(ex, items)
+    kb3 = tmp / "third"
+    shutil.copytree(kb, kb3 / "projects" / "demo-clinic")
+    shutil.rmtree(kb3 / "projects" / "demo-clinic" / "atlas")
+    seeded3 = seed_sections(kb3 / "projects" / "demo-clinic", kb3 / "model")
+    sc = load_json(kb3 / "model" / "sections" / "scope.json")["items"]
+    assert next(i for i in sc if i["description"] == "Seal expansion joints")["csi"]["masterformat_division"] == "07", sc
     print("phase1_receiver selftest passed:", tmp)
 
 
