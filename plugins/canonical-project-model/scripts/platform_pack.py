@@ -31,7 +31,7 @@ FLAT_LIMIT = 20
 FLAT_CORE = ["AGENTS.md", "config/defaults.yaml",
              "resources/masterformat-divisions.json"]
 FLAT_SCRIPTS = ["assemble_model.py", "build_atlas_data.py", "build_atlas_html.py",
-                "build_dashboard_html.py", "build_workbook.py", "build_atlas_pdf.py", "atlas_ocr.py", "ignition.py", "deploy_atlas.py",
+                "build_dashboard_html.py", "build_workbook.py", "build_atlas_pdf.py", "atlas_ocr.py", "ignition.py", "interlink.py", "phase1_receiver.py", "deploy_atlas.py",
                 "run_tool.py", "platform_pack.py"]
 ADAPTER = {"chatgpt": "chatgpt/gpt-instructions.md",
            "grok": "grok/grok-instructions.md"}

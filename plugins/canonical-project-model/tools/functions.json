@@ -181,6 +181,33 @@
           ]
         }
       }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "phase1_receive_atlas_request",
+        "description": "Process a Phase 1 drawing handoff. Takes <kb>/handoffs/atlas-request.json staged by the NTXP Estimating Phase 1 skill, seeds the project record from the KB (never over an edited section), deploys the Plans Atlas and the Project Ignition blueprint, interlinks the KB with the drawings, and writes atlas-response.json, plans_atlas.json, interlinks.json and atlas-chunks.json into the KB's atlas/ folder. Idempotent. Returns JSON: status, sheets, kb_links, needs_review, response path.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "type": "string",
+              "description": "Path to atlas-request.json."
+            },
+            "force": {
+              "type": "boolean",
+              "description": "Rebuild even if the drawings are unchanged."
+            },
+            "no_chain": {
+              "type": "boolean",
+              "description": "Do not call the Estimating bridge afterwards."
+            }
+          },
+          "required": [
+            "request"
+          ]
+        }
+      }
     }
   ]
 }

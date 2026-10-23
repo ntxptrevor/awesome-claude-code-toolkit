@@ -96,6 +96,17 @@ detail in `reference/project-ignition.md`.
    `needs_human_review`; a JOC contract unit price is never overridden; a missing
    gross SF or benchmark is reported, never guessed.
 
+## 3c. Phase 1 receiver (NTXP Estimating Step 1)
+
+When `handoffs/atlas-request.json` exists beside a Phase 1 KB, run
+`python scripts/phase1_receiver.py receive --request <path>` (hooks do this in Claude Code).
+It seeds identity, scope and trades into the CPR from the KB (never over an edited section), deploys
+the atlas with `--ignite`, interlinks the KB and the drawings with `scripts/interlink.py`, and writes
+`atlas-response.json`, `plans_atlas.json`, `interlinks.json` and `atlas-chunks.json` into the KB's
+`atlas/` folder. Rules: KB extracts are never edited; every link records the key it joined on and a
+confidence; sheets in the KB index but missing from the drawings, and title conflicts, are reported
+with both values and never resolved. Detail: `reference/phase1-receiver.md`.
+
 ## 4. If you cannot execute code
 
 Some deployments (a chat with no code tool, a locked-down API) cannot run
@@ -132,6 +143,8 @@ Some deployments (a chat with no code tool, a locked-down API) cannot run
 | `scripts/build_atlas_html.py` | offline Plans Atlas viewer (stdlib) |
 | `scripts/build_atlas_pdf.py` | embeds atlas links and index pages into the drawing PDF (PyMuPDF) |
 | `scripts/atlas_ocr.py` | OCR fallback for sheets with no text layer: RapidOCR (offline, `pip install rapidocr-onnxruntime`) or Mistral OCR title-block strips (`MISTRAL_API_KEY`); `NTXP_OCR=none` disables. OCR-read sheets are flagged for verification |
+| `scripts/phase1_receiver.py` | receiver for the Estimating Phase 1 drawing handoff: seed CPR from the KB, deploy, interlink, respond (stdlib + PyMuPDF) |
+| `scripts/interlink.py` | joins the Phase 1 KB with the atlas by sheet, spec, division (stdlib) |
 | `scripts/ignition.py` | Project Ignition: blueprint, Jev processing (PERT, prices, confidence, $/SF sanity), ITB pages (stdlib) |
 | `scripts/deploy_atlas.py` | idempotent auto-deploy and update orchestrator (stdlib) |
 | `scripts/run_tool.py` | maps a function or tool call (OpenAI, xAI, Anthropic) onto the scripts |

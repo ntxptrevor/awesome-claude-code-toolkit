@@ -40,6 +40,9 @@ TOOLS = {
          "benchmarks": "--benchmarks", "markup_pct": "--markup-pct"},
         {}, "process",
     ),
+    "phase1_receive_atlas_request": (
+        "phase1_receiver.py", {"request": "--request"}, {"force": "--force", "no_chain": "--no-chain"}, "receive",
+    ),
     "project_ignition_itb": (
         "ignition.py", {"project": "--project", "today": "--today"}, {"pdf": "--pdf"}, "itb",
     ),

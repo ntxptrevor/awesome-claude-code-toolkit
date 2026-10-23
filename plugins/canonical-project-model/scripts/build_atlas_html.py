@@ -832,6 +832,15 @@ SCRIPT = """
     else if(row.hasAttribute('data-goto-concept')){ gotoConcept(row.getAttribute('data-goto-concept'), row.getAttribute('data-target')); }
     resultsEl.classList.remove('show');
   });
+  /* Deep links from the project knowledge base: plans-atlas.html#sheet=<sheet_id>[&box=x0,y0,x1,y1] */
+  function openFromHash(){
+    var m=/[#&]sheet=([^&]+)(?:&box=([-0-9.,]+))?/.exec(location.hash||'');
+    if(!m) return;
+    var id; try{ id=decodeURIComponent(m[1]); }catch(e){ id=m[1]; }
+    openSheet(id, {push:false, toBox: m[2] ? m[2].split(',').map(Number) : null});
+  }
+  window.addEventListener('hashchange', openFromHash);
+  openFromHash();
 })();
 """
 

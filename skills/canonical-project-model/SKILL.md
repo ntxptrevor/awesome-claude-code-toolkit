@@ -183,6 +183,26 @@ writes to external systems, never modifies source PDFs, and reports — calmly �
 built, skipped, or is waiting on (`no_drawings` is a normal state for a brand-new bid,
 not an error).
 
+## Phase 1 receiver — drawings processed during the Estimating review (automatic)
+
+When the NTXP Estimating Phase 1 skill finishes reading a bid, it stages
+`handoffs/atlas-request.json` (`atlas_bridge.py send`). This skill's `scripts/phase1_receiver.py`
+takes it from there with no questions: it **seeds** the project identity, scope and trades sections
+of the Canonical Project Record from the KB (never over a section a person or tool edited), **deploys**
+the atlas and the Project Ignition blueprint (`kb_initial_review`), **interlinks** the KB with the
+drawings (`scripts/interlink.py`: sheet numbers, source page, spec sections, divisions, text mentions),
+and writes `atlas/atlas-response.json`, `plans_atlas.json`, `interlinks.json` and `atlas-chunks.json`
+into the KB for every later step. Claude Code hooks (`hooks/hooks.json`, or
+`hooks/scripts/install_hooks.py` for a plain folder) start the receiver when a request appears and
+report pending or stale requests at session start. Detail: `reference/phase1-receiver.md`.
+
+```bash
+python scripts/phase1_receiver.py receive --request <kb>/handoffs/atlas-request.json
+python scripts/phase1_receiver.py status  --request <kb>/handoffs/atlas-request.json
+```
+
+Viewer deep links: `plans-atlas.html#sheet=<sheet_id>` opens that sheet.
+
 ## Project Ignition — Jev platform (blueprint, magic, processing)
 
 When a bid is confirmed and the atlas has deployed, run **Project Ignition**
