@@ -32,6 +32,7 @@
       "description": "Physical facts useful for unit-rate and conceptual estimating.",
       "properties": {
         "gross_sf": { "type": ["number", "null"] },
+        "work_area_sf": { "type": ["number", "null"], "description": "Renovated or affected area as printed on the drawings, when the whole-building gross SF is not stated." },
         "stories": { "type": ["integer", "null"] },
         "site_acres": { "type": ["number", "null"] },
         "occupancy_type": { "type": "string" },

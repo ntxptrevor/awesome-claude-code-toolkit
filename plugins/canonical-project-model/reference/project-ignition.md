@@ -82,7 +82,7 @@ price lines and no ITB page.
   120 days for 07, 22, 23, 31, 32, otherwise 180.
 - Range on each extended cost = +/- (1 - confidence) x 50%.
 
-**$/SF sanity.** Direct cost (plus markups if `--markup-pct` is given) divided by
+**$/SF sanity.** Area is `building.gross_sf`; when only `building.work_area_sf` (the renovated area as printed on the drawings) is known, the check runs on that and says so in `sf_basis` and a caveat. Direct cost (plus markups if `--markup-pct` is given) divided by
 gross SF, against the best sourced benchmark row: same city beats same state beats
 national, newest year wins, building type and project type must fit. Verdict:
 `within_band`, `below_band`, `above_band`, `no_benchmark` or `no_sf`. Division-level
@@ -103,7 +103,8 @@ the benchmark is not hard cost or is two or more years old.
 
 ```
 python scripts/ignition.py blueprint --project <dir>        # or deploy_atlas.py --ignite
-# run work-orders/astra.json and opus.json; save replies under raw/
+python scripts/ignition.py seats     --project <dir>        # runs work-orders on Astra (codex CLI) and Opus (claude CLI)
+# or run work-orders/astra.json and opus.json yourself; save replies under raw/
 python scripts/ignition.py process   --project <dir> --markup-pct 0.18
 python scripts/ignition.py itb       --project <dir> --pdf
 python scripts/ignition.py selftest                          # math, rules, no-price-leak check
@@ -111,6 +112,7 @@ python scripts/ignition.py selftest                          # math, rules, no-p
 
 ## Limits to know
 
+- `seats` uses the logged-in `claude` and `codex` CLIs (the user's own accounts). It makes one validated retry per seat; replies that still fail validation are kept and flagged in `needs_human_review`. Its `run` block records the CLI and attempts.
 - The local rules answer Jev's judgments. Replaying `jev-judgments.jsonl` through
   the hosted Jev model is a council-engine step; the hosted endpoint is not called
   from this script.

@@ -24,7 +24,7 @@ Paste the section **"GPT Instructions"** below into a Custom GPT's *Instructions
 field (it fits the 8,000-character limit) or into a ChatGPT Project's
 instructions. Build the Knowledge upload set with
 `python scripts/platform_pack.py pack --target chatgpt --out dist/chatgpt`. It
-produces 13 flat files, within the 20-file Knowledge limit, with every schema in
+produces 18 flat files, within the 20-file Knowledge limit, with every schema in
 one `schemas.bundle.json`. Upload all of them as **Knowledge**. Enable **Code
 Interpreter & Data Analysis**. Leave **Web Search** off for project work, so
 project facts can never be filled in from the web.
@@ -82,6 +82,20 @@ infer. `config/defaults.yaml` holds the defaults.
 The viewer is filed at `Construction Documents/Plans Atlas/plans-atlas.html`.
 `no_drawings` is normal for a new bid; say the atlas will build when plans
 arrive.
+
+**Project Ignition (draft only, AGENTS.md 3b):** after the atlas builds, run
+`python /mnt/data/ntxp/scripts/ignition.py blueprint --project <dir>`. It writes
+typed work orders. You are the Astra seat: answer `work-orders/astra.json`
+as one JSON object per its `output_contract`, save it to `raw/astra.json`, and
+never invent a quantity, price or source. Then `ignition.py process` (Jev rules:
+PERT compare, unit-price decisions, confidence dating, $/SF sanity) and
+`ignition.py itb --pdf`. Everything stays `draft_pending_pm_approval`; ITB pages
+carry no prices. Never send these work orders to DeepSeek or GLM.
+
+**Phase 1 handoff (AGENTS.md 3c):** if `handoffs/atlas-request.json` exists in
+the project, run `python /mnt/data/ntxp/scripts/phase1_receiver.py receive
+--request <that file>`. It builds the atlas, seeds only empty record sections,
+writes `atlas/atlas-response.json`, and interlinks the knowledge base to sheets.
 
 **If Code Interpreter is unavailable:** follow section 4 of AGENTS.md. Hand-build
 `plans_atlas` JSON from `schemas/plans-atlas.schema.json`, include only links

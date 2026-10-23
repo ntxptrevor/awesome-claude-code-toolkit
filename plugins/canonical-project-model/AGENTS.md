@@ -81,7 +81,9 @@ detail in `reference/project-ignition.md`.
    `model/ignition/`.
 2. **Magic (frontier seats):** run `work-orders/astra.json` on **Astra**
    (`gpt-6-astra`) and `work-orders/opus.json` on **Opus** (`claude-opus-5-5`);
-   save replies to `raw/astra.json` and `raw/opus.json`. Have **Compass**
+   save replies to `raw/astra.json` and `raw/opus.json`. On a machine with the
+   `claude` and `codex` CLIs logged in, `ignition.py seats --project <dir>` runs
+   both seats and saves validated replies (no API key is read or stored). Have **Compass**
    (Perplexity) fill `benchmarks.csv` with cited public $/SF rows from
    `work-orders/compass.json`. Never send these work orders to Ledger (DeepSeek)
    or Mason (GLM): they carry owner, bid and pricing content.

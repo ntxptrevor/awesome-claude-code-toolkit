@@ -8,7 +8,7 @@ adds Grok-specific mechanics and tuning.
 
 1. Create a Project named after the job (for example "Lincoln Clinic — NTXP").
 2. Build the upload set with
-   `python scripts/platform_pack.py pack --target grok --out dist/grok` (13 flat
+   `python scripts/platform_pack.py pack --target grok --out dist/grok` (18 flat
    files; every schema is in `schemas.bundle.json`) and add them all as
    project files. With code execution, restore the layout first:
    `python platform_pack.py setup --src <files dir> --to <work dir>`.
@@ -48,6 +48,16 @@ Grok-specific discipline:
   area), wait for the user's approval, then generate an image that shows only
   what the documents support, and record it in the atlas `renders` list with
   provenance.
+- **Project Ignition (draft only, AGENTS.md 3b):** after the atlas builds, run
+  `python scripts/ignition.py blueprint --project <dir>`, answer
+  `work-orders/astra.json` as one JSON object per its `output_contract`, save
+  it to `raw/astra.json`, then run `ignition.py process` and `ignition.py itb
+  --pdf`. Never invent a quantity, price or source; everything stays
+  `draft_pending_pm_approval`; ITB pages carry no prices; never send work
+  orders to DeepSeek or GLM.
+- **Phase 1 handoff (AGENTS.md 3c):** if `handoffs/atlas-request.json` exists,
+  run `python scripts/phase1_receiver.py receive --request <file>`; it builds
+  the atlas, seeds only empty sections and interlinks the knowledge base.
 - Lead every answer with the outcome, in one or two short sentences.
 
 ## xAI API deployments

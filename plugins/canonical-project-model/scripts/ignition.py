@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """NTXP Project Ignition: Jev-platformed blueprint -> frontier magic -> Jev processing.
 
-Three stages, one deterministic spine (stdlib only, no network, no API calls):
+Three stages, one deterministic spine (stdlib only; no network, and no API calls except the
+optional `seats` command, which shells out to the logged-in `claude` and `codex` CLIs):
 
   blueprint   Reads the Canonical Project Record + Plans Atlas and does all the
               upfront deterministic work: division packets (scope, takeoff, specs,
@@ -22,6 +23,7 @@ script only validates, compares, scores and lays them out. Missing data is
 flagged, never invented (no gross SF -> the $/SF check says so).
 
     python ignition.py blueprint --project <dir>
+    python ignition.py seats     --project <dir> [--only astra|opus]   # run the work orders on the real seats
     python ignition.py process   --project <dir> [--astra f] [--opus f] [--benchmarks f]
     python ignition.py itb       --project <dir> [--pdf]
     python ignition.py selftest
@@ -33,6 +35,7 @@ import html
 import json
 import math
 import re
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -147,6 +150,7 @@ def load_project(project):
         "delivery_method": ident.get("delivery_method") or cmp_.get("delivery_method") or "",
         "is_joc": bool(cmp_.get("is_joc")),
         "gross_sf": (ident.get("building") or {}).get("gross_sf"),
+        "work_area_sf": (ident.get("building") or {}).get("work_area_sf"),
         "occupancy_type": (ident.get("building") or {}).get("occupancy_type") or "",
         "key_dates": ident.get("key_dates") or [],
     }
@@ -337,7 +341,9 @@ def cmd_blueprint(args):
     labels = division_labels()
     packets = build_packets(sec, labels)
     gaps = []
-    if not facts["gross_sf"]:
+    if not facts["gross_sf"] and facts.get("work_area_sf"):
+        gaps.append(f"gross_sf missing: $/SF uses the stated work area ({facts['work_area_sf']:,.0f} SF), not the whole building")
+    elif not facts["gross_sf"]:
         gaps.append("gross_sf missing: the $/SF sanity check stays off until the PM supplies it")
     if not facts["location"]:
         gaps.append("location missing: benchmark matching falls back to national")
@@ -387,6 +393,70 @@ def validate_output(raw, bp):
             elif not isinstance(pr.get("unit_price"), (int, float)) or pr["unit_price"] < 0:
                 problems.append(f"{lid}: unit_price must be a non-negative number")
     return problems
+
+
+SEAT_CLI = {   # logged-in CLIs: no API key is read, stored or passed by this script
+    "opus": lambda model, last: ["claude", "-p", "--model", model, "--output-format", "text", "--max-turns", "1"],
+    "astra": lambda model, last: ["codex", "exec", "-m", model, "--skip-git-repo-check", "-s", "read-only",
+                                  "--output-last-message", str(last), "-"]}
+
+
+def extract_json(text):
+    """The outermost JSON object in a model reply (fences and chatter tolerated), or None."""
+    text = re.sub(r"```(?:json)?", "", text or "")
+    dec = json.JSONDecoder()
+    for m in re.finditer(r"\{", text):
+        try:
+            obj, _ = dec.raw_decode(text[m.start():])
+        except ValueError:
+            continue
+        return obj
+    return None
+
+
+def seat_prompt(order, problems=None):
+    fix = ("\nYour previous reply failed validation. Fix exactly these and return the whole object again:\n- "
+           + "\n- ".join(problems)) if problems else ""
+    return ("You are a seat in the NTXP Project Ignition procedure. Answer the work order below independently.\n"
+            "Reply with ONE JSON object that follows work_order.output_contract and nothing else: no prose, no code fences.\n"
+            "Use only task_id and line_id values that appear in the work order. Never invent quantities, dates or sources; "
+            "use null when unknown. Mark a division not_applicable only when nothing in its packet needs work.\n"
+            + fix + "\n\nWORK ORDER:\n" + json.dumps(order, indent=1))
+
+
+def cmd_seats(args):
+    project, model, sec, facts = load_project(args.project)
+    out = model / "ignition"
+    bp = load_json(out / "blueprint.json")
+    if not bp:
+        sys.exit("no blueprint.json: run 'ignition.py blueprint' first")
+    (out / "raw").mkdir(exist_ok=True)
+    for seat in ([args.only] if args.only else list(SEATS)):
+        order = load_json(out / "work-orders" / f"{seat}.json")
+        if order is None:
+            sys.exit(f"missing work order for {seat}")
+        if any(b.split()[0] in json.dumps(order.get("seat", "")).lower() for b in BLOCKED_SEATS):
+            sys.exit(f"{seat}: refusing to send; seat is blocked for owner/bid/pricing content")
+        mid = SEATS[seat]["model"]
+        problems, raw = None, None
+        for attempt in (1, 2):
+            last = out / "raw" / f"{seat}.last.txt"
+            cmd = SEAT_CLI[seat](mid, last)
+            log(f"{seat}: {cmd[0]} {mid} attempt {attempt}")
+            t0 = dt.datetime.now(dt.timezone.utc)
+            r = subprocess.run(cmd, input=seat_prompt(order, problems), capture_output=True, text=True, timeout=args.timeout)
+            text = last.read_text() if seat == "astra" and last.exists() else r.stdout
+            if r.returncode != 0 and not text.strip():
+                sys.exit(f"{seat}: {cmd[0]} failed ({r.returncode}): {r.stderr.strip()[:400]}")
+            raw = extract_json(text)
+            problems = ["reply contained no JSON object"] if raw is None else validate_output(raw, bp)
+            if not problems:
+                break
+        raw = raw if isinstance(raw, dict) else {}
+        raw.update(seat=seat, model=mid, generated_at=t0.isoformat(timespec="seconds"),
+                   run={"via": cmd[0], "attempts": attempt, "validation_problems": problems or []})
+        write_json(out / "raw" / f"{seat}.json", raw)
+        log(f"{seat}: saved raw/{seat}.json ({len(raw.get('divisions') or [])} divisions, {len(problems or [])} validation problems)")
 
 
 def good_items(raw):
@@ -660,7 +730,9 @@ def fnum(v):
 
 def run_sanity(facts, total, by_div, benches, jev, now, markup_pct):
     out = {"checked": False}
-    sf = fnum(facts.get("gross_sf"))
+    sf, sf_basis = fnum(facts.get("gross_sf")), "gross_sf"
+    if not sf:      # a renovation priced per SF of the area being renovated is how renovation benchmarks are quoted
+        sf, sf_basis = fnum(facts.get("work_area_sf")), "work_area_sf"
     if not sf:
         out["verdict"] = jev.judge("sanity_psf", "Is the estimate in line with public $/SF?", {"reason": "no gross SF"},
                                    ["within_band", "below_band", "above_band", "no_benchmark", "no_sf"], "no_sf",
@@ -670,7 +742,7 @@ def run_sanity(facts, total, by_div, benches, jev, now, markup_pct):
     direct = total["extended"]
     all_in = direct * (1 + markup_pct) if markup_pct else direct
     psf = all_in / sf
-    out.update(gross_sf=sf, direct_cost=direct, markup_pct=markup_pct, estimate_psf=round(psf, 2),
+    out.update(gross_sf=sf, sf_basis=sf_basis, direct_cost=direct, markup_pct=markup_pct, estimate_psf=round(psf, 2),
                basis="direct cost" + (f" + {markup_pct:.0%} markups" if markup_pct else " only (no markups applied)"))
     b = pick_benchmark(benches, facts)
     if not b:
@@ -691,6 +763,8 @@ def run_sanity(facts, total, by_div, benches, jev, now, markup_pct):
                                ["within_band", "below_band", "above_band", "no_benchmark", "no_sf"], ans,
                                f"${psf:,.0f}/SF against ${lo:,.0f}-${hi:,.0f}/SF ({b.get('source')})")
     caveats = []
+    if sf_basis == "work_area_sf":
+        caveats.append("SF is the stated renovated work area, not the building's gross SF; check it matches the benchmark's basis")
     if (b.get("basis") or "").lower() not in ("", "hard_cost", "direct"):
         caveats.append(f"benchmark basis is '{b.get('basis')}', not direct hard cost")
     try:
@@ -1009,14 +1083,25 @@ def selftest():
     pr2 = load_json(out / "processed.json")
     l2 = next(l for l in pr2["prices"]["lines"] if l["line_id"] == "C1")
     assert l2["decision"] == "contract_price" and l2["unit_price"] == 4200 and l2["confidence"] == 0.9, l2
-    assert pr2["sanity"]["checked"], pr2["sanity"]
+    assert pr2["sanity"]["checked"] and pr2["sanity"]["sf_basis"] == "gross_sf", pr2["sanity"]
+    # no gross SF but a printed work area: the check runs on that basis and says so
+    write_json(sec / "project_identity.json", {"section": "project_identity", "title": "Selftest Clinic", "market_sector": "healthcare", "project_type": "renovation",
+               "location": {"city": "Dallas", "state": "TX"}, "building": {"work_area_sf": 3000}})
+    cmd_blueprint(ns)
+    assert any("work area" in g for g in load_json(out / "blueprint.json")["gaps"])
+    cmd_process(ns)
+    pr3 = load_json(out / "processed.json")["sanity"]
+    assert pr3["checked"] and pr3["sf_basis"] == "work_area_sf" and pr3["gross_sf"] == 3000.0, pr3
+    assert any("work area" in c for c in pr3.get("caveats", [])), pr3
+    assert extract_json('Sure!\n```json\n{"a": {"b": [1, 2]}, "c": "}"}\n```\nDone') == {"a": {"b": [1, 2]}, "c": "}"}
+    assert extract_json("no json here") is None and extract_json('{"broken": ') is None
     print("selftest passed:", tmp)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("blueprint", "process", "itb"):
+    for name in ("blueprint", "process", "itb", "seats"):
         p = sub.add_parser(name)
         p.add_argument("--project", required=True)
         p.add_argument("--today", help="ISO date to treat as today (default: system date).")
@@ -1025,11 +1110,14 @@ def main():
             p.add_argument("--opus", help="Opus output JSON (default model/ignition/raw/opus.json).")
             p.add_argument("--benchmarks", help="Public $/SF CSV (default model/ignition/benchmarks.csv).")
             p.add_argument("--markup-pct", type=float, default=0.0, help="Markup fraction to add before the $/SF check (e.g. 0.18).")
+        if name == "seats":
+            p.add_argument("--only", choices=list(SEATS), help="Run one seat only.")
+            p.add_argument("--timeout", type=int, default=1500, help="Seconds per seat call (default 1500).")
         if name == "itb":
             p.add_argument("--pdf", action="store_true", help="Also write a letter-size PDF (needs PyMuPDF).")
     sub.add_parser("selftest")
     a = ap.parse_args()
-    {"blueprint": cmd_blueprint, "process": cmd_process, "itb": cmd_itb}.get(a.cmd, lambda _a: selftest())(a)
+    {"blueprint": cmd_blueprint, "process": cmd_process, "itb": cmd_itb, "seats": cmd_seats}.get(a.cmd, lambda _a: selftest())(a)
 
 
 if __name__ == "__main__":
