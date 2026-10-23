@@ -13,7 +13,6 @@ Set NTXP_PHASE1_HOOKS=off to disable, NTXP_HOOK_SYNC=1 to run the receiver in th
 import json
 import os
 import re
-import shlex
 import subprocess
 import sys
 import time
@@ -52,17 +51,15 @@ def run_receiver(req_path):
     lock.write_text(str(os.getpid()))
     cmd = [sys.executable, str(RECEIVER), "receive", "--request", str(req_path)]
     log = open(out / "hook.log", "a")
+    env = {**os.environ, "NTXP_RECEIVER_LOCK": str(lock)}     # the receiver releases it on every OS
     if os.environ.get("NTXP_HOOK_SYNC") == "1":
         try:
-            r = subprocess.run(cmd, stdout=log, stderr=log, timeout=1500)
+            r = subprocess.run(cmd, stdout=log, stderr=log, timeout=1500, env=env)
             return f"Plans Atlas receiver finished (exit {r.returncode}); see {out}/atlas-response.json"
         finally:
             lock.unlink(missing_ok=True)
-    if os.name == "nt":
-        subprocess.Popen(cmd, stdout=log, stderr=log)
-    else:
-        wrapper = " ".join(shlex.quote(c) for c in cmd) + f"; rm -f {shlex.quote(str(lock))}"
-        subprocess.Popen(wrapper, shell=True, stdout=log, stderr=log, start_new_session=True)
+    kwargs = {"creationflags": 0x00000008 | 0x00000200} if os.name == "nt" else {"start_new_session": True}
+    subprocess.Popen(cmd, stdout=log, stderr=log, env=env, **kwargs)
     return f"Plans Atlas receiver started in the background; results will be in {out}/atlas-response.json (log: hook.log)"
 
 

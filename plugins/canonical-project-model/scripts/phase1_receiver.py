@@ -157,7 +157,9 @@ def seed_sections(kb_dir, model_dir):
         trades.append({"trade_id": f"TR-{div}-{re.sub(r'[^a-z0-9]+', '-', str(t['trade']).lower()).strip('-')[:16]}",
                        "name": t["trade"], "masterformat_division": div, "scope_summary": t.get("scope") or "",
                        "self_perform": bool(t.get("self_perform")), "bid_package_status": "not_started",
-                       "spec_notes": ", ".join(str(x) for x in (t.get("spec_sections") or [])),
+                       "spec_notes": [{"text": f"Governing specification section {sp}", "spec_section": str(sp), "kind": "general",
+                                       "provenance": {"source_doc": "curation.json", "page": None, "confidence": None}}
+                                      for sp in (t.get("spec_sections") or [])],
                        "provenance": {"source_doc": "curation.json", "page": None, "confidence": None}})
     if trades:
         sections["trades"] = {"section": "trades", "trades": trades}
@@ -186,20 +188,31 @@ def seed_sections(kb_dir, model_dir):
 
 # ------------------------------------------------------------------ staging + deploy
 def stage_drawings(request, staging):
+    """Link (or copy) each requested PDF into a clean staging folder. Two sources with the
+    same basename get distinct staged names; a source file is never opened for writing."""
     staging = Path(staging)
-    if staging.exists():
-        for f in staging.iterdir():
-            f.unlink()
     staging.mkdir(parents=True, exist_ok=True)
+    for f in staging.iterdir():
+        if f.is_symlink() or f.is_file():
+            f.unlink()
     n = 0
     for d in request.get("drawings") or []:
         src = Path(d["path"])
         if not src.is_file():
             continue
         dest = staging / src.name
+        if dest.exists() or dest.is_symlink():
+            tag = re.sub(r"[^A-Za-z0-9_-]+", "-", str(d.get("doc_id") or n))[:40]
+            dest = staging / f"{src.stem} [{tag}]{src.suffix}"
+            k = 2
+            while dest.exists() or dest.is_symlink():
+                dest = staging / f"{src.stem} [{tag}-{k}]{src.suffix}"
+                k += 1
         try:
             os.symlink(src, dest)
         except OSError:
+            if dest.exists() or dest.is_symlink():
+                continue
             shutil.copy2(src, dest)
         n += 1
     return n
@@ -272,6 +285,13 @@ def receive(request_path, force=False, chain=True):
         print(json.dumps({"status": "error", "detail": errors[-1], "response": str(resp_path)}, indent=2))
         return resp
 
+    if deploy.get("status") == "no_drawings" or not (model_dir / "sections" / "plans_atlas.json").exists():
+        resp = {**base, "status": "no_drawings", "deploy_status": deploy.get("status"), "atlas": {"sheets": 0},
+                "note": deploy.get("note") or "None of the requested PDFs is a drawing set (for example letter-size "
+                                              "documents); the atlas builds when plans arrive."}
+        write_json(resp_path, resp)
+        print(json.dumps({"status": "no_drawings", "response": str(resp_path)}, indent=2))
+        return resp
     section = model_dir / "sections" / "plans_atlas.json"
     atlas = load_json(section, {}) or {}
     viewer = deploy.get("atlas")
@@ -398,6 +418,30 @@ def selftest():
     resp2 = receive(req_path, chain=False)
     assert resp2["seeded_sections"]["scope"] == "kept", resp2["seeded_sections"]
     assert "HAND" in json.dumps(load_json(sec_path))
+    # two sources with one basename must both stage, and neither source may change
+    d2 = tmp / "other"
+    d2.mkdir()
+    twin = d2 / Path(fx["drawings"][0]).name
+    shutil.copy2(fx["drawings"][0], twin)
+    before = [hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in (fx["drawings"][0], twin)]
+    stg = tmp / "stg"
+    n = stage_drawings({"drawings": [{"path": fx["drawings"][0], "doc_id": "one"}, {"path": str(twin), "doc_id": "two"}]}, stg)
+    after = [hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in (fx["drawings"][0], twin)]
+    assert n == 2 and len(list(stg.iterdir())) == 2 and before == after, (n, list(stg.iterdir()))
+    # a request whose PDFs are all non-drawings is a normal no_drawings answer
+    import pymupdf as fitz
+    letter = tmp / "letter.pdf"
+    ld = fitz.open()
+    ld.new_page(width=612, height=792).insert_text((72, 72), "Specification text")
+    ld.save(str(letter))
+    kb2 = Path(make_fixture(tmp / "second")["kb"])
+    r2 = request_for(kb2, [str(letter)], "fixture-2")
+    write_json(kb2 / "handoffs" / "atlas-request.json", r2)
+    resp3 = receive(kb2 / "handoffs" / "atlas-request.json", chain=False)
+    assert resp3["status"] == "no_drawings" and json.loads((kb2 / "atlas" / "atlas-response.json").read_text())["status"] == "no_drawings"
+    # seeded trades follow the schema (spec_notes is an array of objects)
+    trades = load_json(kb / "atlas" / "project" / "model" / "sections" / "trades.json")
+    assert isinstance(trades["trades"][0]["spec_notes"], list) and trades["trades"][0]["spec_notes"][0]["spec_section"] == "09 51 13", trades
     print("phase1_receiver selftest passed:", tmp)
 
 
@@ -415,7 +459,12 @@ def main():
     sub.add_parser("selftest")
     a = ap.parse_args()
     if a.cmd == "receive":
-        receive(a.request, a.force, not a.no_chain)
+        try:
+            receive(a.request, a.force, not a.no_chain)
+        finally:        # a hook that started this run passes its lock file; release it on every OS
+            lock = os.environ.get("NTXP_RECEIVER_LOCK")
+            if lock:
+                Path(lock).unlink(missing_ok=True)
     elif a.cmd == "status":
         status(a.request)
     elif a.cmd == "fixture":
