@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Shrink a drawing-set PDF without touching its navigation.
 
-Downsamples the embedded raster images and rewrites the file with object
+Downsamples and recompresses the embedded raster images (lossless ones too; that
+is where most of a scanned drawing set's weight is) and rewrites the file with object
 streams and garbage collection. Pages, text, bookmarks and every link (the
 Plans Atlas callout links, the index pages, URLs) are left exactly as they
 are; the script counts links and bookmarks before and after and fails if any
 are lost.
 
-    python compress_pdf.py --pdf in.pdf --out out.pdf [--dpi 110] [--quality 60]
+    python compress_pdf.py --pdf in.pdf --out out.pdf [--dpi 150] [--quality 70]
 
 Needs PyMuPDF. Vector linework is not touched, so the saving depends on how
 much of the set is scanned or photographic.
@@ -21,12 +22,12 @@ def counts(doc):
     return {"pages": len(doc), "links": sum(len(p.get_links()) for p in doc), "toc": len(doc.get_toc())}
 
 
-def compress(src, dst, dpi=110, quality=60):
+def compress(src, dst, dpi=150, quality=70):
     import pymupdf
     doc = pymupdf.open(src)
     before = counts(doc)
-    doc.rewrite_images(dpi_threshold=dpi + 40, dpi_target=dpi, quality=quality, lossy=True, lossless=False,
-                       bitonal=False, color=True, gray=True, set_to_gray=False)
+    doc.rewrite_images(dpi_threshold=dpi + 20, dpi_target=dpi, quality=quality, lossy=True, lossless=True,
+                       set_to_gray=False)
     doc.save(dst, garbage=4, deflate=True, deflate_images=True, deflate_fonts=True, use_objstms=1)
     doc.close()
     out = pymupdf.open(dst)
@@ -42,8 +43,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--pdf", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--dpi", type=int, default=110)
-    ap.add_argument("--quality", type=int, default=60)
+    ap.add_argument("--dpi", type=int, default=150)
+    ap.add_argument("--quality", type=int, default=70)
     a = ap.parse_args()
     try:
         import pymupdf  # noqa: F401

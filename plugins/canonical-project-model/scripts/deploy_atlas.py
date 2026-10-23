@@ -373,6 +373,13 @@ def main():
     log(f"Plans Atlas built: {atlas_path} ({n} sheets, version {version})")
     result = {"status": "built", "atlas": str(atlas_path), "sheets": n,
               "event": args.event, "atlas_version": version}
+    if pdfs and not classified:
+        # PyMuPDF is missing in this interpreter: the viewer has one placeholder per PDF, no sheet images,
+        # no sheet numbers, no text search and no links. Say so in the result, not just in the log.
+        result["text_indexed"] = False
+        result["warning"] = ("PyMuPDF not available in this Python: built a manifest-only atlas. "
+                             "Rerun with an interpreter that has PyMuPDF (pip install pymupdf) for sheets, search and links.")
+        log("WARNING: " + result["warning"])
     if args.ignite:
         result["ignition"] = run_ignition(project)
     print(json.dumps(result, indent=2))
