@@ -8,9 +8,13 @@ writes two files:
   interlinks.json     sheet <-> KB facts, division <-> sheets <-> KB, spec section
                       <-> sheets <-> KB, a back-reference map keyed by KB chunk id,
                       and everything that did not match (never resolved, only listed)
-  atlas-chunks.json   records the KB index folds in as domains atlas_sheet,
-                      atlas_division and atlas_spec, so `kb.py search` finds the
-                      drawings and every fact points back to its sheet
+  atlas-chunks.json   records the KB index folds in as atlas_* domains, so
+                      `kb.py search` finds the drawings and every fact points back
+                      to its sheet. Kinds: sheet (with phases, areas, trades, spec
+                      sections, scale, OCR and review flags), sheet_text (the words
+                      printed on each sheet), division, spec, trade, area, phase,
+                      ignition (blueprint and processed status) and atlas_status
+                      (sheet counts, search coverage, review items)
 
 Join keys, strongest first (each link records `via` and `confidence`):
   sheet_number   normalized sheet number equal                         0.95
@@ -112,7 +116,46 @@ def kb_chunks(kb_dir, slug):
     return derived, True
 
 
-def build(kb_dir, atlas, viewer_rel="Plans Atlas/plans-atlas.html", request_id="", ignition_dir=None):
+SHEET_TEXT_LIMIT = 6000      # characters of printed sheet text kept per record (search, not a copy of the set)
+
+
+def concept_name(c):
+    return str(c.get("label") or c.get("name") or c.get("title") or c.get("id") or c.get("code") or "")
+
+
+def sheet_text(words, sheet_id, limit=SHEET_TEXT_LIMIT):
+    """Words printed on a sheet, in reading order from the atlas words sidecar, capped."""
+    rows = (words or {}).get(sheet_id) or []
+    rows = sorted(rows, key=lambda w: (round(float(w[1]), 2), float(w[0])))
+    text = " ".join(str(w[4]) for w in rows if len(w) > 4 and w[4])
+    return text[:limit], len(rows)
+
+
+def ignition_record(ignition_dir):
+    """A summary of Project Ignition (blueprint and processed output), or None when nothing has run."""
+    if not ignition_dir or not Path(ignition_dir).is_dir():
+        return None
+    bp = load_json(Path(ignition_dir) / "blueprint.json", {}) or {}
+    pr = load_json(Path(ignition_dir) / "processed.json", {}) or {}
+    if not bp and not pr:
+        return None
+    sanity = pr.get("sanity") or {}
+    rec = {"_kind": "ignition", "status": pr.get("status") or bp.get("status") or "blueprint",
+           "draft": True, "divisions": len(bp.get("divisions") or []), "tasks": len(bp.get("tasks") or []),
+           "gaps": list(bp.get("gaps") or []), "seats": list(pr.get("seats") or []),
+           "expected_calendar_days": pr.get("expected_calendar_days"), "p80_calendar_days": pr.get("p80_calendar_days"),
+           "direct_cost": pr.get("direct_cost"), "psf_verdict": sanity.get("verdict"),
+           "estimate_psf": sanity.get("estimate_psf"), "sf_basis": sanity.get("sf_basis"),
+           "needs_human_review": pr.get("needs_human_review"), "viewer": None}
+    rec["text"] = ("Project Ignition (draft, pending PM approval): " + rec["status"] +
+                   f"; {rec['divisions']} divisions; expected {rec['expected_calendar_days']} days"
+                   + (f" (P80 {rec['p80_calendar_days']})" if rec["p80_calendar_days"] else "") +
+                   f"; $/SF {rec['psf_verdict'] or 'not checked'}"
+                   + ("; gaps: " + "; ".join(rec["gaps"]) if rec["gaps"] else ""))
+    return rec
+
+
+def build(kb_dir, atlas, viewer_rel="Plans Atlas/plans-atlas.html", request_id="", ignition_dir=None, words=None):
     kb_dir = Path(kb_dir)
     kb = load_json(kb_dir / "kb.json", {}) or {}
     slug = (kb.get("project") or {}).get("slug") or kb_dir.name
@@ -280,22 +323,80 @@ def build(kb_dir, atlas, viewer_rel="Plans Atlas/plans-atlas.html", request_id="
 
     # 4. chunk records for the KB index
     recs = []
+    trades_all = (atlas.get("concepts") or {}).get("trades") or []
+    trade_labels = {}
+    for t in trades_all:
+        trade_labels.setdefault(str(t.get("division")), concept_name(t))
+    spec_titles = {spec_key(sp.get("section")): sp.get("title") for sp in (atlas.get("concepts") or {}).get("specs") or []}
+    sheet_trades, sheet_specs = {}, {}
+    for t in trades_all:
+        for sid in t.get("sheet_ids") or []:
+            sheet_trades.setdefault(sid, []).append(concept_name(t))
+    for sec, (sp, sids) in spec_sheets.items():
+        for sid in sids:
+            sheet_specs.setdefault(sid, []).append(sp.get("section"))
     for s in sheets:
         sid = s["sheet_id"]
         sh = out_sheets[sid]
+        body, nwords = sheet_text(words, sid)
+        phases = [concept_name(p) for p in s.get("phases") or []]
+        areas = [concept_name(a) for a in s.get("areas") or []]
+        flags = []
+        if s.get("searchable") is False:
+            flags.append("not searchable: no text layer and OCR did not read it")
+        if s.get("ocr"):
+            flags.append("text read by OCR: check the title block")
+        if s.get("declared_scale") in (None, ""):
+            flags.append("no declared scale")
+        for n in s.get("needs_review") or []:
+            flags.append(str(n))
         recs.append({"_kind": "sheet", "sheet_id": sid, "sheet_no": s.get("sheet_no"), "title": s.get("title"),
                      "discipline": s.get("discipline"), "divisions": sh["divisions"],
                      "csi_division": (sh["divisions"] or [None])[0], "doc": s.get("source_doc"),
                      "page_index": str(max(int(s.get("page") or 1) - 1, 0)), "viewer": sh["viewer"],
                      "kb_sheet_chunk": (sh["kb_sheet"] or {}).get("chunk"), "kb_links": sh["links"],
-                     "kb_title": (sh["kb_sheet"] or {}).get("kb_title")})
+                     "kb_title": (sh["kb_sheet"] or {}).get("kb_title"),
+                     "trades": sorted(set(sheet_trades.get(sid, []))), "spec_sections": sorted(set(sheet_specs.get(sid, []))),
+                     "phases": phases, "areas": areas, "declared_scale": s.get("declared_scale"),
+                     "searchable": s.get("searchable") is not False, "ocr": bool(s.get("ocr")),
+                     "words": nwords, "image": s.get("image"), "thumbnail": s.get("thumbnail"),
+                     "review_flags": flags,
+                     "text": " ".join(x for x in [str(s.get("sheet_no") or ""), str(s.get("title") or ""),
+                                                   ", ".join(sheet_trades.get(sid, [])), ", ".join(areas), ", ".join(phases)] if x)})
+        if body:
+            recs.append({"_kind": "sheet_text", "sheet_id": sid, "sheet_no": s.get("sheet_no"), "viewer": sh["viewer"],
+                         "text": body, "words": nwords, "truncated": nwords and len(body) >= SHEET_TEXT_LIMIT})
     for d, v in divisions.items():
         recs.append({"_kind": "division", "division": d, "csi_division": d, "label": v["label"],
                      "atlas_sheets": v["atlas_sheets"], "specs": v["specs"], "kb_counts": v["kb_counts"],
-                     "kb_division_file": v["kb_division_file"], "viewer": viewer_rel})
+                     "kb_division_file": v["kb_division_file"], "viewer": viewer_rel,
+                     "text": f"Division {d} {v['label']}: {len(v['atlas_sheets'])} sheet(s), {len(v['specs'])} spec section(s)"})
     for sec, v in specs.items():
         recs.append({"_kind": "spec", "section": sec, "title": v["title"], "csi_division": v["division"],
-                     "atlas_sheets": v["atlas_sheets"], "kb_chunks": v["kb_chunks"], "viewer": viewer_rel})
+                     "atlas_sheets": v["atlas_sheets"], "kb_chunks": v["kb_chunks"], "viewer": viewer_rel,
+                     "text": f"Spec section {sec} {v['title']}"})
+    for t in trades_all:
+        sids = list(t.get("sheet_ids") or [])
+        recs.append({"_kind": "trade", "division": str(t.get("division")), "label": concept_name(t),
+                     "atlas_sheets": sids, "spec_sections": list(t.get("spec_sections") or []), "viewer": viewer_rel,
+                     "text": f"Trade {concept_name(t)} (division {t.get('division')}): " + ", ".join(sids)})
+    for kind, key in (("area", "areas"), ("phase", "phases")):
+        for c in (atlas.get("concepts") or {}).get(key) or []:
+            sids = list(c.get("sheet_ids") or [])
+            recs.append({"_kind": kind, "name": concept_name(c), "atlas_sheets": sids, "viewer": viewer_rel,
+                         "text": f"{kind.capitalize()} {concept_name(c)}: " + ", ".join(sids)})
+    ig = ignition_record(ignition_dir)
+    if ig:
+        recs.append(ig)
+    search = atlas.get("search") or {}
+    recs.append({"_kind": "atlas_status", "sheets": len(sheets), "sheets_searchable": search.get("sheets_indexed"),
+                 "sheets_not_searchable": list(search.get("sheets_not_searchable") or []),
+                 "sheets_with_ocr": sum(1 for s in sheets if s.get("ocr")),
+                 "source_documents": (atlas.get("source_set") or {}).get("documents") or [],
+                 "needs_review": list(atlas.get("needs_review") or []) + list(review),
+                 "generated_at": atlas.get("generated_at"), "viewer": viewer_rel,
+                 "text": f"Plans Atlas: {len(sheets)} sheet(s); " + (f"{search.get('sheets_indexed')} searchable" if search else "")
+                         + ("; review: " + "; ".join(atlas.get("needs_review") or []) if atlas.get("needs_review") else "")})
     return interlinks, recs
 
 
@@ -316,7 +417,10 @@ def run(kb_dir, atlas_path, out_dir, viewer_rel, request_id="", ignition_dir=Non
     atlas = load_json(atlas_path)
     if not isinstance(atlas, dict) or not atlas.get("sheets"):
         raise SystemExit(f"{atlas_path}: no plans_atlas sheets to interlink")
-    inter, recs = build(kb_dir, atlas, viewer_rel, request_id, ignition_dir)
+    model_dir = Path(atlas_path).resolve().parent.parent          # model/sections/plans_atlas.json -> model/
+    words = load_json(model_dir / "atlas-words.json", {}) or {}
+    ignition_dir = ignition_dir or (model_dir / "ignition")
+    inter, recs = build(kb_dir, atlas, viewer_rel, request_id, ignition_dir, words)
     inter["built_at"] = None      # keep the file byte-stable between identical runs
     changed = write_if_changed(Path(out_dir) / "interlinks.json", inter)
     changed |= write_if_changed(Path(out_dir) / "atlas-chunks.json", recs)
@@ -346,7 +450,8 @@ def selftest():
              "concepts": {"trades": [{"division": "09", "label": "Finishes", "sheet_ids": ["A-101", "A-201"],
                                       "spec_sections": ["09 51 13"]}],
                           "specs": [{"section": "09 51 13", "division": "09", "title": "ACT", "sheet_ids": ["A-101"]}]}}
-    inter, recs = build(tmp, atlas, "Plans Atlas/plans-atlas.html", "rid")
+    words = {"A-101": [[0.5, 0.1, 0.6, 0.2, "CEILING"], [0.1, 0.1, 0.2, 0.2, "FIRST"]]}
+    inter, recs = build(tmp, atlas, "Plans Atlas/plans-atlas.html", "rid", None, words)
     s = inter["sheets"]["A-101"]
     assert s["kb_sheet"]["chunk"] == "demo:sheet:s1" and s["kb_sheet"]["via"] == "sheet_number", s
     assert "demo:sheet_note:n1" in s["links"]["notes"], s["links"]
@@ -357,7 +462,11 @@ def selftest():
     assert inter["unmatched"]["atlas_sheets"] == ["A-201"]
     assert inter["chunk_backrefs"]["demo:product:p1"][0]["via"] == "division", "division fallback"
     assert s["viewer"] == "Plans Atlas/plans-atlas.html#sheet=A-101"
-    assert {r["_kind"] for r in recs} == {"sheet", "division", "spec"}
+    assert {"sheet", "sheet_text", "division", "spec", "trade", "atlas_status"} <= {r["_kind"] for r in recs}
+    sh = next(r for r in recs if r["_kind"] == "sheet" and r["sheet_id"] == "A-101")
+    assert sh["trades"] == ["Finishes"] and sh["spec_sections"] == ["09 51 13"], sh
+    st = next(r for r in recs if r["_kind"] == "sheet_text")
+    assert st["text"] == "FIRST CEILING", st
     (tmp / "atlas.json").write_text(json.dumps(atlas))
     st1 = run(tmp, tmp / "atlas.json", tmp / "o", "v.html", "rid")
     st2 = run(tmp, tmp / "atlas.json", tmp / "o", "v.html", "rid")

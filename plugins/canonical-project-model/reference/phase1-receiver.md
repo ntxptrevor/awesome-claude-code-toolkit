@@ -28,7 +28,11 @@ No one has to remember to run anything.
 - **`interlinks.json`**: sheet to KB facts, division to sheets to KB, spec section to sheets to KB,
   a back-reference map by KB chunk id, unmatched sheets and title conflicts (listed, never resolved).
 - **`atlas-chunks.json`**: read natively by `build_kb_index.py`, so searches find drawings and a
-  later index rebuild never drops them.
+  later index rebuild never drops them. Record kinds: `sheet` (trades, spec sections, phases, areas,
+  scale, OCR and review flags), `sheet_text` (printed words per sheet, capped), `division`, `spec`,
+  `trade`, `area`, `phase`, `ignition` (draft status and $/SF verdict) and `atlas_status` (counts,
+  search coverage, review items). Each record carries a `text` field for search. Kinds beyond
+  sheet, division and spec need a mapping in `build_kb_index.py` before they are indexed.
 - **`STATUS.md`**: one-page human summary. **`project/`**: the CPR (`model/`) and the viewer under
   `Construction Documents/Plans Atlas/plans-atlas.html`, plus the Project Ignition blueprint and
   work orders in `model/ignition/`.
