@@ -126,3 +126,14 @@ ntxp-model-council (configure routing → .ntxp/ipdm/model-council.yaml)
 ## Persistence
 
 Highway routing decisions and performance metrics are logged to `.ntxp/highway/routing-log.jsonl` for continuous optimization. The routing config lives at `.ntxp/highway/config.yaml` (bootstrapped by auto-deploy, updated by this skill). Both files are committed to the repo.
+
+
+## NTXP Interop
+
+This skill participates in the NTXP shared ecosystem. Follow these conventions (see NTXP IPDM skill for full spec):
+
+- **Knowledge Base**: Search `.ntxp/ipdm/project.yaml` and `.ntxp/coda/registry.yaml` before external calls. Save outputs back to `.ntxp/ipdm/project.yaml`.
+- **Credentials**: Auth via `ntxp-id` plugin → secrets via `anthropic-skills:ntxp-secrets-vault` → never hardcode.
+- **Model Routing**: Read `.ntxp/ipdm/model-council.yaml` for model config. Call `ntxp-model-council` if missing.
+- **Skill Bindings**: Check `.ntxp/ipdm/skill-config.yaml` for read/write path declarations.
+- **Platform Keys**: Use `google_drive`, `ebuilder`, `jobtread`, `building_connected`, `procore`, `hubspot` — no aliases.

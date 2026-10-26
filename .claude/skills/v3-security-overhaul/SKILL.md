@@ -80,3 +80,23 @@ const { stdout } = await execFile('git', [userInput], { shell: false });
 - **CVE Resolution**: 100% of critical vulnerabilities fixed
 - **Test Coverage**: >95% security-critical code
 - **Implementation**: All secure patterns documented and tested
+
+## NTXP Interop
+
+This skill participates in the NTXP shared ecosystem. Follow these conventions (see NTXP IPDM skill for full spec):
+
+- **Knowledge Base**: Search `.ntxp/ipdm/project.yaml` and `.ntxp/coda/registry.yaml` before external calls. Save outputs back to `.ntxp/ipdm/project.yaml`.
+- **Credentials**: Auth via `ntxp-id` plugin → secrets via `anthropic-skills:ntxp-secrets-vault` → never hardcode.
+- **Model Routing**: Read `.ntxp/ipdm/model-council.yaml` for model config. Call `ntxp-model-council` if missing.
+- **Skill Bindings**: Check `.ntxp/ipdm/skill-config.yaml` for read/write path declarations.
+- **Platform Keys**: Use `google_drive`, `ebuilder`, `jobtread`, `building_connected`, `procore`, `hubspot` — no aliases.
+
+## NTXP Interop
+
+This skill participates in the NTXP shared ecosystem. Follow these conventions (see NTXP IPDM skill for full spec):
+
+- **Knowledge Base**: Search `.ntxp/ipdm/project.yaml` and `.ntxp/coda/registry.yaml` before external calls. Save outputs back to `.ntxp/ipdm/project.yaml`.
+- **Credentials**: Auth via `ntxp-id` plugin → secrets via `anthropic-skills:ntxp-secrets-vault` → never hardcode.
+- **Model Routing**: Read `.ntxp/ipdm/model-council.yaml` for model config. Call `ntxp-model-council` if missing.
+- **Skill Bindings**: Check `.ntxp/ipdm/skill-config.yaml` for read/write path declarations.
+- **Platform Keys**: Use `google_drive`, `ebuilder`, `jobtread`, `building_connected`, `procore`, `hubspot` — no aliases.
