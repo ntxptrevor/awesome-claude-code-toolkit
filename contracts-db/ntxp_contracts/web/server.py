@@ -31,7 +31,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from .. import branding, contactfile, jobs as jobs_mod
-from ..config import CONTRACT_TYPES, SCOPE_VOCAB, WEB_HOST, WEB_POLL_MS, WEB_PORT
+from ..config import CONTRACT_STATUSES, CONTRACT_TYPES, SCOPE_VOCAB, WEB_HOST, WEB_POLL_MS, WEB_PORT
 from ..db import connect, migrate
 from ..db.repository import ConflictError, Repository
 
@@ -151,6 +151,7 @@ def make_handler(db_override):
                 try:
                     meta = {
                         "contract_types": list(CONTRACT_TYPES),
+                        "contract_statuses": list(CONTRACT_STATUSES),
                         "scope_vocab": list(SCOPE_VOCAB),
                         "poll_ms": WEB_POLL_MS,
                         "latest_seq": repo.changes_since(0)["latest_seq"],

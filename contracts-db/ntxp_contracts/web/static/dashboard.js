@@ -218,6 +218,7 @@ function renderRows() {
     tr.appendChild(td(conoCell(c), 'num'));
     tr.appendChild(td(textCell(c, 'contract_title', { placeholder: 'Contract title' })));
     tr.appendChild(td(selectCell(c, 'contract_type', META.contract_types, { blank: 'Type' })));
+    tr.appendChild(td(selectCell(c, 'status', META.contract_statuses || [], { blank: '—' })));
     tr.appendChild(td(textCell(c, 'owner_entity', { placeholder: 'Owner entity' })));
     tr.appendChild(td(numCell(c, 'coefficient_multiplier', { placeholder: '1.00', width: '90px' }), 'num'));
     tr.appendChild(td(numCell(c, 'cooperative_fee', { placeholder: '0%', width: '90px' }), 'num'));

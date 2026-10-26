@@ -226,3 +226,65 @@ def test_branding_parses_skill(monkeypatch, tmp_path):
     assert b.colors["accent"] == "#ABCDEF"
     assert b.fonts["heading"].startswith("Montserrat")
     assert "ntxp-brand" in (b.skill_path or "")
+
+
+def test_import_json_full_record(tmp_path, repo):
+    from ntxp_contracts.importer import import_json
+    data = {
+        "source": "research",
+        "contracts": [{
+            "contract_title": "Regional JOC (Gordian ezIQC)", "contract_no": "825-26",
+            "contract_type": "Job Order Contract", "owner_entity": "BuyBoard",
+            "status": "awarded", "pricebook": "Gordian ezIQC", "is_executed": True,
+            "coefficients": [{"label": "Normal hours", "value": 1.02},
+                             {"label": "Non-normal hours", "value": 1.12}],
+            "owner": {"website": "buyboard.com", "customer_service_phone": "800-695-2919"},
+            "evidence": [{"what": "award email", "url": "https://mail.example/1"}],
+            "related_projects": ["Gym reroof"],
+        }],
+        "contacts": [{"name": "Jane Buyer", "role": "procurement", "org": "BuyBoard",
+                      "email": "Jane@BuyBoard.com", "phone": "(512) 555-0100",
+                      "contract_no": "825-26"}],
+        "jobs": [{"name": "Gym reroof", "jobtread_id": "JT1", "customer": "Lake ISD",
+                  "contract_value": "150000", "invoiced": "120000", "paid": "100000",
+                  "contract_no": "825-26", "link_confidence": "high"},
+                 {"name": "Unlinked job", "jobtread_id": "JT2"}],
+    }
+    p = tmp_path / "r.json"; p.write_text(json.dumps(data))
+    s1 = import_json(repo, p)
+    import_json(repo, p)                       # idempotent
+    assert s1["contracts_created"] == 1 and s1["jobs"] == 2
+    cid = repo.get_contract_by_no("825-26")["contract_id"]
+    prof = repo.get_profile(cid)
+    c = prof["contract"]
+    assert c["status"] == "awarded" and c["pricebook"] == "Gordian ezIQC"
+    assert c["is_executed"] is True and c["coefficient_multiplier"] == 1.02
+    assert [t["label"] for t in prof["coefficients"]] == ["Normal hours", "Non-normal hours"]
+    assert len(prof["contacts"]) == 1 and prof["contacts"][0]["email"] == "jane@buyboard.com"
+    assert prof["contacts"][0]["phone"] == "+15125550100"
+    assert len(prof["sources"]) == 1
+    assert prof["owner"]["customer_service_phone"] == "+18006952919"
+    assert prof["totals"]["job_count"] == 1 and prof["totals"]["total_sales"] == 120000
+    assert prof["jobs"][0]["paid_amount"] == 100000
+    assert [j["name"] for j in repo.list_unlinked_jobs()] == ["Unlinked job"]
+    assert c["attrs"]["related_projects"] == ["Gym reroof"]
+
+
+def test_export_xlsx_and_json(tmp_path, repo):
+    openpyxl = pytest.importorskip("openpyxl")
+    from ntxp_contracts.export import export_json, export_xlsx
+    cid, _ = repo.upsert_contract(Contract(contract_title="JOC", contract_no="J-9"))
+    repo.set_coefficients(cid, [{"label": "Normal", "value": 1.1}])
+    repo.upsert_job(Job(contract_no="J-9", name="Roof", contract_value=10.0, external_id="a"))
+    repo.upsert_job(Job(contract_no="", name="Loose job", external_id="b"))
+    repo.conn.commit()
+    out = export_xlsx(repo, tmp_path / "m.xlsx", open_questions=["Is it signed?"])
+    wb = openpyxl.load_workbook(out)
+    assert wb.sheetnames[:2] == ["Contract Log", "Coefficients"]
+    assert "Open Questions" in wb.sheetnames
+    assert wb["Contract Log"]["A4"].value == "J-9"
+    jobs = [c.value for c in wb["Jobs by Contract"]["B"]]
+    assert "Roof" in jobs and "Loose job" in jobs
+    data = export_json(repo)
+    assert data["contracts"][0]["coefficients"][0]["value"] == 1.1
+    assert data["unlinked_jobs"][0]["name"] == "Loose job"

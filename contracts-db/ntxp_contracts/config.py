@@ -37,6 +37,16 @@ CONTRACT_TYPES = (
     "Master Subcontract Agreement",
 )
 
+# Award lifecycle of a contract vehicle, shown as a badge and editable inline.
+CONTRACT_STATUSES = (
+    "awarded",
+    "tentative",
+    "pending-execution",
+    "expired",
+    "lost",
+    "unknown",
+)
+
 # Suggested allowable-scope terms surfaced as quick-pick chips in the UI. Free
 # text is always allowed; this is a convenience list, not a constraint.
 SCOPE_VOCAB = (

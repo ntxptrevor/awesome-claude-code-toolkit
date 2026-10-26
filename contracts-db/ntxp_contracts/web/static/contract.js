@@ -29,6 +29,32 @@ function contactRow(label, phone) {
     </span></div>`;
 }
 
+// A named person tied to the contract: call / text / email in one tap.
+function personRow(ct) {
+  const tel = (ct.phone || '').replace(/[^\d+]/g, '');
+  const who = [ct.title, ct.org].filter(Boolean).join(' · ');
+  return `<div class="contact-row">
+    <span><strong>${esc(ct.name)}</strong>${ct.role ? ` <span class="badge">${esc(ct.role)}</span>` : ''}
+      ${who ? `<br><span class="muted">${esc(who)}</span>` : ''}
+      ${ct.phone ? `<br><span class="muted">${esc(prettyTel(ct.phone))}</span>` : ''}</span>
+    <span class="contact-actions">
+      ${tel ? `<a class="chip call" href="tel:${esc(tel)}">📞 Call</a>
+      <a class="chip text" href="sms:${esc(tel)}">💬 Text</a>` : ''}
+      ${ct.email ? `<a class="chip" href="mailto:${esc(ct.email)}">✉ Email</a>` : ''}
+    </span></div>`;
+}
+
+const STATUS_LABEL = {
+  'awarded': ['ok', 'Awarded'], 'tentative': ['', 'Tentative award'],
+  'pending-execution': ['', 'Awaiting signature'], 'expired': ['bad', 'Expired'],
+  'lost': ['bad', 'Not awarded'], 'unknown': ['', 'Status unknown'],
+};
+function statusBadge(st) {
+  if (!st) return '';
+  const [cls, label] = STATUS_LABEL[st] || ['', st];
+  return `<span class="badge ${cls}">${esc(label)}</span>`;
+}
+
 function daysBadge(exp) {
   const d = daysUntil(exp);
   if (d == null) return '';
@@ -50,8 +76,15 @@ async function load() {
   const ownerName = o.name || c.owner_entity;
   const website = o.website;
 
+  const coeffs = p.coefficients || [];
+  const contacts = p.contacts || [];
+  const sources = p.sources || [];
+  const jobNames = new Set((p.jobs || []).map(j => (j.name || '').toLowerCase()));
+  const related = ((c.attrs || {}).related_projects || [])
+    .filter(r => r && !jobNames.has(String(r).toLowerCase()));
+
   const jobsRows = (p.jobs || []).map(j => `<tr>
-      <td>${esc(j.name)}</td>
+      <td>${j.job_number ? `<span class="muted">${esc(j.job_number)}</span> · ` : ''}${esc(j.name)}</td>
       <td>${esc(j.customer || '')}</td>
       <td>${esc(j.status || '')}</td>
       <td style="text-align:right">${money(j.contract_value)}</td>
@@ -67,6 +100,7 @@ async function load() {
       <div class="cono-big">Contract / RFP # <strong>${esc(c.contract_no || '—')}</strong>
         &nbsp;·&nbsp; Recipient: <strong>${esc(c.recipient || 'NTXP LLC')}</strong></div>
       <div class="badges">
+        ${statusBadge(c.status)}
         <span class="badge ${c.is_executed ? 'ok' : 'bad'}">
           ${c.is_executed ? '✓ Executed' : '⚠ Unexecuted'}</span>
         ${daysBadge(c.expiration_date)}
@@ -82,7 +116,10 @@ async function load() {
         ${kv('Owner entity', esc(ownerName || '—'))}
         ${kv('Location', esc(c.location || '—'))}
         ${kv('Estimated budget', money(c.estimated_budget))}
-        ${kv('Coefficient multiplier', esc(c.coefficient_multiplier ?? '—'))}
+        ${coeffs.length
+          ? coeffs.map(t => kv('Coefficient — ' + t.label, esc(t.value))).join('')
+          : kv('Coefficient multiplier', esc(c.coefficient_multiplier ?? '—'))}
+        ${kv('Pricebook', esc(c.pricebook || '—'))}
         ${kv('Cooperative fee', esc(c.cooperative_fee || '—'))}
         ${kv('Allowable scope', esc(c.allowable_scope || '—'))}
       </div>
@@ -91,7 +128,8 @@ async function load() {
         ${kv('Award date', fmtDate(c.award_date))}
         ${kv('Duration', esc(c.duration || '—'))}
         ${kv('Expiration date', fmtDate(c.expiration_date))}
-        ${kv('Status', c.is_executed ? 'Executed' : 'Unexecuted')}
+        ${kv('Award status', esc((STATUS_LABEL[c.status] || [, c.status || '—'])[1]))}
+        ${kv('Signed copy', c.is_executed ? 'Executed' : 'Unexecuted')}
         ${c.notes ? `<div style="margin-top:10px"><span class="k muted">Notes</span><br>${esc(c.notes)}</div>` : ''}
       </div>
       <div class="card">
@@ -123,7 +161,12 @@ async function load() {
       : '<p class="muted">No owner-entity contact info on file yet. Add a website and phone lines so this profile can offer click-to-call, text, and a downloadable contact card.</p>'}
     </div>
 
-    <div class="card">
+    ${contacts.length ? `<div class="card" style="margin-bottom:18px">
+      <h3>Contacts for this contract</h3>
+      ${contacts.map(personRow).join('')}
+    </div>` : ''}
+
+    <div class="card" style="margin-bottom:18px">
       <h3>Jobs done under this contract</h3>
       ${(p.jobs || []).length ? `<table class="jobs-table">
         <thead><tr><th>Job</th><th>Customer</th><th>Status</th>
@@ -134,7 +177,16 @@ async function load() {
           <td style="text-align:right">${money(t.total_sales)}</td></tr></tfoot>
       </table>`
       : '<p class="muted">No jobs synced yet. Jobs flow in from JobTread via the jobs sync (see the README) and roll up here automatically.</p>'}
-    </div>`;
+      ${related.length ? `<div style="margin-top:14px"><span class="k muted">Other related projects</span>
+        <ul>${related.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
+    </div>
+
+    ${sources.length ? `<div class="card">
+      <h3>Where this information came from</h3>
+      <ul class="sources">${sources.map(s => `<li>${safeUrl(s.url)
+        ? `<a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">${esc(s.what)}</a>`
+        : esc(s.what)}</li>`).join('')}</ul>
+    </div>` : ''}`;
 }
 
 document.getElementById('printBtn').addEventListener('click', () => window.print());
