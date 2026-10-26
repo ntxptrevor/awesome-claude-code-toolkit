@@ -35,6 +35,10 @@ CONTRACT_TYPES = (
     "Job Order Contract",
     "Cooperative Contract",
     "Master Subcontract Agreement",
+    "IDIQ / Term Contract",
+    "Subcontract Agreement",
+    "Project Contract",
+    "Consulting Agreement",
 )
 
 # Award lifecycle of a contract vehicle, shown as a badge and editable inline.

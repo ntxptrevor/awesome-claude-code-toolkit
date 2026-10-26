@@ -74,7 +74,28 @@ ntxp-contracts query "electrical"           # full-text search
 ntxp-contracts show 1                        # full profile incl. jobs/sales
 ntxp-contracts stats
 ntxp-contracts brand                         # the brand resolved from settings
+ntxp-contracts import-json research.json     # contracts + contacts + coefficients + jobs
+ntxp-contracts export master.xlsx            # workbook organized by contract (or .json)
 ```
+
+### Beyond the log row
+
+Each contract also carries its **award status** (awarded · tentative · pending
+execution · expired · lost · unknown), **pricebook**, every published
+**coefficient tier** (normal / non-normal hours, per region), named **contacts**
+(procurement, contract admin, accounting, PM — shown with call / text / email on
+the profile), **related projects**, and the **sources** each fact came from
+(award letters, signed copies, emails, public co-op listings). Jobs record how
+and why they were linked to a contract (`link_confidence`, `link_reason`), and
+jobs done outside any contract vehicle are kept as unlinked.
+
+`import-json` takes `{"contracts": [...], "contacts": [...], "jobs": [...]}`
+(fields match the model, plus `coefficients`, `owner`, `evidence`,
+`related_projects`; jobs take `jobtread_id`, `invoiced`, `paid`). Re-running it
+never duplicates. `export` writes an Excel workbook — contract log, coefficients,
+contacts, jobs grouped by contract (unlinked last), owner entities, sources, open
+questions — on Letter portrait in the brand colors (`pip install
+'ntxp-contracts[xlsx]'`), or full JSON for other tools.
 
 ## Use from Claude tools (MCP)
 
@@ -99,10 +120,16 @@ screen on next load — nothing is hard-coded. `branding.py` scans, in order:
 5. `~/.claude/plugins/**/skills`
 6. `/mnt/skills` (+ `/mnt/skills/examples`)
 
-A skill qualifies if its name/description mention brand identity; an
-**NTXP-specific** brand skill outranks a generic one, and among equals the most
-recently modified `SKILL.md` wins. It parses labelled hex colors and the
-heading/body fonts. If nothing is found, documented NTXP defaults keep the UI
+A skill qualifies only if its **own name/description is about branding and it
+defines a color palette** — a skill that merely produces "NTXP-branded" output
+doesn't count. An **NTXP** brand skill outranks a generic one, one whose name is
+about branding outranks one that only mentions it, then the richer palette, then
+the most recently modified `SKILL.md`. It maps labelled hex colors (navy,
+accent, signal, link, ink, rule/line…) onto the UI's color slots, reads labelled
+heading/body fonts, and picks up the **logo** (preferring a reversed variant for
+the dark top bar) and **font files** shipped with the skill — served to the page
+through an allow-listed `/api/branding/asset/<file>` route, never a raw path.
+The brand name shown is always NTXP. If nothing is found, documented NTXP defaults keep the UI
 on-brand. Override the search root with `NTXP_BRANDING_PATH`.
 
 ## Jobs / sales (JobTread)

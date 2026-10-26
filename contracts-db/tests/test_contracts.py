@@ -221,6 +221,8 @@ def test_branding_parses_skill(monkeypatch, tmp_path):
         "# NTXP Brand\n- Primary: `#123456` - brand navy\n"
         "- Accent: `#ABCDEF` - orange\n- Headings: Montserrat\n- Body text: Inter\n")
     monkeypatch.setenv("NTXP_BRANDING_PATH", str(tmp_path / "skills"))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))   # ignore this machine's skills
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
     b = branding.resolve_brand()
     assert b.colors["primary"] == "#123456"
     assert b.colors["accent"] == "#ABCDEF"
@@ -288,3 +290,51 @@ def test_export_xlsx_and_json(tmp_path, repo):
     data = export_json(repo)
     assert data["contracts"][0]["coefficients"][0]["value"] == 1.1
     assert data["unlinked_jobs"][0]["name"] == "Loose job"
+
+
+def test_contacts_scoped_per_contract_and_owner_level_shared(repo):
+    a, _ = repo.upsert_contract(Contract(contract_title="A", contract_no="A1", owner_entity="Co-op"))
+    b, _ = repo.upsert_contract(Contract(contract_title="B", contract_no="B1", owner_entity="Co-op"))
+    owner_id = repo.get_owner_by_name("Co-op")["owner_id"]
+    repo.upsert_contact({"name": "Jane Doe", "role": "PM"}, contract_id=a)
+    repo.upsert_contact({"name": "Jane Doe", "role": "accounting"}, contract_id=b)
+    repo.upsert_contact({"name": "Co-op Help Desk", "email": "help@coop.org"}, owner_id=owner_id)
+    repo.upsert_contact({"name": "Co-op Help Desk", "email": "HELP@coop.org"}, owner_id=owner_id)
+    repo.conn.commit()
+    ca = repo.list_contacts(a, owner_id); cb = repo.list_contacts(b, owner_id)
+    assert {c["role"] for c in ca if c["name"] == "Jane Doe"} == {"PM"}
+    assert {c["role"] for c in cb if c["name"] == "Jane Doe"} == {"accounting"}
+    assert sum(c["name"] == "Co-op Help Desk" for c in ca) == 1   # shared + deduped
+    assert any(c["name"] == "Co-op Help Desk" for c in cb)
+
+
+def test_branding_prefers_real_brand_skill_with_assets(monkeypatch, tmp_path):
+    root = tmp_path / "skills"
+    # A skill that only *produces* NTXP-branded output, with no palette: ignored.
+    itb = root / "itb-generator"; itb.mkdir(parents=True)
+    (itb / "SKILL.md").write_text("---\nname: itb-generator\ndescription: NTXP-branded ITBs\n---\n# ITB\n")
+    std = root / "ntxp-branded-document-2"
+    (std / "assets" / "fonts").mkdir(parents=True)
+    (std / "SKILL.md").write_text(
+        "---\nname: \"ntxp-branded-document-2\"\ndescription: \"The NTXP document standard. "
+        "Typed blocks for titles, headings, text and tables.\"\n---\n"
+        "| Navy | `#1B2A4E` | Header band |\n| Accent Red | `#C8102E` | THE accent |\n"
+        "| Signal Red | `#D0353C` | Alerts |\n| Link ink | `#2F529B` | Emails |\n"
+        "| Warm line | `#E2DAD0` | Rules |\n| Ink | `#1F2A3D` | Body copy |\n")
+    (std / "assets" / "ntxp_logo_reversed.png").write_bytes(b"png")
+    (std / "assets" / "ntxp_logo.png").write_bytes(b"png")
+    (std / "assets" / "fonts" / "OpenSans-SemiboldItalic.ttf").write_bytes(b"ttf")
+    monkeypatch.setenv("NTXP_BRANDING_PATH", str(root))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    b = branding.resolve_brand()
+    assert b.skill_name == "ntxp-branded-document-2" and b.name == "NTXP"
+    assert b.colors["primary"] == "#1B2A4E" and b.colors["accent"] == "#C8102E"
+    assert b.colors["danger"] == "#D0353C" and b.colors["accent2"] == "#2F529B"
+    assert b.colors["dark"] == "#1F2A3D" and b.colors["border"] == "#E2DAD0"
+    assert b.fonts["body"].startswith("'Open Sans'")          # prose "headings" ignored
+    assert b.logo.endswith("ntxp_logo_reversed.png")          # dark top bar -> reversed
+    d = b.to_dict()
+    assert d["logo_url"] == "/api/branding/asset/ntxp_logo_reversed.png"
+    assert d["font_faces"][0]["weight"] == 600 and d["font_faces"][0]["style"] == "italic"
+    assert "assets" not in d                                   # no filesystem paths leak

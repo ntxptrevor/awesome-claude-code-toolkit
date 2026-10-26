@@ -92,7 +92,6 @@ async function load() {
     </tr>`).join('');
 
   contentEl.innerHTML = `
-    <div class="crumbs no-print"><a href="/">← Master Contracts</a></div>
 
     <div class="hero">
       <div class="eyebrow">${esc(c.contract_type || 'Contract')}</div>

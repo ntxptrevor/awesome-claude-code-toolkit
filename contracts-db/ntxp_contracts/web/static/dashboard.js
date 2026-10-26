@@ -98,6 +98,8 @@ function selectCell(c, field, options, opts = {}) {
   sel.className = 'cell';
   const blank = document.createElement('option');
   blank.value = ''; blank.textContent = opts.blank || '—'; sel.appendChild(blank);
+  // Keep a stored value selectable even if it isn't in the standard list.
+  if (c[field] && !options.includes(c[field])) options = [...options, c[field]];
   options.forEach(o => {
     const op = document.createElement('option');
     op.value = o; op.textContent = o;
@@ -220,15 +222,15 @@ function renderRows() {
     tr.appendChild(td(selectCell(c, 'contract_type', META.contract_types, { blank: 'Type' })));
     tr.appendChild(td(selectCell(c, 'status', META.contract_statuses || [], { blank: '—' })));
     tr.appendChild(td(textCell(c, 'owner_entity', { placeholder: 'Owner entity' })));
-    tr.appendChild(td(numCell(c, 'coefficient_multiplier', { placeholder: '1.00', width: '90px' }), 'num'));
-    tr.appendChild(td(numCell(c, 'cooperative_fee', { placeholder: '0%', width: '90px' }), 'num'));
+    tr.appendChild(td(numCell(c, 'coefficient_multiplier', { placeholder: '—', width: '90px' }), 'num'));
+    tr.appendChild(td(numCell(c, 'cooperative_fee', { placeholder: '—', width: '90px' }), 'num'));
 
     const expWrap = document.createElement('span');
     expWrap.className = 'exp ' + (d != null && d < 0 ? 'exp-expired' : d != null && d <= 90 ? 'exp-soon' : '');
     expWrap.appendChild(dateCell(c, 'expiration_date'));
     tr.appendChild(td(expWrap, 'num'));
 
-    tr.appendChild(td(textCell(c, 'allowable_scope', { placeholder: 'electrical, GC…' })));
+    tr.appendChild(td(textCell(c, 'allowable_scope', { placeholder: '—' })));
     tr.appendChild(td(pdfCell(c)));
     tr.appendChild(td(flagCell(c)));
 

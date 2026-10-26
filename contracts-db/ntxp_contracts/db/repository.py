@@ -329,11 +329,18 @@ class Repository:
             return None
         email = (contact.get("email") or "").strip().lower() or None
         phone = N.normalize_phone(contact.get("phone")) or (contact.get("phone") or None)
+        # Same person = same email or name within the same contract (or, for an
+        # owner-level contact, the same owner) — never across contracts.
+        if contract_id is not None:
+            scope, arg = "contract_id = ?", contract_id
+        elif owner_id is not None:
+            scope, arg = "contract_id IS NULL AND owner_id = ?", owner_id
+        else:
+            scope, arg = "contract_id IS NULL AND owner_id IS NULL AND ? = 1", 1
         row = self.conn.execute(
-            "SELECT contact_id FROM contacts WHERE "
-            "(COALESCE(contract_id, -1) = COALESCE(?, -1) OR COALESCE(owner_id, -1) = COALESCE(?, -1)) "
+            f"SELECT contact_id FROM contacts WHERE {scope} "
             "AND ((? IS NOT NULL AND lower(email) = ?) OR lower(name) = lower(?)) LIMIT 1",
-            (contract_id, owner_id, email, email, name)).fetchone()
+            (arg, email, email, name)).fetchone()
         if row:
             cid = int(row["contact_id"])
             self.conn.execute(

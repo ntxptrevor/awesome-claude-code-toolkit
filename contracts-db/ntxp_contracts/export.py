@@ -14,10 +14,9 @@ import datetime as _dt
 import json
 from pathlib import Path
 
+from . import branding
 from .db.repository import Repository
 
-_NAVY = "10243E"
-_TINT = "E8EDF4"
 _MONEY = '"$"#,##0'
 
 
@@ -30,19 +29,27 @@ def export_xlsx(repo: Repository, path: str | Path, open_questions: list[str] | 
         raise SystemExit("openpyxl is required: pip install 'ntxp-contracts[xlsx]'") from exc
 
     today = _dt.date.today()
+    # Same brand the screens use — resolved from the brand skill at export time.
+    colors = branding.resolve_brand().colors
+    navy = colors["primary"].lstrip("#")
+    tint = colors["light"].lstrip("#") if colors["light"].upper() != "#FFFFFF" else "E8EDF4"
+    alert, warn, link_c = (colors[k].lstrip("#") for k in ("danger", "warning", "accent2"))
     conn = repo.conn
-    contracts = repo.list_contracts()
+    # Live vehicles first, then those in motion, then history; soonest expiry first.
+    rank = {"awarded": 0, "pending-execution": 1, "tentative": 2, "unknown": 3, "expired": 4, "lost": 5}
+    contracts = sorted(repo.list_contracts(), key=lambda c: (
+        rank.get(c.get("status"), 3), c.get("expiration_date") or "9999", c["contract_title"]))
     wb = Workbook()
     head_font = Font(bold=True, color="FFFFFF")
-    head_fill = PatternFill("solid", fgColor=_NAVY)
-    group_fill = PatternFill("solid", fgColor=_TINT)
+    head_fill = PatternFill("solid", fgColor=navy)
+    group_fill = PatternFill("solid", fgColor=tint)
 
     def sheet(title: str, heading: str, columns: list[tuple[str, int]], first=False):
         ws = wb.active if first else wb.create_sheet()
         ws.title = title
         n = len(columns)
         ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=n)
-        ws.cell(1, 1, heading).font = Font(bold=True, size=14, color=_NAVY)
+        ws.cell(1, 1, heading).font = Font(bold=True, size=14, color=navy)
         ws.cell(1, 1).alignment = Alignment(horizontal="center")
         ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=n)
         ws.cell(2, 1, f"NTXP LLC · generated {today:%B %d, %Y}").alignment = Alignment(horizontal="center")
@@ -76,7 +83,7 @@ def export_xlsx(repo: Repository, path: str | Path, open_questions: list[str] | 
         if url:
             cell = ws.cell(row, col, text)
             cell.hyperlink = url
-            cell.font = Font(color="2F80ED", underline="single")
+            cell.font = Font(color=link_c, underline="single")
 
     # 1 — Contract log --------------------------------------------------------
     ws = sheet("Contract Log", "MASTER CONTRACTS LOG", [
@@ -104,9 +111,9 @@ def export_xlsx(repo: Repository, path: str | Path, open_questions: list[str] | 
                     t["total_contract_value"] or None, t["total_sales"] or None, None],
             money_cols=(15, 16))
         if not c["is_executed"]:
-            ws.cell(r, 6).font = Font(bold=True, color="C0392B")
+            ws.cell(r, 6).font = Font(bold=True, color=alert)
         if days is not None and days <= 90:
-            ws.cell(r, 9).font = Font(bold=True, color="C0392B" if days < 0 else "B7791F")
+            ws.cell(r, 9).font = Font(bold=True, color=alert if days < 0 else warn)
         link(ws, r, 17, c.get("pdf_url"), "Open")
         r += 1
     ws.auto_filter.ref = f"A3:Q{max(r - 1, 3)}"
