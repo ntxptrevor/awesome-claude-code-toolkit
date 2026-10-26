@@ -61,7 +61,7 @@ If any check fails, re-run `npx claude-flow@alpha init --force` once and verify 
 
 #### 1C — Initialize NTXP IPDM environment
 
-Create the shared data layer all NTXP skills read from:
+Create the shared data layer all NTXP skills read from. Uses the **six standard platform keys** and the **shared file path conventions** defined in the NTXP IPDM skill:
 
 ```bash
 mkdir -p .ntxp/ipdm .ntxp/coda .ntxp/highway
@@ -122,11 +122,13 @@ If the `ntxp-id` plugin is enabled, invoke `/id` to authenticate. If not enabled
 
 #### 2B — Rewire skills to NTXP ID
 
-After NTXP ID is active, configure all NTXP skills to use it as the auth and knowledge-base layer:
+After NTXP ID is active, configure all NTXP skills to use the unified knowledge base and credential chain:
 
-1. **Search rewiring** — All skills that perform lookups (estimating, submittals, folder ops, ITBs) check `.ntxp/ipdm/` first before external API calls
-2. **Save rewiring** — All skill outputs (estimates, documents, links, contacts) write back to `.ntxp/ipdm/project.yaml` and `.ntxp/coda/registry.yaml`
-3. **Credential rewiring** — All API keys and tokens resolve through `anthropic-skills:ntxp-secrets-vault` (the NTXP API Keys Google Sheet), never hardcoded
+1. **Search rewiring** — All skills check `.ntxp/ipdm/project.yaml` and `.ntxp/coda/registry.yaml` before external API calls
+2. **Save rewiring** — All skill outputs write back to `.ntxp/ipdm/project.yaml` (source of truth) and register links in `.ntxp/coda/registry.yaml`
+3. **Credential rewiring** — Auth via `ntxp-id` plugin → secrets via `anthropic-skills:ntxp-secrets-vault` → never hardcode
+4. **Model routing** — All skills read `.ntxp/ipdm/model-council.yaml` for model selection, call `ntxp-model-council` if missing
+5. **Crosswalk** — Entity-level cross-platform mapping lives only at `.ntxp/coda/crosswalk.yaml` (no duplicates)
 
 Write the rewiring config:
 
@@ -136,8 +138,20 @@ skill_rewiring:
   search_source: ".ntxp/ipdm/"
   save_target: ".ntxp/ipdm/"
   link_registry: ".ntxp/coda/registry.yaml"
+  crosswalk_registry: ".ntxp/coda/crosswalk.yaml"
   credential_source: "ntxp-secrets-vault"
   auth_provider: "ntxp-id"
+  model_config: ".ntxp/ipdm/model-council.yaml"
+  routing_config: ".ntxp/highway/config.yaml"
+  routing_log: ".ntxp/highway/routing-log.jsonl"
+
+  platform_keys:
+    - google_drive
+    - ebuilder
+    - jobtread
+    - building_connected
+    - procore
+    - hubspot
   
   skills:
     - name: "ntxp-estimating"
@@ -155,6 +169,9 @@ skill_rewiring:
     - name: "ntxp-quantity-takeoff"
       reads: ["project.trades", "documents[]"]
       writes: ["documents[]"]
+    - name: "dallas-isd-sov-payapp-review"
+      reads: ["project.trades", "project.contract_type", "documents[]"]
+      writes: ["ntxp_tools.schedule_of_values", "documents[]"]
     - name: "buildingconnected-mcp"
       reads: ["platforms.building_connected"]
       writes: ["platforms.building_connected", "crosswalk[]"]
@@ -164,6 +181,15 @@ skill_rewiring:
     - name: "trimble-ebuilder-connector"
       reads: ["platforms.ebuilder"]
       writes: ["platforms.ebuilder", "crosswalk[]"]
+    - name: "ntxp-project-coda"
+      reads: ["project.*", "platforms.*"]
+      writes: ["coda.registry", "coda.crosswalk"]
+    - name: "ntxp-highway"
+      reads: ["skill-config.yaml", "model-council.yaml"]
+      writes: ["routing-log.jsonl"]
+    - name: "ntxp-model-council"
+      reads: ["project.*"]
+      writes: ["model-council.yaml"]
 YAML
 ```
 
@@ -205,7 +231,13 @@ highway:
   default_tier: 2
   fallback_enabled: true
   cost_optimization: true
+  model_config: ".ntxp/ipdm/model-council.yaml"
   routing_log: ".ntxp/highway/routing-log.jsonl"
+  credential_chain: ["ntxp-id", "ntxp-secrets-vault"]
+  knowledge_base: ".ntxp/ipdm/"
+  link_registry: ".ntxp/coda/registry.yaml"
+  crosswalk: ".ntxp/coda/crosswalk.yaml"
+  skill_bindings: ".ntxp/ipdm/skill-config.yaml"
   
   routes:
     - pattern: "estimate|price|cost|budget"
@@ -224,6 +256,10 @@ highway:
       primary: "ntxp-folder-system"
       fallback: "ntxp-folder-structure"
       tier: 1
+    - pattern: "schedule|SOV|pay app|billing"
+      primary: "dallas-isd-sov-payapp-review"
+      fallback: "estimating"
+      tier: 3
     - pattern: "submittal|RFI"
       primary: "ntxp-submittal-command"
       fallback: "specs-skill"
@@ -235,7 +271,7 @@ highway:
       primary: "ntxp-pdf-markups-and-redlines"
       fallback: "apply-construction-markups"
       tier: 2
-    - pattern: "model|council|AI"
+    - pattern: "model|council|AI|routing"
       primary: "ntxp-model-council"
       tier: 2
     - pattern: "project setup|init|deploy"
@@ -252,7 +288,9 @@ touch .ntxp/highway/routing-log.jsonl
 
 **Purpose:** Collect all platform links into one registry and build the cross-platform identity map.
 
-#### 4A — Initialize Coda registry
+#### 4A — Initialize Coda registry, crosswalk, and sync log
+
+Create all three Coda files. Uses the same six standard platform keys and matches the Coda skill's schema exactly:
 
 ```bash
 cat > .ntxp/coda/registry.yaml << 'YAML'
@@ -279,33 +317,24 @@ coda:
     testing_lab: ""
     permit_portal: ""
   team: []
+YAML
+cat > .ntxp/coda/crosswalk.yaml << 'YAML'
 crosswalk: []
 YAML
+touch .ntxp/coda/sync-log.jsonl
 ```
 
 #### 4B — Pull links from IPDM
 
-If `.ntxp/ipdm/project.yaml` has platform URLs populated, copy them into the Coda registry. IPDM is the write source; Coda is the read-optimized index.
+Read `.ntxp/ipdm/project.yaml` and populate the Coda registry. IPDM is the write source; Coda is the read-optimized index. Authenticate via `.ntxp/ipdm/identity.yaml` (written by ntxp-id). Credentials for any API validation resolve through `ntxp-secrets-vault`.
 
-#### 4C — Initialize crosswalk
+#### 4C — Build crosswalk
 
-```bash
-cat > .ntxp/coda/crosswalk.yaml << 'YAML'
-crosswalk:
-  entities: []
-  # Each entry maps one real-world entity across platforms:
-  # - entity: "Main Project"
-  #   google_drive: "{folder_id}"
-  #   ebuilder: "{project_id}"
-  #   jobtread: "{job_id}"
-  #   building_connected: "{project_id}"
-  #   hubspot: "{deal_id}"
-YAML
-```
+For each connected platform, extract entity IDs and populate `.ntxp/coda/crosswalk.yaml`. This is the **single source of truth** for entity-level cross-platform mapping — no other file duplicates it.
 
 #### 4D — Generate summary card
 
-Print the project access card showing all platforms, their connection status, and the crosswalk summary.
+Print the project access card showing all platforms, their connection status, crosswalk entity count, and credential chain status (ntxp-id + ntxp-secrets-vault).
 
 ---
 
