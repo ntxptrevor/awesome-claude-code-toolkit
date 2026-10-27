@@ -30,6 +30,7 @@ flagged, never invented (no gross SF -> the $/SF check says so).
 """
 import argparse
 import csv
+import hashlib
 import datetime as dt
 import html
 import json
@@ -38,6 +39,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -414,6 +416,9 @@ def extract_json(text):
     return None
 
 
+SEAT_PROMPT_VERSION = "1"   # bump when seat_prompt changes, so cached answers are not reused against a new prompt
+
+
 def seat_prompt(order, problems=None):
     fix = ("\nYour previous reply failed validation. Fix exactly these and return the whole object again:\n- "
            + "\n- ".join(problems)) if problems else ""
@@ -424,6 +429,37 @@ def seat_prompt(order, problems=None):
             + fix + "\n\nWORK ORDER:\n" + json.dumps(order, indent=1))
 
 
+def order_key(order, mid):
+    """Cache key: a seat's answer is reused only while its work order, model and prompt are unchanged."""
+    blob = json.dumps({"order": order, "model": mid, "prompt": SEAT_PROMPT_VERSION}, sort_keys=True)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def run_seat(seat, order, bp, out, timeout):
+    """One seat's answer, validated and saved. Safe to run concurrently: each seat writes only its own files."""
+    mid = SEATS[seat]["model"]
+    problems, raw, attempt, t0, cmd = None, None, 0, dt.datetime.now(dt.timezone.utc), []
+    for attempt in (1, 2):
+        last = out / "raw" / f"{seat}.last.txt"
+        cmd = SEAT_CLI[seat](mid, last)
+        log(f"{seat}: {cmd[0]} {mid} attempt {attempt}")
+        t0 = dt.datetime.now(dt.timezone.utc)
+        r = subprocess.run(cmd, input=seat_prompt(order, problems), capture_output=True, text=True, timeout=timeout)
+        text = last.read_text() if seat == "astra" and last.exists() else r.stdout
+        if r.returncode != 0 and not text.strip():
+            raise SystemExit(f"{seat}: {cmd[0]} failed ({r.returncode}): {r.stderr.strip()[:400]}")
+        raw = extract_json(text)
+        problems = [f"reply contained no JSON object (CLI said: {' '.join(text.split())[:200]!r})"] if raw is None else validate_output(raw, bp)
+        if not problems:
+            break
+        if raw is None and len(text) < 400:     # a short non-JSON reply is an error message (expired login), not a bad answer
+            break
+    raw = raw if isinstance(raw, dict) else {}
+    raw.update(seat=seat, model=mid, generated_at=t0.isoformat(timespec="seconds"),
+               run={"via": cmd[0], "attempts": attempt, "validation_problems": problems or [], "cached": False})
+    return raw, problems or []
+
+
 def cmd_seats(args):
     project, model, sec, facts = load_project(args.project)
     out = model / "ignition"
@@ -431,34 +467,32 @@ def cmd_seats(args):
     if not bp:
         sys.exit("no blueprint.json: run 'ignition.py blueprint' first")
     (out / "raw").mkdir(exist_ok=True)
-    for seat in ([args.only] if args.only else list(SEATS)):
+    seats = [args.only] if args.only else list(SEATS)
+    todo = []
+    for seat in seats:
         order = load_json(out / "work-orders" / f"{seat}.json")
         if order is None:
             sys.exit(f"missing work order for {seat}")
         if any(b.split()[0] in json.dumps(order.get("seat", "")).lower() for b in BLOCKED_SEATS):
             sys.exit(f"{seat}: refusing to send; seat is blocked for owner/bid/pricing content")
-        mid = SEATS[seat]["model"]
-        problems, raw = None, None
-        for attempt in (1, 2):
-            last = out / "raw" / f"{seat}.last.txt"
-            cmd = SEAT_CLI[seat](mid, last)
-            log(f"{seat}: {cmd[0]} {mid} attempt {attempt}")
-            t0 = dt.datetime.now(dt.timezone.utc)
-            r = subprocess.run(cmd, input=seat_prompt(order, problems), capture_output=True, text=True, timeout=args.timeout)
-            text = last.read_text() if seat == "astra" and last.exists() else r.stdout
-            if r.returncode != 0 and not text.strip():
-                sys.exit(f"{seat}: {cmd[0]} failed ({r.returncode}): {r.stderr.strip()[:400]}")
-            raw = extract_json(text)
-            problems = [f"reply contained no JSON object (CLI said: {' '.join(text.split())[:200]!r})"] if raw is None else validate_output(raw, bp)
-            if not problems:
-                break
-            if raw is None and len(text) < 400:     # a short non-JSON reply is an error message (expired login), not a bad answer
-                break
-        raw = raw if isinstance(raw, dict) else {}
-        raw.update(seat=seat, model=mid, generated_at=t0.isoformat(timespec="seconds"),
-                   run={"via": cmd[0], "attempts": attempt, "validation_problems": problems or []})
-        write_json(out / "raw" / f"{seat}.json", raw)
-        log(f"{seat}: saved raw/{seat}.json ({len(raw.get('divisions') or [])} divisions, {len(problems or [])} validation problems)")
+        key = order_key(order, SEATS[seat]["model"])
+        cached = None if args.no_cache else load_json(out / "raw" / f"{seat}.cache.json")
+        if cached and cached.get("key") == key and cached.get("raw"):
+            cached["raw"].setdefault("run", {})["cached"] = True
+            write_json(out / "raw" / f"{seat}.json", cached["raw"])
+            log(f"{seat}: cache hit, reused the answer for this work order (no model call)")
+            continue
+        todo.append((seat, order, key))
+    # Seats are independent, so run them at the same time: wall-clock time is the slowest seat, not the sum.
+    with ThreadPoolExecutor(max_workers=max(1, len(todo))) as pool:
+        futures = {pool.submit(run_seat, seat, order, bp, out, args.timeout): (seat, key) for seat, order, key in todo}
+        for fut in as_completed(futures):
+            seat, key = futures[fut]
+            raw, problems = fut.result()
+            write_json(out / "raw" / f"{seat}.json", raw)
+            if not problems:      # only a clean answer is worth caching
+                write_json(out / "raw" / f"{seat}.cache.json", {"key": key, "raw": raw})
+            log(f"{seat}: saved raw/{seat}.json ({len(raw.get('divisions') or [])} divisions, {len(problems)} validation problems)")
 
 
 def good_items(raw):
@@ -1097,6 +1131,28 @@ def selftest():
     assert any("work area" in c for c in pr3.get("caveats", [])), pr3
     assert extract_json('Sure!\n```json\n{"a": {"b": [1, 2]}, "c": "}"}\n```\nDone') == {"a": {"b": [1, 2]}, "c": "}"}
     assert extract_json("no json here") is None and extract_json('{"broken": ') is None
+    # seats: cache hit, then a changed work order re-runs, all without a real model call
+    calls = []
+    real_run = globals()["run_seat"]
+    def fake_run(seat, order, bp, out_dir, timeout):
+        calls.append(seat)
+        return {"seat": seat, "model": SEATS[seat]["model"], "divisions": [], "run": {"validation_problems": []}}, []
+    globals()["run_seat"] = fake_run
+    try:
+        sns = argparse.Namespace(project=str(tmp), only=None, timeout=5, no_cache=False)
+        cmd_seats(sns)
+        assert sorted(calls) == ["astra", "opus"], calls
+        calls.clear(); cmd_seats(sns)
+        assert calls == [], "unchanged work orders must come from the cache"
+        ob = load_json(tmp / "model" / "ignition" / "work-orders" / "opus.json")
+        ob["divisions"] = (ob.get("divisions") or []) + [{"division": "99"}]
+        write_json(tmp / "model" / "ignition" / "work-orders" / "opus.json", ob)
+        calls.clear(); cmd_seats(sns)
+        assert calls == ["opus"], "a changed work order must be asked again"
+        calls.clear(); cmd_seats(argparse.Namespace(project=str(tmp), only=None, timeout=5, no_cache=True))
+        assert sorted(calls) == ["astra", "opus"], "--no-cache must call every seat"
+    finally:
+        globals()["run_seat"] = real_run
     print("selftest passed:", tmp)
 
 
@@ -1115,6 +1171,7 @@ def main():
         if name == "seats":
             p.add_argument("--only", choices=list(SEATS), help="Run one seat only.")
             p.add_argument("--timeout", type=int, default=1500, help="Seconds per seat call (default 1500).")
+            p.add_argument("--no-cache", action="store_true", help="Ignore saved answers and call every seat again.")
         if name == "itb":
             p.add_argument("--pdf", action="store_true", help="Also write a letter-size PDF (needs PyMuPDF).")
     sub.add_parser("selftest")
