@@ -14,9 +14,33 @@ from pathlib import Path
 DEFAULT_DB_PATH = Path.home() / ".ntxp" / "contacts.db"
 
 
+def _looks_like_url(s: str) -> bool:
+    return s.startswith(("postgres://", "postgresql://"))
+
+
+def db_url(override: str | os.PathLike | None = None) -> str | None:
+    """Resolve a Postgres DSN if one is configured, else None (use SQLite).
+
+    Precedence: an explicit ``postgres://`` override > ``NTXP_DB_URL`` env.
+    A non-URL override (a path) means "use SQLite" and returns None so the
+    caller falls through to :func:`db_path`.
+    """
+    if override and isinstance(override, str) and _looks_like_url(override):
+        return override
+    env = os.environ.get("NTXP_DB_URL")
+    if env and _looks_like_url(env):
+        return env
+    return None
+
+
+def backend(override: str | os.PathLike | None = None) -> str:
+    """Which engine a connection for `override` will use: 'postgres' | 'sqlite'."""
+    return "postgres" if db_url(override) else "sqlite"
+
+
 def db_path(override: str | os.PathLike | None = None) -> Path:
-    """Resolve the DB path: explicit override > NTXP_DB_PATH > default."""
-    if override:
+    """Resolve the SQLite DB path: explicit override > NTXP_DB_PATH > default."""
+    if override and not (isinstance(override, str) and _looks_like_url(override)):
         return Path(override).expanduser()
     env = os.environ.get("NTXP_DB_PATH")
     if env:

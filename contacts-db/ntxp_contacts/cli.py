@@ -8,7 +8,7 @@ from pathlib import Path
 import click
 
 from . import __version__
-from .config import db_path
+from .config import backend, db_path, db_url
 from .db import connect, migrate
 from .db.repository import Repository
 
@@ -35,13 +35,23 @@ def _conn(ctx):
     return connect(ctx.obj.get("db"))
 
 
+def _redact_dsn(dsn: str | None) -> str:
+    """Hide any password in a postgres:// DSN before echoing it."""
+    if not dsn:
+        return "(none)"
+    import re
+    return re.sub(r"(://[^:/@]+):[^@]+@", r"\1:***@", dsn)
+
+
 @main.command()
 @click.pass_context
 def init(ctx):
     """Create the database and apply migrations."""
     conn = _conn(ctx)
     applied = migrate(conn)
-    click.echo(f"DB ready at {db_path(ctx.obj.get('db'))}")
+    ov = ctx.obj.get("db")
+    target = _redact_dsn(db_url(ov)) if backend(ov) == "postgres" else str(db_path(ov))
+    click.echo(f"DB ready ({backend(ov)}) at {target}")
     click.echo(f"Applied migrations: {applied or 'none (up to date)'}")
 
 

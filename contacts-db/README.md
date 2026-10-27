@@ -4,7 +4,9 @@ One **master, de-duplicated contacts database** for all NTXP tools. Consolidates
 contact exports from multiple systems into a single SQLite file that any tool
 can query, update independently, and keep in sync with external CRMs.
 
-- **Single source of truth** — one SQLite DB (`~/.ntxp/contacts.db` by default).
+- **Single source of truth** — one DB: embedded SQLite (`~/.ntxp/contacts.db`)
+  for local/CLI use, or a cloud **PostgreSQL** canonical store (set `NTXP_DB_URL`)
+  that the web UI and sync services share. Same engine, same schema, same CLI.
 - **Idempotent imports** — re-running a source import never duplicates; changed
   rows update in place, unchanged rows are skipped.
 - **De-duplication with provenance** — people/orgs are matched across sources;
@@ -20,9 +22,37 @@ can query, update independently, and keep in sync with external CRMs.
 ## Install
 
 ```bash
-pip install -e contacts-db                  # core
-pip install -e "contacts-db[mcp,ocr,dev]"   # + MCP server, OCR, tests
+pip install -e contacts-db                       # core
+pip install -e "contacts-db[mcp,ocr,postgres,dev]"  # + MCP, OCR, Postgres, tests
 ```
+
+## Backends: local SQLite vs. cloud PostgreSQL
+
+The store is **dual-target**. By default it uses an embedded SQLite file. Point
+it at Postgres by setting `NTXP_DB_URL` (precedence: a `postgres://` value passed
+to `--db` or the API > `NTXP_DB_URL` > SQLite via `NTXP_DB_PATH`/default):
+
+```bash
+export NTXP_DB_URL='postgresql://ntxp:••••@db.internal:5432/ntxp_contacts'
+ntxp init         # applies the Postgres schema (0001_init.postgres.sql)
+ntxp stats
+```
+
+Everything else is identical — imports, dedup, FTS search, prune, and sync all
+run unchanged. Under the hood the repository is authored in the SQLite idiom and
+a thin translator rewrites it for Postgres (placeholders, `datetime('now')`,
+`GROUP_CONCAT`→`string_agg`, identity-key `RETURNING`), and full-text search uses
+a generated `tsvector` + GIN index in place of FTS5.
+
+**Deploying the cloud canonical DB (Hostinger VPS):** provision PostgreSQL on the
+existing VPS (near-zero marginal cost, private, reliable), create a database and
+a least-privilege role, then run `ntxp init` once with `NTXP_DB_URL` set to that
+DSN. The web UI and the sync services read/write the same database. Keep the DSN
+in the NTXP secrets vault — never commit it.
+
+> Run the Postgres-backend tests against a reachable instance with
+> `NTXP_TEST_PG_URL=<dsn> pytest tests/test_postgres.py` (they're skipped
+> otherwise).
 
 ## Quick start
 
