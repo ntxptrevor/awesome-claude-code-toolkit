@@ -29,6 +29,7 @@ pip install -e "contacts-db[mcp,ocr,dev]"   # + MCP server, OCR, tests
 ```bash
 ntxp init                                   # create DB + run migrations
 ntxp import all --all /path/to/source/files # load every spreadsheet source
+ntxp fastimport tips /path/to/TipsMembers.csv  # DuckDB-accelerated bulk import (~25x faster)
 ntxp stats                                  # entity counts + per-source provenance
 ntxp query "Vaden"                          # full-text search
 ntxp export --format csv --out contacts.csv
@@ -58,6 +59,22 @@ ntxp import cjp_pdf cjp.jsonl                     # routes rows into staging
 ntxp staging list                                 # review
 ntxp staging promote --all-above 0.9              # promote high-confidence rows
 ```
+
+## Accelerated import (DuckDB engine)
+
+`ntxp fastimport <source> <file>` is a bulk-load path modeled on
+[JEV-T](https://github.com/IASols/jevt): an embedded **DuckDB** engine reads the
+file directly (CSV/TSV/gzip native, XLSX via the `excel` extension), normalizes
+every field in **one vectorized SQL pass** (phones → E.164, emails, ZIP repair,
+float-ID cleanup, name/org normalization, content hash), and writes to SQLite
+**set-based** instead of row-by-row. Unknown sources get an **auto-detected
+column mapping** (`fast/mapping.py`), so a new file needs a mapping, not a loader.
+
+Measured ~**26× faster** than the careful `import` path (28k rows: ~2.7s vs
+~70s), and idempotent (re-running skips unchanged rows via `source_records`). It
+covers the **deterministic** resolution (exact email / org-name / native-id);
+the careful `import` path remains for fuzzy near-duplicate review. Install with
+the `[fast]` extra (adds `duckdb`).
 
 ## Architecture
 
