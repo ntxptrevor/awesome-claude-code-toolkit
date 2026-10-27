@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.0"]
+fast = ["duckdb>=1.0"]
 ocr = ["pytesseract>=0.3", "pdf2image>=1.17", "Pillow>=10.0"]
 dev = ["pytest>=7.0"]
 
