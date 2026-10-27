@@ -52,9 +52,13 @@ class SyncEngine:
 
     def _plan_push(self) -> list[dict]:
         seen: dict[tuple[str, int], dict] = {}
+        echo = f"pull:{self.system}"
         for ch in self.pending_changes():
             key = (ch["entity_type"], ch["entity_id"])
             if ch["entity_type"] != "contact":
+                continue
+            # Don't push a change straight back to the system it was pulled from.
+            if ch["origin"] == echo:
                 continue
             rec = self.repo.get_contact(ch["entity_id"])
             if not rec or rec.get("is_deleted"):

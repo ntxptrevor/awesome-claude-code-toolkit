@@ -111,6 +111,24 @@ def build_server(db_override: str | None = None):
         SyncEngine(conn, system).record_result(contact_id, external_id, remote_hash)
         return json.dumps({"ok": True})
 
+    @mcp.tool()
+    def reconcile_plan(system: str, records: list[dict]) -> str:
+        """Delta plan (read-only) for records pulled from SYSTEM. Each record is
+        a dict with an 'external_id' (or 'id'). Classifies every record as
+        create/link/update/conflict/unchanged against the canonical store and
+        lists conflicting fields. Lightfield is the canonical hub; other systems
+        reconcile back to it. No writes."""
+        from .sync.reconcile import reconcile
+        return json.dumps(reconcile(_conn(), system, list(records), apply=False), default=str)
+
+    @mcp.tool()
+    def reconcile_apply(system: str, records: list[dict]) -> str:
+        """Apply records pulled from SYSTEM into the canonical DB (idempotent,
+        de-duplicating, linking external ids). Writes ONLY to the local canonical
+        store — never to the remote CRM. Returns a counts summary."""
+        from .sync.reconcile import reconcile
+        return json.dumps(reconcile(_conn(), system, list(records), apply=True), default=str)
+
     return mcp
 
 

@@ -120,11 +120,35 @@ through the MCP server's `sync_plan` / `record_sync_result` tools. Conflict
 policy is field-level last-write-wins with a configurable `master_wins`
 allowlist so NTXP-curated fields are never clobbered.
 
+### Delta reconciliation (Lightfield-canonical hub)
+
+**Lightfield is the canonical first source** (`config.CANONICAL_SOURCE`): every
+system reconciles back to it. Adapters ship for **Lightfield, JobTread,
+QuickBooks, BuildingConnected** (and Quo). The agent pulls records from a system
+(via its MCP/REST tool), dumps them to JSON, then:
+
+```bash
+ntxp reconcile --system jobtread pulled.json            # read-only delta plan
+ntxp reconcile --system jobtread pulled.json --apply    # enrich canonical DB
+```
+
+or, over MCP, the `reconcile_plan` / `reconcile_apply` tools. The plan classifies
+each record as **create / link / update / conflict / unchanged** and lists the
+exact fields that disagree with canonical. It's **change-only**: a record whose
+remote payload hash already matches the stored link is skipped. `apply` writes
+**only to the local canonical store** — never to the remote CRM — linking
+`external_ids` and recording provenance. Applied pulls are tagged
+`pull:<system>` in the change-log, so they **fan out** to the *other* systems'
+push plans but never **echo** back to the system they came from. Field conflicts
+are surfaced for review; lower-ranked systems never overwrite a Lightfield value
+(`config.SYSTEM_PRECEDENCE`).
+
 ## Configuration
 
 | Env var | Purpose | Default |
 |---|---|---|
-| `NTXP_DB_PATH` | DB file location | `~/.ntxp/contacts.db` |
+| `NTXP_DB_PATH` | SQLite DB file location | `~/.ntxp/contacts.db` |
+| `NTXP_DB_URL` | PostgreSQL DSN (cloud canonical store); overrides SQLite | _(unset)_ |
 
 ## Tests
 

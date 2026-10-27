@@ -315,6 +315,31 @@ def sync_cmd(ctx, direction, system, dry_run, plan_out):
         click.echo("Live sync requires the MCP-mediated executor; see README.", err=True)
 
 
+@main.command("reconcile")
+@click.option("--system", required=True,
+              help="Source system: lightfield|jobtread|quickbooks|buildingconnected|quo")
+@click.argument("payloads", type=click.Path(exists=True))
+@click.option("--apply", "do_apply", is_flag=True,
+              help="Apply into the canonical DB (local write only). Default: plan.")
+@click.pass_context
+def reconcile_cmd(ctx, system, payloads, do_apply):
+    """Reconcile records pulled from SYSTEM into the canonical store.
+
+    PAYLOADS is a JSON file: a list of record dicts (each with an 'external_id'
+    or 'id'), as dumped by the agent after pulling via that system's MCP/REST.
+    Lightfield is the canonical hub; others reconcile back to it. Planning is
+    read-only; --apply writes only to the local canonical DB, never to the CRM.
+    """
+    from .sync.reconcile import reconcile as _reconcile
+    conn = _conn(ctx)
+    migrate(conn)
+    data = json.loads(Path(payloads).read_text())
+    if not isinstance(data, list):
+        data = data.get("records") or data.get("items") or [data]
+    result = _reconcile(conn, system, data, apply=do_apply)
+    click.echo(json.dumps(result, indent=2, default=str))
+
+
 @main.command("mcp-serve")
 @click.pass_context
 def mcp_serve(ctx):

@@ -59,6 +59,152 @@ class QuoAdapter:
         }
 
 
+def _first(d: dict, *keys):
+    for k in keys:
+        v = d.get(k)
+        if v:
+            return v
+    return None
+
+
+def _emails_phones(rec: CanonicalRecord, emails, phones) -> None:
+    from .. import normalize as N
+    for e in emails:
+        em = N.normalize_email(e)
+        if em:
+            rec.emails.append(Email(email=em, email_norm=em))
+    for ph in phones:
+        if ph:
+            rec.phones.append(Phone(phone_raw=str(ph), phone_e164=N.normalize_phone(str(ph))))
+
+
+def _finish_person(rec: CanonicalRecord, system: str) -> CanonicalRecord:
+    from .. import normalize as N
+    rec.full_name = rec.full_name or " ".join(
+        x for x in (rec.first_name, rec.last_name) if x) or None
+    rec.name_norm = N.name_norm(rec.first_name, rec.last_name, rec.full_name)
+    rec.org_name_norm = N.org_name_norm(rec.org_name or "") or None
+    rec.tags.append(Tag("source", system))
+    return rec
+
+
+@register_adapter
+class JobTreadAdapter:
+    """JobTread — construction CRM/ERP. Transport: mcp (the `JobTread.query`
+    GraphQL-style tool). Translate-only here; the agent runs the MCP calls."""
+    system = "jobtread"
+    transport = "mcp"
+
+    def pull(self, since):  # pragma: no cover - MCP-mediated
+        raise NotImplementedError("JobTread pull is performed by the agent via MCP (JobTread.query).")
+
+    def push(self, batch):  # pragma: no cover - MCP-mediated
+        raise NotImplementedError("JobTread push is performed by the agent via MCP (JobTread.query).")
+
+    def to_canonical(self, remote: RemoteRecord) -> CanonicalRecord:
+        p = remote.payload
+        rec = CanonicalRecord(source=self.system, source_pk=remote.external_id, raw=p)
+        rec.first_name = _first(p, "firstName", "first_name")
+        rec.last_name = _first(p, "lastName", "last_name")
+        rec.full_name = _first(p, "name", "fullName")
+        rec.title = _first(p, "title", "role")
+        rec.org_name = _first(p, "company", "organization", "account", "accountName")
+        _emails_phones(
+            rec,
+            p.get("emails") or ([p["email"]] if p.get("email") else []),
+            p.get("phones") or ([_first(p, "phone", "phoneNumber")] if _first(p, "phone", "phoneNumber") else []),
+        )
+        return _finish_person(rec, self.system)
+
+    def from_canonical(self, rec: dict, external_id: str | None) -> dict:
+        return {
+            "name": rec.get("full_name"),
+            "firstName": rec.get("first_name"),
+            "lastName": rec.get("last_name"),
+            "company": rec.get("org_name"),
+            "email": rec.get("email"),
+            "phone": rec.get("phone"),
+        }
+
+
+@register_adapter
+class QuickBooksAdapter:
+    """QuickBooks Online — Customers/Vendors. Transport: rest (QBO API).
+    Translate-only until QBO OAuth credentials are wired."""
+    system = "quickbooks"
+    transport = "rest"
+
+    def pull(self, since):  # pragma: no cover - needs live creds
+        raise NotImplementedError("Wire QBO OAuth and implement QuickBooks pull.")
+
+    def push(self, batch):  # pragma: no cover - needs live creds
+        raise NotImplementedError("Wire QBO OAuth and implement QuickBooks push.")
+
+    def to_canonical(self, remote: RemoteRecord) -> CanonicalRecord:
+        p = remote.payload
+        rec = CanonicalRecord(source=self.system, source_pk=remote.external_id, raw=p)
+        rec.first_name = _first(p, "GivenName", "first_name")
+        rec.last_name = _first(p, "FamilyName", "last_name")
+        rec.full_name = _first(p, "DisplayName", "FullyQualifiedName")
+        rec.org_name = _first(p, "CompanyName")
+        email = (p.get("PrimaryEmailAddr") or {}).get("Address") if isinstance(p.get("PrimaryEmailAddr"), dict) else p.get("email")
+        phone = (p.get("PrimaryPhone") or {}).get("FreeFormNumber") if isinstance(p.get("PrimaryPhone"), dict) else p.get("phone")
+        _emails_phones(rec, [email] if email else [], [phone] if phone else [])
+        return _finish_person(rec, self.system)
+
+    def from_canonical(self, rec: dict, external_id: str | None) -> dict:
+        out = {
+            "GivenName": rec.get("first_name"),
+            "FamilyName": rec.get("last_name"),
+            "DisplayName": rec.get("full_name"),
+            "CompanyName": rec.get("org_name"),
+        }
+        if rec.get("email"):
+            out["PrimaryEmailAddr"] = {"Address": rec["email"]}
+        if rec.get("phone"):
+            out["PrimaryPhone"] = {"FreeFormNumber": rec["phone"]}
+        return out
+
+
+@register_adapter
+class BuildingConnectedAdapter:
+    """Autodesk BuildingConnected — Pro / Bid Board Pro contacts & users.
+    Transport: mcp (the `bc_*` tools). Translate-only here."""
+    system = "buildingconnected"
+    transport = "mcp"
+
+    def pull(self, since):  # pragma: no cover - MCP-mediated
+        raise NotImplementedError("BuildingConnected pull is performed by the agent via MCP (bc_* tools).")
+
+    def push(self, batch):  # pragma: no cover - MCP-mediated
+        raise NotImplementedError("BuildingConnected push is performed by the agent via MCP (bc_* tools).")
+
+    def to_canonical(self, remote: RemoteRecord) -> CanonicalRecord:
+        p = remote.payload
+        rec = CanonicalRecord(source=self.system, source_pk=remote.external_id, raw=p)
+        rec.first_name = _first(p, "firstName", "first_name")
+        rec.last_name = _first(p, "lastName", "last_name")
+        rec.full_name = _first(p, "name", "fullName")
+        rec.title = _first(p, "title", "position")
+        rec.org_name = _first(p, "company", "companyName", "office", "officeName")
+        _emails_phones(
+            rec,
+            p.get("emails") or ([p["email"]] if p.get("email") else []),
+            p.get("phones") or ([_first(p, "phone", "phoneNumber")] if _first(p, "phone", "phoneNumber") else []),
+        )
+        return _finish_person(rec, self.system)
+
+    def from_canonical(self, rec: dict, external_id: str | None) -> dict:
+        return {
+            "name": rec.get("full_name"),
+            "firstName": rec.get("first_name"),
+            "lastName": rec.get("last_name"),
+            "company": rec.get("org_name"),
+            "email": rec.get("email"),
+            "phone": rec.get("phone"),
+        }
+
+
 @register_adapter
 class LightfieldAdapter:
     """Lightfield CRM — reachable only via interactive MCP tools.

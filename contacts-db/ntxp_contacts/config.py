@@ -73,5 +73,28 @@ SOURCE_TRUST = {
 # Fields where the local master always wins over a remote CRM value.
 MASTER_WINS_FIELDS = {"license_no", "certifications"}
 
+# --- Reconciliation hub ------------------------------------------------------
+# Lightfield is the canonical first source: all tools reconcile back to it, and
+# on a field conflict a Lightfield value outranks every other system's. The
+# reconcile orchestrator applies the canonical source before the rest so that
+# gap-filling from lower-ranked systems never pre-empts canonical values.
+CANONICAL_SOURCE = "lightfield"
+
+# Higher rank wins a field conflict (used by the reconcile planner to decide
+# which side a disagreement should resolve toward, and to flag the other).
+SYSTEM_PRECEDENCE = {
+    "lightfield": 100,     # canonical
+    "jobtread": 60,
+    "quickbooks": 55,
+    "buildingconnected": 50,
+    "quo": 40,
+    # bundled spreadsheet/import sources rank below live CRMs
+    "approved_subs": 30,
+    "buildingconnectd": 28,
+    "tips": 20,
+    "luncheon": 15,
+    "cjp_pdf": 10,
+}
+
 # Default country region for phone parsing.
 DEFAULT_PHONE_REGION = "US"

@@ -19,7 +19,9 @@ from ntxp_contacts.db import connect, migrate
 from ntxp_contacts.db.repository import Repository
 from ntxp_contacts.loaders.base import import_records
 from ntxp_contacts.model import CanonicalRecord, Address, Email, Phone, Tag
+from ntxp_contacts.sync.base import RemoteRecord
 from ntxp_contacts.sync.engine import SyncEngine
+from ntxp_contacts.sync.reconcile import Reconciler
 
 
 class _FakeLoader:
@@ -123,3 +125,16 @@ def test_sync_high_water(conn):
     cid = plan[0]["entity_id"]
     eng.record_result(cid, "JT-123", plan[0]["payload_hash"])
     assert eng.plan("push") == []  # nothing pending after recording
+
+
+def test_reconcile_delta_on_pg(conn):
+    rr = RemoteRecord(external_id="JT1", payload={
+        "firstName": "Eric", "lastName": "Vaden",
+        "company": "Vaden Drywall", "email": "eric@vaden.com"})
+    jt = Reconciler(conn, "jobtread")
+    assert jt.plan([rr])["summary"]["created"] == 1
+    jt.apply([rr])
+    assert Reconciler(conn, "jobtread").plan([rr])["summary"]["unchanged"] == 1
+    # echo guard + fan-out hold on Postgres too
+    assert SyncEngine(conn, "jobtread").plan("push") == []
+    assert SyncEngine(conn, "quickbooks").plan("push")[0]["op"] == "create"
