@@ -138,3 +138,21 @@ def test_reconcile_delta_on_pg(conn):
     # echo guard + fan-out hold on Postgres too
     assert SyncEngine(conn, "jobtread").plan("push") == []
     assert SyncEngine(conn, "quickbooks").plan("push")[0]["op"] == "create"
+
+
+def test_grade_on_pg(conn):
+    from ntxp_contacts.qualify import Grader
+    Reconciler(conn, "lightfield").apply([RemoteRecord(
+        external_id="LF1",
+        payload={"first_name": "Eric", "last_name": "Vaden",
+                 "company": "Vaden Drywall", "email": "eric@vaden.com"})])
+    cid = conn.execute(
+        "SELECT contact_id FROM contacts WHERE is_deleted=0 LIMIT 1").fetchone()["contact_id"]
+    assert Grader(conn).run()["graded"] == 1
+    g = Grader(conn).get_grade(cid)
+    assert g["is_exposed"] == 1 and g["sources"] == 1
+    # outdated gate on Postgres (timestamptz freshest_at)
+    conn.execute("UPDATE source_records SET last_seen_at='2016-01-01 00:00:00+00' WHERE contact_id=?", (cid,))
+    conn.commit()
+    Grader(conn).run()
+    assert Grader(conn).get_grade(cid)["is_exposed"] == 0

@@ -340,6 +340,23 @@ def reconcile_cmd(ctx, system, payloads, do_apply):
     click.echo(json.dumps(result, indent=2, default=str))
 
 
+@main.command("qualify")
+@click.option("--apply/--plan", "do_apply", default=True,
+              help="--apply writes grades (default); --plan computes without writing.")
+@click.pass_context
+def qualify_cmd(ctx, do_apply):
+    """Grade every contact (JEV qualification) and set the exposure/sync gate.
+
+    Scores each contact on source trust, recency, corroboration and
+    distance-from-person; outdated/low-grade contacts keep all their references
+    but are flagged is_exposed=0 / is_synced=0 so the UI and sync hold them back.
+    """
+    from .qualify import Grader
+    conn = _conn(ctx)
+    migrate(conn)
+    click.echo(json.dumps(Grader(conn).run(apply=do_apply), indent=2, default=str))
+
+
 @main.command("mcp-serve")
 @click.pass_context
 def mcp_serve(ctx):

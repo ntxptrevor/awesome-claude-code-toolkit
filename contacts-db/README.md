@@ -143,6 +143,22 @@ push plans but never **echo** back to the system they came from. Field conflicts
 are surfaced for review; lower-ranked systems never overwrite a Lightfield value
 (`config.SYSTEM_PRECEDENCE`).
 
+### Qualification & grading (JEV)
+
+`ntxp qualify` grades every contact on four axes — **source** trust
+(`SYSTEM_PRECEDENCE`), **recency** (age of the freshest observation), **corroboration**
+(how many independent sources agree), and **distance-from-person** (self/CRM near,
+event lists mid, OCR scans far) — into a probability grade `[0,1]` and an A/B/C/D
+band stored in `contact_grade`. Nothing is dropped: outdated or weak contacts keep
+every reference but are flagged `is_exposed = 0` / `is_synced = 0`, so the UI hides
+them and the push planner skips them. Run it after imports/reconciliation (e.g. in
+the nightly job); also available as the `qualify_contacts` / `get_grade` MCP tools.
+
+```bash
+ntxp qualify            # grade + set the exposure/sync gate
+ntxp qualify --plan     # compute and report without writing
+```
+
 ## Configuration
 
 | Env var | Purpose | Default |

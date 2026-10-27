@@ -129,6 +129,22 @@ def build_server(db_override: str | None = None):
         from .sync.reconcile import reconcile
         return json.dumps(reconcile(_conn(), system, list(records), apply=True), default=str)
 
+    @mcp.tool()
+    def qualify_contacts(apply: bool = True) -> str:
+        """Grade every contact (JEV qualification) on source trust, recency,
+        corroboration and distance-from-person, and set the exposure/sync gate
+        (outdated/low-grade contacts are kept but flagged is_exposed=0). apply
+        writes the grades; apply=False just returns the summary."""
+        from .qualify import Grader
+        return json.dumps(Grader(_conn()).run(apply=apply), default=str)
+
+    @mcp.tool()
+    def get_grade(contact_id: int) -> str:
+        """The computed quality grade for one contact (grade, band, sources,
+        age, exposure/sync flags, and a short reason)."""
+        from .qualify import Grader
+        return json.dumps(Grader(_conn()).get_grade(contact_id), default=str)
+
     return mcp
 
 
