@@ -1,0 +1,226 @@
+activation_manifest:
+  version: "1.0"
+  description: "NTXP skill activation chain — defines triggers, handoffs, and consolidation map"
+
+  # ============================================================
+  # CONSOLIDATED LOCAL SKILLS (33 → 15)
+  # ============================================================
+
+  local_skills:
+    # --- NTXP Core (keep all 4) ---
+    - name: auto-deploy-claude-flow
+      triggers_on: ["project setup", "init", "deploy", "bootstrap", "new repo"]
+      hands_off_to: ["ntxp-ipdm", "ntxp-highway"]
+      activation: automatic
+
+    - name: ntxp-ipdm
+      triggers_on: ["project data", "project record", "platform lookup", "IPDM"]
+      hands_off_to: ["ntxp-project-coda", "ntxp-highway"]
+      activation: automatic
+
+    - name: ntxp-highway
+      triggers_on: ["route", "which skill", "task routing", "multi-skill"]
+      hands_off_to: ["*"]  # routes to any skill
+      activation: automatic
+
+    - name: ntxp-project-coda
+      triggers_on: ["project links", "platform crosswalk", "handoff", "access map"]
+      hands_off_to: ["ntxp-ipdm"]
+      activation: automatic
+
+    # --- Merged: AgentDB (5 → 1) ---
+    - name: agentdb
+      replaces: ["agentdb-advanced", "agentdb-learning", "agentdb-memory-patterns", "agentdb-optimization", "agentdb-vector-search"]
+      triggers_on: ["vector search", "agent memory", "HNSW", "quantization", "RL plugin", "AgentDB"]
+      hands_off_to: ["reasoningbank"]
+      activation: on-demand
+
+    # --- Merged: GitHub (5 → 2) ---
+    - name: github-dev-ops
+      replaces: ["github-code-review", "github-multi-repo", "github-workflow-automation"]
+      triggers_on: ["code review", "PR review", "CI/CD", "GitHub Actions", "multi-repo sync"]
+      hands_off_to: ["github-project-ops"]
+      activation: on-demand
+
+    - name: github-project-ops
+      replaces: ["github-project-management", "github-release-management"]
+      triggers_on: ["project board", "release", "sprint", "changelog", "deployment"]
+      hands_off_to: ["github-dev-ops"]
+      activation: on-demand
+
+    # --- Merged: v3 (9 → 2) ---
+    - name: v3-architecture
+      replaces: ["v3-ddd-architecture", "v3-core-implementation", "v3-integration-deep", "v3-mcp-optimization", "v3-security-overhaul"]
+      triggers_on: ["v3 architecture", "DDD", "bounded context", "ADR", "MCP transport", "security overhaul"]
+      hands_off_to: ["v3-operations"]
+      activation: on-demand
+
+    - name: v3-operations
+      replaces: ["v3-cli-modernization", "v3-memory-unification", "v3-performance-optimization", "v3-swarm-coordination"]
+      triggers_on: ["v3 CLI", "memory unification", "performance benchmark", "swarm coordination", "15-agent"]
+      hands_off_to: ["v3-architecture"]
+      activation: on-demand
+
+    # --- Merged: ReasoningBank (2 → 1) ---
+    - name: reasoningbank
+      replaces: ["reasoningbank-agentdb", "reasoningbank-intelligence"]
+      triggers_on: ["adaptive learning", "reasoning", "trajectory", "experience replay", "meta-cognitive"]
+      hands_off_to: ["agentdb"]
+      activation: on-demand
+
+    # --- Merged: Swarm (2 → 1) ---
+    - name: swarm
+      replaces: ["swarm-advanced", "swarm-orchestration"]
+      triggers_on: ["swarm", "multi-agent", "mesh topology", "hierarchical swarm", "parallel agents"]
+      hands_off_to: ["ntxp-highway"]
+      activation: on-demand
+
+    # --- Keep as-is (5) ---
+    - name: hooks-automation
+      triggers_on: ["hooks", "pre-task", "post-task", "session hooks", "auto-format"]
+      hands_off_to: []
+      activation: on-demand
+
+    - name: pair-programming
+      triggers_on: ["pair program", "driver/navigator", "TDD session", "debug session"]
+      hands_off_to: []
+      activation: on-demand
+
+    - name: skill-builder
+      triggers_on: ["create skill", "new skill", "skill template", "SKILL.md"]
+      hands_off_to: []
+      activation: on-demand
+
+    - name: sparc-methodology
+      triggers_on: ["SPARC", "specification", "pseudocode", "architecture phase", "refinement"]
+      hands_off_to: []
+      activation: on-demand
+
+    - name: stream-chain
+      triggers_on: ["stream chain", "JSON pipeline", "data transform", "sequential workflow"]
+      hands_off_to: []
+      activation: on-demand
+
+    - name: verification-quality
+      triggers_on: ["truth score", "quality check", "verification", "rollback", "accuracy"]
+      hands_off_to: []
+      activation: on-demand
+
+  # ============================================================
+  # ANTHROPIC-SKILLS CONSOLIDATION RECOMMENDATIONS
+  # (cannot edit directly — document for future merge)
+  # ============================================================
+
+  anthropic_skills_consolidation:
+    estimating:
+      current_count: 19
+      target_count: 4
+      groups:
+        - name: "ntxp-estimating-core"
+          merges: ["estimating", "ntxp-estimating-phase-1-intake", "ntxp-estimating-phase2", "line-item-estimate", "joc-trade-estimator", "ntxp-third-party-estimate-cover-letter"]
+          trigger: "estimate|price|cost|proposal"
+        - name: "ntxp-rsmeans"
+          merges: ["rsmeans-estimate-generator", "rsmeans-line-item-estimator", "rsmeans-pricebook", "rsmeans-upb-intelligence", "rsmeans-estimate-lessons-learned", "bni-econverge-expert", "bni-econverge-pricebook", "upb-crosswalk"]
+          trigger: "RSMeans|BNI|unit price book|pricebook|UPB"
+        - name: "ntxp-takeoff"
+          merges: ["ntxp-quantity-takeoff", "demolition-takeoff", "ifc-qto-extraction", "scope-gap-sentinel"]
+          trigger: "takeoff|quantity|measure|scope gap|IFC"
+        - name: "ntxp-rom"
+          keeps: ["rom-budget-skill", "ddc-open-construction-estimate"]
+          trigger: "ROM|rough order|ballpark|preliminary budget"
+
+    project_mgmt:
+      current_count: 8
+      target_count: 3
+      groups:
+        - name: "ntxp-folders"
+          merges: ["ntxp-folder-system", "ntxp-folder-structure"]
+          note: "Keep ntxp-folder-system, deprecate ntxp-folder-structure (duplicate)"
+        - name: "ntxp-dashboards"
+          merges: ["ntxp-dashboard-bidcommand", "oac-dashboard", "project-kpi-dashboard", "project-command-center"]
+          trigger: "dashboard|KPI|OAC|bid command"
+        - name: "ntxp-project-core"
+          keeps: ["canonical-project-model", "owner-insite-records", "ntxp-project-itb-brief"]
+
+    connectors:
+      current_count: 4
+      target_count: 3
+      groups:
+        - name: "lightfield-crm"
+          merges: ["lightfield-crm", "lightfield-crm-connector-skill"]
+          note: "Keep lightfield-crm, deprecate connector-skill (duplicate)"
+
+  # ============================================================
+  # HANDOFF CHAINS
+  # ============================================================
+
+  handoff_chains:
+    new_project:
+      description: "Full project initialization sequence"
+      steps:
+        - skill: "auto-deploy-claude-flow"
+          action: "Initialize claude-flow + NTXP stack"
+        - skill: "ntxp-id (plugin)"
+          action: "Authenticate session"
+        - skill: "ntxp-ipdm"
+          action: "Create project record"
+        - skill: "ntxp-folder-system (anthropic)"
+          action: "Create Drive folders"
+          parallel: true
+        - skill: "ntxp-project-coda"
+          action: "Collect platform links + build crosswalk"
+        - skill: "ntxp-model-council (anthropic)"
+          action: "Configure model routing"
+        - skill: "ntxp-highway"
+          action: "Activate routing table"
+
+    estimate_workflow:
+      description: "End-to-end estimating pipeline"
+      steps:
+        - skill: "ntxp-ipdm"
+          action: "Load project context (trades, contract type)"
+        - skill: "ntxp-highway"
+          action: "Route to appropriate estimating skill"
+        - skill: "ntxp-estimating (anthropic)"
+          action: "Produce estimate"
+        - skill: "ntxp-project-coda"
+          action: "Register estimate document link"
+
+    code_review_workflow:
+      description: "PR review with quality gates"
+      steps:
+        - skill: "github-dev-ops"
+          action: "Run AI-powered code review"
+        - skill: "verification-quality"
+          action: "Truth-score findings"
+        - skill: "github-project-ops"
+          action: "Update project board"
+
+  # ============================================================
+  # DELETED SKILLS (replaced by merges above)
+  # ============================================================
+
+  deprecated:
+    - "agentdb-advanced"
+    - "agentdb-learning"
+    - "agentdb-memory-patterns"
+    - "agentdb-optimization"
+    - "agentdb-vector-search"
+    - "github-code-review"
+    - "github-multi-repo"
+    - "github-project-management"
+    - "github-release-management"
+    - "github-workflow-automation"
+    - "v3-cli-modernization"
+    - "v3-core-implementation"
+    - "v3-ddd-architecture"
+    - "v3-integration-deep"
+    - "v3-mcp-optimization"
+    - "v3-memory-unification"
+    - "v3-performance-optimization"
+    - "v3-security-overhaul"
+    - "v3-swarm-coordination"
+    - "reasoningbank-agentdb"
+    - "reasoningbank-intelligence"
+    - "swarm-advanced"
+    - "swarm-orchestration"
