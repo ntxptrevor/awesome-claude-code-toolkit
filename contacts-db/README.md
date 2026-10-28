@@ -198,6 +198,13 @@ Auth modes (`NTXP_MCP_AUTH`): `google` (verify a Workspace token, require
 blue hotlinks, live **Maps** location links, and alternate-info previews whenever
 a message mentions a known contact; `locate_address` returns map links on demand.
 
+### One-way iOS / iPhone contact sync (CardDAV)
+
+A **read-only CardDAV** collection gives a new hire company contacts on day one —
+one-way, nothing writes back, and only **exposed** contacts are emitted (the
+grader's gate). Served at `/carddav` by `ntxp serve-http` (token-gated); add it on
+iOS as a CardDAV account. Offline/one-time: `ntxp vcard-export --out contacts.vcf`.
+
 ### Tool-agnostic context hooks (blue hotlinks)
 
 Any NTXP tool can inject live contact context as **blue hyperlink hotlinks**:

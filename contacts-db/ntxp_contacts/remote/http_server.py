@@ -47,10 +47,21 @@ class AuthMiddleware:
 
 
 def build_http_app(db_override=None):
-    """Return the auth-gated stateless MCP ASGI app (requires the `mcp` extra)."""
+    """Return the auth-gated ASGI app (requires the `mcp` extra): the stateless
+    MCP at /mcp (+ open /health) and the read-only CardDAV collection at
+    /carddav for one-way iOS contact sync."""
     from ..mcp_server import build_server
-    mcp = build_server(db_override, stateless_http=True)
-    return AuthMiddleware(mcp.streamable_http_app())
+    from .carddav import CardDAVApp
+    mcp_app = AuthMiddleware(build_server(db_override, stateless_http=True).streamable_http_app())
+    carddav = CardDAVApp(db_override)
+
+    async def dispatch(scope, receive, send):
+        path = scope.get("path", "") if scope.get("type") == "http" else ""
+        if path.startswith("/carddav") or path == "/.well-known/carddav":
+            return await carddav(scope, receive, send)
+        return await mcp_app(scope, receive, send)
+
+    return dispatch
 
 
 def serve(db_override=None, host: str = "0.0.0.0", port: int = 8080) -> None:

@@ -491,6 +491,23 @@ def mcp_serve(ctx):
     serve(ctx.obj.get("db"))
 
 
+@main.command("vcard-export")
+@click.option("--out", type=click.Path(), default=None, help="Write to a .vcf file.")
+@click.option("--all", "include_all", is_flag=True, help="Include held-back (not-exposed) contacts too.")
+@click.pass_context
+def vcard_export(ctx, out, include_all):
+    """Export exposed contacts as vCards (the one-way iOS feed, offline)."""
+    from .remote.vcard import export_vcards
+    conn = _conn(ctx)
+    migrate(conn)
+    data = export_vcards(conn, exposed_only=not include_all)
+    if out:
+        Path(out).write_text(data, encoding="utf-8")
+        click.echo(f"Wrote {data.count('BEGIN:VCARD')} vCards to {out}")
+    else:
+        click.echo(data)
+
+
 @main.command("serve-http")
 @click.option("--host", default="0.0.0.0")
 @click.option("--port", default=8080, type=int)

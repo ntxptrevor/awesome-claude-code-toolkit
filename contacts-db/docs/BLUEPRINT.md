@@ -29,7 +29,7 @@ JEV grades, enrichment backfills, and a user-facing page + MCP + hooks expose it
 | G/H/I | Enrichment / photos / LinkedIn | DONE | `enrich/*`, `docs/ENRICHMENT.md` |
 | B | Tool-agnostic context hooks | DONE | `context/hotlink.py` |
 | **F1** | **Stateless cloud MCP 2.0 + OAuth + auto-hooks** | DONE (code) · BLOCKED(deploy) | `remote/*`, `hooks/*` |
-| **F2a** | **One-way iOS/iPhone contact sync (CardDAV/vCard)** | TODO | `remote/carddav.py` (to build) |
+| **F2a** | **One-way iOS/iPhone contact sync (CardDAV/vCard)** | DONE (code) · BLOCKED(deploy) | `remote/vcard.py`, `remote/carddav.py` |
 | **F2b** | **Mini model council (JEV + cheap LLMs)** | TODO | `council/` (to build) |
 | **F2c** | **Whitelisted connector middle-layer (Zapier-style)** | TODO | `connectors/` (to build) |
 | M | Mirror to NTXP Forge repo `ntxp-contacts` | BLOCKED(repo access) | scratchpad bundle ready |
@@ -79,7 +79,16 @@ AS) for v1.
 **Blockers to flag (not code):** hosting/deploy to the Hostinger VPS; the Google
 OAuth app (client id/secret, redirect) under ntxpllc.com.
 
-## F2a — One-way iOS/iPhone contact sync  `TODO`
+## F2a — One-way iOS/iPhone contact sync  `DONE (code) · BLOCKED(deploy)`
+
+**Built:** `remote/vcard.py` (vCard 3.0 render + `export_vcards`, exposure-gated),
+`remote/carddav.py` (read-only CardDAV: OPTIONS/PROPFIND/REPORT/GET, token-gated,
+mounted at `/carddav` by `build_http_app`), `ntxp vcard-export` CLI. Validated:
+vCard fields, held-back exclusion, CardDAV multistatus XML + vCard payloads, and
+routing/auth through the full app. **Remaining:** deploy (same host as F1) + issue
+per-user tokens. 65 tests.
+
+### Original plan (for reference)
 
 **Intent.** OAuth establishes a **one-way** (read-only) contact feed so a new
 hire has company contacts on iOS day one.

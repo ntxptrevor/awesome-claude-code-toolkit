@@ -5,6 +5,10 @@ All dates ISO. See `docs/BLUEPRINT.md` for the live status board and resume flag
 ## [Unreleased]
 
 ### Added
+- **F2a — one-way iOS/iPhone contact sync** (`remote/vcard.py`, `remote/carddav.py`):
+  vCard 3.0 rendering (exposure-gated) + a read-only CardDAV collection
+  (OPTIONS/PROPFIND/REPORT/GET) mounted at `/carddav`, token-gated; `ntxp
+  vcard-export` CLI. One-way by design — nothing writes back.
 - **F1 — stateless cloud MCP 2.0 + OAuth + auto-hooks** (`remote/*`, `hooks/*`):
   streamable-HTTP MCP (FastMCP v1, stateless) with a pure-ASGI Bearer-token gate
   (`remote/auth.py`: Google Workspace OAuth / static / none); `remote/maps.py`
