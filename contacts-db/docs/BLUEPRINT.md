@@ -31,7 +31,7 @@ JEV grades, enrichment backfills, and a user-facing page + MCP + hooks expose it
 | **F1** | **Stateless cloud MCP 2.0 + OAuth + auto-hooks** | DONE (code) · BLOCKED(deploy) | `remote/*`, `hooks/*` |
 | **F2a** | **One-way iOS/iPhone contact sync (CardDAV/vCard)** | DONE (code) · BLOCKED(deploy) | `remote/vcard.py`, `remote/carddav.py` |
 | **F2b** | **Mini model council (JEV + cheap LLMs)** | DONE | `council/*`, `docs/COUNCIL.md` |
-| **F2c** | **Whitelisted connector middle-layer (Zapier-style)** | TODO | `connectors/` (to build) |
+| **F2c** | **Whitelisted connector middle-layer (Zapier-style)** | DONE | `connectors/*`, `docs/CONNECTORS.md` |
 | M | Mirror to NTXP Forge repo `ntxp-contacts` | BLOCKED(repo access) | scratchpad bundle ready |
 
 ---
@@ -140,7 +140,16 @@ keys. LLM judges are optional, key-gated, stateless HTTP calls.
 
 **Blockers:** API keys for live LLM testing (framework + JEV path need none).
 
-## F2c — Whitelisted connector middle-layer  `TODO`
+## F2c — Whitelisted connector middle-layer  `DONE`
+
+**Built:** `connectors/base.py` (service allowlist via `NTXP_CONNECTOR_ALLOWLIST`,
+`map_contact` alias mapper, `ingest_contacts` through the resolver/dedup pipeline,
+`PermissionError` on disallowed services — no secrets in repo), `connectors/zapier.py`
+(Zapier MCP as the broker). `ntxp connector-import` CLI; `connector_import` MCP
+tool; `docs/CONNECTORS.md`. 75 tests. **Live Zapier pulls + push-back are
+agent-driven/approval-gated** (outward-facing).
+
+### Original plan (for reference)
 
 **Intent.** A Zapier-like whitelisted layer so users securely connect accounts to
 scrape / add / sync contacts across many services.

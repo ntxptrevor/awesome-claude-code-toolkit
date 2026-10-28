@@ -149,6 +149,18 @@ def build_server(db_override: str | None = None, stateless_http: bool = False):
         return json.dumps(Grader(_conn()).run(apply=apply), default=str)
 
     @mcp.tool()
+    def connector_import(service: str, contacts: list[dict]) -> str:
+        """Ingest contacts a connected service returned into the canonical store
+        (idempotent, de-duplicating). `service` must be on the connector
+        allowlist (Zapier is the recommended broker; secrets stay in Zapier).
+        Returns counts, or an error if the service is not allowlisted."""
+        from .connectors import ingest_contacts
+        try:
+            return json.dumps(ingest_contacts(_conn(), service, list(contacts)), default=str)
+        except PermissionError as exc:
+            return json.dumps({"error": str(exc)})
+
+    @mcp.tool()
     def council_decide(task: dict) -> str:
         """Decide a qualification task via the model council — JEV (free,
         deterministic) decides, escalating to cheap LLM judges (DeepSeek/Grok/

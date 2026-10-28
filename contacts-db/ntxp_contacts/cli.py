@@ -382,6 +382,29 @@ def qualify_cmd(ctx, do_apply):
     click.echo(json.dumps(Grader(conn).run(apply=do_apply), indent=2, default=str))
 
 
+@main.command("connector-import")
+@click.option("--service", required=True, help="Source platform (must be allowlisted).")
+@click.argument("contactsfile", type=click.Path(exists=True))
+@click.pass_context
+def connector_import_cmd(ctx, service, contactsfile):
+    """Ingest contacts a connected service returned (via Zapier or its own OAuth).
+
+    CONTACTSFILE is JSON: a list of raw contact dicts the agent fetched.
+    Allowlist-gated (NTXP_CONNECTOR_ALLOWLIST).
+    """
+    from .connectors import ingest_contacts
+    conn = _conn(ctx)
+    migrate(conn)
+    rows = json.loads(Path(contactsfile).read_text())
+    if not isinstance(rows, list):
+        rows = rows.get("contacts") or rows.get("records") or [rows]
+    try:
+        click.echo(json.dumps(ingest_contacts(conn, service, rows), indent=2, default=str))
+    except PermissionError as exc:
+        click.echo(json.dumps({"error": str(exc)}))
+        raise SystemExit(1)
+
+
 @main.command("council")
 @click.argument("taskfile", type=click.Path(exists=True))
 @click.option("--escalate", type=int, default=1, help="Max LLM judges to consult on escalation.")

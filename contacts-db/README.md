@@ -181,6 +181,18 @@ ntxp qualify            # grade + set the exposure/sync gate
 ntxp qualify --plan     # compute and report without writing
 ```
 
+### Connector middle-layer (Zapier-style)
+
+Users connect their accounts through a **whitelisted** layer (Zapier is the broker
+— its MCP is available) and their contacts flow into the canonical store via the
+normal dedup pipeline. No account secrets touch this repo.
+
+```bash
+ntxp connector-import --service hubspot contacts.json   # allowlist-gated
+```
+
+See [docs/CONNECTORS.md](docs/CONNECTORS.md).
+
 ### Mini model council (near-zero cost)
 
 For contact decisions (which value / which match / which class), `ntxp council`
