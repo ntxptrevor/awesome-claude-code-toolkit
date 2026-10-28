@@ -8,7 +8,7 @@ from pathlib import Path
 import click
 
 from . import __version__
-from .config import db_path
+from .config import backend, db_path, db_url
 from .db import connect, migrate
 from .db.repository import Repository
 
@@ -35,13 +35,23 @@ def _conn(ctx):
     return connect(ctx.obj.get("db"))
 
 
+def _redact_dsn(dsn: str | None) -> str:
+    """Hide any password in a postgres:// DSN before echoing it."""
+    if not dsn:
+        return "(none)"
+    import re
+    return re.sub(r"(://[^:/@]+):[^@]+@", r"\1:***@", dsn)
+
+
 @main.command()
 @click.pass_context
 def init(ctx):
     """Create the database and apply migrations."""
     conn = _conn(ctx)
     applied = migrate(conn)
-    click.echo(f"DB ready at {db_path(ctx.obj.get('db'))}")
+    ov = ctx.obj.get("db")
+    target = _redact_dsn(db_url(ov)) if backend(ov) == "postgres" else str(db_path(ov))
+    click.echo(f"DB ready ({backend(ov)}) at {target}")
     click.echo(f"Applied migrations: {applied or 'none (up to date)'}")
 
 
@@ -305,12 +315,248 @@ def sync_cmd(ctx, direction, system, dry_run, plan_out):
         click.echo("Live sync requires the MCP-mediated executor; see README.", err=True)
 
 
+@main.command("reconcile")
+@click.option("--system", required=True,
+              help="Source system: lightfield|jobtread|quickbooks|buildingconnected|quo")
+@click.argument("payloads", type=click.Path(exists=True))
+@click.option("--apply", "do_apply", is_flag=True,
+              help="Apply into the canonical DB (local write only). Default: plan.")
+@click.pass_context
+def reconcile_cmd(ctx, system, payloads, do_apply):
+    """Reconcile records pulled from SYSTEM into the canonical store.
+
+    PAYLOADS is a JSON file: a list of record dicts (each with an 'external_id'
+    or 'id'), as dumped by the agent after pulling via that system's MCP/REST.
+    Lightfield is the canonical hub; others reconcile back to it. Planning is
+    read-only; --apply writes only to the local canonical DB, never to the CRM.
+    """
+    from .sync.reconcile import reconcile as _reconcile
+    conn = _conn(ctx)
+    migrate(conn)
+    data = json.loads(Path(payloads).read_text())
+    if not isinstance(data, list):
+        data = data.get("records") or data.get("items") or [data]
+    result = _reconcile(conn, system, data, apply=do_apply)
+    click.echo(json.dumps(result, indent=2, default=str))
+
+
+@main.command("sweep")
+@click.argument("bundle", type=click.Path(exists=True))
+@click.option("--qualify/--no-qualify", "do_qualify", default=True,
+              help="Re-grade affected contacts after the sweep (default on).")
+@click.pass_context
+def sweep_cmd(ctx, bundle, do_qualify):
+    """Ingest a nightly Google Workspace sweep BUNDLE (JSON) into the canonical DB.
+
+    BUNDLE buckets raw Workspace objects by channel:
+    {"gmail":[...], "gcontacts":[...], "calendar":[...], "drive":[...], "people":[...]}.
+    Collection only — deterministic extraction + dedup; grading runs after.
+    Writes only to the local canonical store (fan-out to connectors happens on
+    the next `ntxp sync push`).
+    """
+    from .collect import sweep as _sweep
+    conn = _conn(ctx)
+    migrate(conn)
+    data = json.loads(Path(bundle).read_text())
+    result = _sweep(conn, data)
+    if do_qualify:
+        from .qualify import Grader
+        result["qualify"] = Grader(conn).run()
+    click.echo(json.dumps(result, indent=2, default=str))
+
+
+@main.command("qualify")
+@click.option("--apply/--plan", "do_apply", default=True,
+              help="--apply writes grades (default); --plan computes without writing.")
+@click.pass_context
+def qualify_cmd(ctx, do_apply):
+    """Grade every contact (JEV qualification) and set the exposure/sync gate.
+
+    Scores each contact on source trust, recency, corroboration and
+    distance-from-person; outdated/low-grade contacts keep all their references
+    but are flagged is_exposed=0 / is_synced=0 so the UI and sync hold them back.
+    """
+    from .qualify import Grader
+    conn = _conn(ctx)
+    migrate(conn)
+    click.echo(json.dumps(Grader(conn).run(apply=do_apply), indent=2, default=str))
+
+
+@main.command("connector-import")
+@click.option("--service", required=True, help="Source platform (must be allowlisted).")
+@click.argument("contactsfile", type=click.Path(exists=True))
+@click.pass_context
+def connector_import_cmd(ctx, service, contactsfile):
+    """Ingest contacts a connected service returned (via Zapier or its own OAuth).
+
+    CONTACTSFILE is JSON: a list of raw contact dicts the agent fetched.
+    Allowlist-gated (NTXP_CONNECTOR_ALLOWLIST).
+    """
+    from .connectors import ingest_contacts
+    conn = _conn(ctx)
+    migrate(conn)
+    rows = json.loads(Path(contactsfile).read_text())
+    if not isinstance(rows, list):
+        rows = rows.get("contacts") or rows.get("records") or [rows]
+    try:
+        click.echo(json.dumps(ingest_contacts(conn, service, rows), indent=2, default=str))
+    except PermissionError as exc:
+        click.echo(json.dumps({"error": str(exc)}))
+        raise SystemExit(1)
+
+
+@main.command("council")
+@click.argument("taskfile", type=click.Path(exists=True))
+@click.option("--escalate", type=int, default=1, help="Max LLM judges to consult on escalation.")
+@click.pass_context
+def council_cmd(ctx, taskfile, escalate):
+    """Decide a qualification task via the model council (JEV free; cheap LLMs on
+    escalation). TASKFILE is JSON: {kind, question, options:[{id,value,grade?}]}."""
+    from .council import decide
+    task = json.loads(Path(taskfile).read_text())
+    click.echo(json.dumps(decide(task, escalate=escalate), indent=2, default=str))
+
+
+@main.command("context")
+@click.argument("query")
+@click.pass_context
+def context_cmd(ctx, query):
+    """Context card (with blue-link HTML) for the best contact match of QUERY."""
+    from .context import HotlinkIndex
+    conn = _conn(ctx)
+    res = Repository(conn).search(query, 1)
+    if not res:
+        click.echo("{}")
+        return
+    cid = res[0].get("contact_id")
+    idx = HotlinkIndex(conn)
+    if cid:
+        click.echo(json.dumps({"card": idx.card(cid), "html": idx.card_html(cid)},
+                              indent=2, default=str))
+    else:
+        click.echo(json.dumps(res[0], indent=2, default=str))
+
+
+@main.command("hotlink")
+@click.argument("textfile", type=click.Path(exists=True))
+@click.pass_context
+def hotlink_cmd(ctx, textfile):
+    """Annotate a text file: wrap known contacts/orgs/emails/phones in blue hotlinks."""
+    from .context import annotate
+    conn = _conn(ctx)
+    click.echo(json.dumps(annotate(conn, Path(textfile).read_text()), indent=2, default=str))
+
+
+@main.group("enrich")
+def enrich_grp():
+    """Backfill missing fields, photos, and LinkedIn via graded candidates."""
+
+
+@enrich_grp.command("detect")
+@click.pass_context
+def enrich_detect_cmd(ctx):
+    """List live contacts missing primary fields (email/phone/address/website/photo/linkedin)."""
+    from .enrich import detect_missing
+    conn = _conn(ctx)
+    migrate(conn)
+    click.echo(json.dumps(detect_missing(conn), indent=2, default=str))
+
+
+@enrich_grp.command("generate")
+@click.option("--extra", type=click.Path(exists=True), default=None,
+              help="JSON list of agent/OSINT candidates to fold in.")
+@click.pass_context
+def enrich_generate_cmd(ctx, extra):
+    """Run resolvers for contacts with missing fields and store graded candidates."""
+    from .enrich import generate
+    conn = _conn(ctx)
+    migrate(conn)
+    extras = json.loads(Path(extra).read_text()) if extra else None
+    click.echo(json.dumps(generate(conn, extra=extras), indent=2, default=str))
+
+
+@enrich_grp.command("candidates")
+@click.option("--status", default="proposed")
+@click.option("--field", default=None)
+@click.option("--min-grade", type=float, default=0.0)
+@click.pass_context
+def enrich_candidates_cmd(ctx, status, field, min_grade):
+    """List enrichment candidates (highest grade first)."""
+    from .enrich import list_candidates
+    conn = _conn(ctx)
+    migrate(conn)
+    click.echo(json.dumps(list_candidates(conn, status, field, min_grade=min_grade),
+                          indent=2, default=str))
+
+
+@enrich_grp.command("confirm")
+@click.argument("cand_id", type=int)
+@click.pass_context
+def enrich_confirm_cmd(ctx, cand_id):
+    """Apply a candidate to the contact and mark it confirmed."""
+    from .enrich import confirm
+    click.echo(json.dumps(confirm(_conn(ctx), cand_id), default=str))
+
+
+@enrich_grp.command("reject")
+@click.argument("cand_id", type=int)
+@click.pass_context
+def enrich_reject_cmd(ctx, cand_id):
+    """Reject a candidate."""
+    from .enrich import reject
+    click.echo(json.dumps(reject(_conn(ctx), cand_id), default=str))
+
+
+@enrich_grp.command("linkedin")
+@click.option("--contact-id", type=int, required=True)
+@click.option("--url", required=True)
+@click.option("--photo", default=None, help="LinkedIn profile photo URL to promote.")
+@click.pass_context
+def enrich_linkedin_cmd(ctx, contact_id, url, photo):
+    """Confirm a LinkedIn match (saves the LinkedIn field + promotes the photo)."""
+    from .enrich import confirm_linkedin
+    click.echo(json.dumps(confirm_linkedin(_conn(ctx), contact_id, url, photo), default=str))
+
+
 @main.command("mcp-serve")
 @click.pass_context
 def mcp_serve(ctx):
-    """Run the MCP server exposing the contacts DB as tools (Phase 6)."""
+    """Run the MCP server exposing the contacts DB as tools (stdio)."""
     from .mcp_server import serve
     serve(ctx.obj.get("db"))
+
+
+@main.command("vcard-export")
+@click.option("--out", type=click.Path(), default=None, help="Write to a .vcf file.")
+@click.option("--all", "include_all", is_flag=True, help="Include held-back (not-exposed) contacts too.")
+@click.pass_context
+def vcard_export(ctx, out, include_all):
+    """Export exposed contacts as vCards (the one-way iOS feed, offline)."""
+    from .remote.vcard import export_vcards
+    conn = _conn(ctx)
+    migrate(conn)
+    data = export_vcards(conn, exposed_only=not include_all)
+    if out:
+        Path(out).write_text(data, encoding="utf-8")
+        click.echo(f"Wrote {data.count('BEGIN:VCARD')} vCards to {out}")
+    else:
+        click.echo(data)
+
+
+@main.command("serve-http")
+@click.option("--host", default="0.0.0.0")
+@click.option("--port", default=8080, type=int)
+@click.pass_context
+def serve_http(ctx, host, port):
+    """Run the stateless cloud MCP over streamable HTTP, gated by an OAuth token.
+
+    Auth via env NTXP_MCP_AUTH=google|static|none (see remote/auth.py). The MCP
+    endpoint is at /mcp; GET /health is open. Point NTXP_DB_URL at the cloud
+    Postgres so every caller shares one canonical store.
+    """
+    from .remote import serve as serve_remote
+    click.echo(f"NTXP contacts MCP (stateless HTTP) on {host}:{port} — endpoint /mcp", err=True)
+    serve_remote(ctx.obj.get("db"), host, port)
 
 
 if __name__ == "__main__":

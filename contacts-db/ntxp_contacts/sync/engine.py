@@ -35,6 +35,14 @@ class SyncEngine:
             (self.system, seq))
         self.conn.commit()
 
+    def _held_back(self, contact_id: int) -> bool:
+        """True if the grader marked this contact not-synced. Ungraded contacts
+        (no grade row) are not held back — grading is optional."""
+        row = self.conn.execute(
+            "SELECT is_synced FROM contact_grade WHERE contact_id = ?",
+            (contact_id,)).fetchone()
+        return row is not None and not row["is_synced"]
+
     def pending_changes(self) -> list[sqlite3.Row]:
         hw = self._high_water()
         return self.conn.execute(
@@ -52,9 +60,16 @@ class SyncEngine:
 
     def _plan_push(self) -> list[dict]:
         seen: dict[tuple[str, int], dict] = {}
+        echo = f"pull:{self.system}"
         for ch in self.pending_changes():
             key = (ch["entity_type"], ch["entity_id"])
             if ch["entity_type"] != "contact":
+                continue
+            # Don't push a change straight back to the system it was pulled from.
+            if ch["origin"] == echo:
+                continue
+            # Hold back contacts the grader flagged not-synced (outdated/low grade).
+            if self._held_back(ch["entity_id"]):
                 continue
             rec = self.repo.get_contact(ch["entity_id"])
             if not rec or rec.get("is_deleted"):

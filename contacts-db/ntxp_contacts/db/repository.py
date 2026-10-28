@@ -16,9 +16,20 @@ from ..model import Address, CanonicalRecord, Email, Phone, Tag
 class Repository:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
+        self.backend = getattr(conn, "backend", "sqlite")
         self.defer_fts = False   # when True, skip per-row FTS; call rebuild_fts() once
 
     # -- low level ----------------------------------------------------------
+    def _insert(self, sql: str, params, pk_col: str) -> int:
+        """Insert and return the new surrogate key, both backends.
+
+        Postgres has no lastrowid, so we append RETURNING; SQLite uses the
+        cursor's lastrowid (cheaper, and RETURNING support varies by build)."""
+        if self.backend == "postgres":
+            row = self.conn.execute(sql + f" RETURNING {pk_col}", params).fetchone()
+            return int(row[0])
+        return int(self.conn.execute(sql, params).lastrowid)
+
     def _now_touch(self, table: str, pk_col: str, pk: int) -> None:
         self.conn.execute(
             f"UPDATE {table} SET updated_at = datetime('now') WHERE {pk_col} = ?", (pk,)
@@ -42,13 +53,13 @@ class Repository:
         return row["org_id"] if row else None
 
     def create_org(self, rec: CanonicalRecord, origin: str) -> int:
-        cur = self.conn.execute(
+        org_id = self._insert(
             "INSERT INTO organizations(name, name_norm, website, license_no, attrs) "
             "VALUES (?,?,?,?,?)",
             (rec.org_name, rec.org_name_norm, rec.website, rec.license_no,
              json.dumps(rec.org_attrs, sort_keys=True)),
+            "org_id",
         )
-        org_id = int(cur.lastrowid)
         self.log_change("org", org_id, "insert", origin)
         self._reindex_org(org_id)
         return org_id
@@ -117,14 +128,14 @@ class Repository:
 
     def create_contact(self, rec: CanonicalRecord, org_id: int | None, origin: str) -> int:
         from ..normalize import block_key
-        cur = self.conn.execute(
+        contact_id = self._insert(
             "INSERT INTO contacts(org_id, first_name, last_name, full_name, "
             "name_norm, block_key, title, attrs) VALUES (?,?,?,?,?,?,?,?)",
             (org_id, rec.first_name, rec.last_name, rec.full_name, rec.name_norm,
              block_key(rec.first_name, rec.last_name, rec.name_norm),
              rec.title, json.dumps(rec.contact_attrs, sort_keys=True)),
+            "contact_id",
         )
-        contact_id = int(cur.lastrowid)
         self.log_change("contact", contact_id, "insert", origin)
         self._reindex_contact(contact_id)
         return contact_id
@@ -174,7 +185,7 @@ class Repository:
     def add_tag(self, t: Tag, entity_type: str, entity_id: int) -> None:
         cur = self.conn.execute(
             "INSERT INTO tags(kind, value) VALUES (?,?) "
-            "ON CONFLICT(kind, value) DO UPDATE SET kind = kind RETURNING tag_id",
+            "ON CONFLICT(kind, value) DO UPDATE SET value = excluded.value RETURNING tag_id",
             (t.kind, t.value),
         )
         tag_id = cur.fetchone()["tag_id"]
@@ -210,13 +221,20 @@ class Repository:
         )
 
     def record_source(self, source: str, source_pk: str | None, row_hash: str,
-                      raw: dict, contact_id: int | None, org_id: int | None) -> None:
+                      raw: dict, contact_id: int | None, org_id: int | None,
+                      observed_at: str | None = None) -> None:
+        """Record provenance. `observed_at` is the data point's own date (e.g.
+        an email/event/doc timestamp); when given it stamps first/last_seen so
+        the grader ages the data point by when it happened, not when we swept
+        it. Defaults to now for ordinary imports."""
         self.conn.execute(
-            "INSERT INTO source_records(source, source_pk, row_hash, raw, contact_id, org_id) "
-            "VALUES (?,?,?,?,?,?) ON CONFLICT(source, source_pk, row_hash) DO UPDATE SET "
-            "last_seen_at = datetime('now')",
+            "INSERT INTO source_records(source, source_pk, row_hash, raw, contact_id, "
+            "org_id, first_seen_at, last_seen_at) VALUES "
+            "(?,?,?,?,?,?, COALESCE(?,datetime('now')), COALESCE(?,datetime('now'))) "
+            "ON CONFLICT(source, source_pk, row_hash) DO UPDATE SET "
+            "last_seen_at = COALESCE(excluded.last_seen_at, datetime('now'))",
             (source, source_pk, row_hash, json.dumps(raw, default=str),
-             contact_id, org_id),
+             contact_id, org_id, observed_at, observed_at),
         )
 
     # -- staging (OCR quarantine) ------------------------------------------
@@ -380,11 +398,18 @@ class Repository:
 
     # -- queries ------------------------------------------------------------
     def search(self, text: str, limit: int = 25) -> list[dict]:
-        rows = self.conn.execute(
-            "SELECT entity_type, entity_id FROM contacts_fts "
-            "WHERE contacts_fts MATCH ? LIMIT ?",
-            (_fts_query(text), limit),
-        ).fetchall()
+        if self.backend == "postgres":
+            rows = self.conn.execute(
+                "SELECT entity_type, entity_id FROM contacts_fts "
+                "WHERE tsv @@ to_tsquery('simple', ?) LIMIT ?",
+                (_pg_tsquery(text), limit),
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                "SELECT entity_type, entity_id FROM contacts_fts "
+                "WHERE contacts_fts MATCH ? LIMIT ?",
+                (_fts_query(text), limit),
+            ).fetchall()
         out = []
         for r in rows:
             if r["entity_type"] == "contact":
@@ -460,6 +485,15 @@ def _fts_query(text: str) -> str:
     if not tokens:
         return '""'
     return " OR ".join(f'{t}*' for t in tokens)
+
+
+def _pg_tsquery(text: str) -> str:
+    """Forgiving prefix-OR tsquery from free text: 'vaden dry' -> 'vaden:* | dry:*'."""
+    import re
+    tokens = re.findall(r"\w+", text.lower())
+    if not tokens:
+        return ""
+    return " | ".join(f"{t}:*" for t in tokens)
 
 
 def iter_contacts(conn: sqlite3.Connection) -> Iterable[dict]:

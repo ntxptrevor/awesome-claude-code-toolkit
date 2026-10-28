@@ -12,7 +12,7 @@ from .db import connect, migrate
 from .db.repository import Repository
 
 
-def build_server(db_override: str | None = None):
+def build_server(db_override: str | None = None, stateless_http: bool = False):
     try:
         from mcp.server.fastmcp import FastMCP
     except Exception as exc:  # pragma: no cover
@@ -20,7 +20,7 @@ def build_server(db_override: str | None = None):
             "The 'mcp' package is required. Install with: pip install 'ntxp-contacts[mcp]'"
         ) from exc
 
-    mcp = FastMCP("ntxp-contacts")
+    mcp = FastMCP("ntxp-contacts", stateless_http=stateless_http)
 
     def _conn():
         c = connect(db_override)
@@ -110,6 +110,142 @@ def build_server(db_override: str | None = None):
         from .sync.engine import SyncEngine
         SyncEngine(conn, system).record_result(contact_id, external_id, remote_hash)
         return json.dumps({"ok": True})
+
+    @mcp.tool()
+    def reconcile_plan(system: str, records: list[dict]) -> str:
+        """Delta plan (read-only) for records pulled from SYSTEM. Each record is
+        a dict with an 'external_id' (or 'id'). Classifies every record as
+        create/link/update/conflict/unchanged against the canonical store and
+        lists conflicting fields. Lightfield is the canonical hub; other systems
+        reconcile back to it. No writes."""
+        from .sync.reconcile import reconcile
+        return json.dumps(reconcile(_conn(), system, list(records), apply=False), default=str)
+
+    @mcp.tool()
+    def reconcile_apply(system: str, records: list[dict]) -> str:
+        """Apply records pulled from SYSTEM into the canonical DB (idempotent,
+        de-duplicating, linking external ids). Writes ONLY to the local canonical
+        store — never to the remote CRM. Returns a counts summary."""
+        from .sync.reconcile import reconcile
+        return json.dumps(reconcile(_conn(), system, list(records), apply=True), default=str)
+
+    @mcp.tool()
+    def workspace_sweep(bundle: dict) -> str:
+        """Ingest a Google Workspace sweep bundle into the canonical store.
+        bundle buckets raw objects by channel: {"gmail":[...], "gcontacts":[...],
+        "calendar":[...], "drive":[...], "people":[...]}. Deterministic
+        collection + dedup only — no qualifying. Writes only locally; call
+        qualify_contacts afterward and sync_plan to fan out. Returns counts."""
+        from .collect import sweep
+        return json.dumps(sweep(_conn(), dict(bundle)), default=str)
+
+    @mcp.tool()
+    def qualify_contacts(apply: bool = True) -> str:
+        """Grade every contact (JEV qualification) on source trust, recency,
+        corroboration and distance-from-person, and set the exposure/sync gate
+        (outdated/low-grade contacts are kept but flagged is_exposed=0). apply
+        writes the grades; apply=False just returns the summary."""
+        from .qualify import Grader
+        return json.dumps(Grader(_conn()).run(apply=apply), default=str)
+
+    @mcp.tool()
+    def connector_import(service: str, contacts: list[dict]) -> str:
+        """Ingest contacts a connected service returned into the canonical store
+        (idempotent, de-duplicating). `service` must be on the connector
+        allowlist (Zapier is the recommended broker; secrets stay in Zapier).
+        Returns counts, or an error if the service is not allowlisted."""
+        from .connectors import ingest_contacts
+        try:
+            return json.dumps(ingest_contacts(_conn(), service, list(contacts)), default=str)
+        except PermissionError as exc:
+            return json.dumps({"error": str(exc)})
+
+    @mcp.tool()
+    def council_decide(task: dict) -> str:
+        """Decide a qualification task via the model council — JEV (free,
+        deterministic) decides, escalating to cheap LLM judges (DeepSeek/Grok/
+        OpenAI, key-gated) only when uncertain. task = {kind, question,
+        options:[{id,value,grade?,evidence?}]}. Returns choice + confidence +
+        provenance."""
+        from .council import decide
+        return json.dumps(decide(dict(task)), default=str)
+
+    @mcp.tool()
+    def contact_context(query: str) -> str:
+        """Context card for the best contact match of QUERY (name/email/company),
+        with blue-link HTML ready to inject into any tool's output."""
+        from .context import HotlinkIndex
+        conn = _conn()
+        res = Repository(conn).search(query, 1)
+        if not res:
+            return json.dumps({})
+        idx = HotlinkIndex(conn)
+        cid = res[0].get("contact_id")
+        return json.dumps({"card": idx.card(cid) if cid else res[0],
+                           "html": idx.card_html(cid) if cid else None}, default=str)
+
+    @mcp.tool()
+    def locate_address(address: str) -> str:
+        """Live location links (Google + Apple Maps) for an address string — for
+        injecting a clickable map link next to any contact address."""
+        from .remote.maps import maps_link, apple_maps_link
+        return json.dumps({"google": maps_link(address), "apple": apple_maps_link(address)})
+
+    @mcp.tool()
+    def hotlink_text(text: str) -> str:
+        """Annotate text, wrapping every recognized contact/org/email/phone in a
+        blue hyperlink hotlink that opens the contacts page filtered to it.
+        Returns {html, links}."""
+        from .context import annotate
+        return json.dumps(annotate(_conn(), text), default=str)
+
+    @mcp.tool()
+    def enrich_detect() -> str:
+        """Live contacts missing primary fields (email/phone/address/website/photo/linkedin)."""
+        from .enrich import detect_missing
+        return json.dumps(detect_missing(_conn()), default=str)
+
+    @mcp.tool()
+    def enrich_generate(extra: list[dict] | None = None) -> str:
+        """Run resolvers for contacts with missing fields and store graded
+        candidates. `extra` folds in out-of-band OSINT results (holehe/maigret/
+        GHunt/LinkedIn): dicts {contact_id, field, value, source, evidence?}."""
+        from .enrich import generate
+        return json.dumps(generate(_conn(), extra=list(extra) if extra else None), default=str)
+
+    @mcp.tool()
+    def enrich_candidates(status: str = "proposed", field: str = "", min_grade: float = 0.0) -> str:
+        """List enrichment candidates (highest grade first) for review."""
+        from .enrich import list_candidates
+        return json.dumps(list_candidates(_conn(), status, field or None, min_grade=min_grade), default=str)
+
+    @mcp.tool()
+    def enrich_confirm(cand_id: int) -> str:
+        """Apply a proposed candidate to the contact and mark it confirmed."""
+        from .enrich import confirm
+        return json.dumps(confirm(_conn(), cand_id), default=str)
+
+    @mcp.tool()
+    def enrich_reject(cand_id: int) -> str:
+        """Reject an enrichment candidate."""
+        from .enrich import reject
+        return json.dumps(reject(_conn(), cand_id), default=str)
+
+    @mcp.tool()
+    def confirm_linkedin(contact_id: int, url: str, photo_url: str = "",
+                         company_match: bool = True) -> str:
+        """Confirm a LinkedIn match the agent verified: saves the URL to the
+        contact's LinkedIn field (when it matches the employer) and promotes the
+        LinkedIn profile photo to the contact photo."""
+        from .enrich import confirm_linkedin as _cl
+        return json.dumps(_cl(_conn(), contact_id, url, photo_url or None, company_match), default=str)
+
+    @mcp.tool()
+    def get_grade(contact_id: int) -> str:
+        """The computed quality grade for one contact (grade, band, sources,
+        age, exposure/sync flags, and a short reason)."""
+        from .qualify import Grader
+        return json.dumps(Grader(_conn()).get_grade(contact_id), default=str)
 
     return mcp
 

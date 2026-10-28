@@ -14,9 +14,39 @@ from pathlib import Path
 DEFAULT_DB_PATH = Path.home() / ".ntxp" / "contacts.db"
 
 
+def _looks_like_url(s: str) -> bool:
+    return s.startswith(("postgres://", "postgresql://"))
+
+
+def db_url(override: str | os.PathLike | None = None) -> str | None:
+    """Resolve a Postgres DSN if one is configured, else None (use SQLite).
+
+    Precedence: an explicit ``postgres://`` override > ``NTXP_DB_URL`` env.
+    A non-URL override (a path) means "use SQLite" and returns None so the
+    caller falls through to :func:`db_path`.
+    """
+    if override and isinstance(override, str) and _looks_like_url(override):
+        return override
+    env = os.environ.get("NTXP_DB_URL")
+    if env and _looks_like_url(env):
+        return env
+    return None
+
+
+def backend(override: str | os.PathLike | None = None) -> str:
+    """Which engine a connection for `override` will use: 'postgres' | 'sqlite'."""
+    return "postgres" if db_url(override) else "sqlite"
+
+
+def contacts_url() -> str:
+    """Base URL of the user-facing contacts page. Hotlinks point here with a
+    focus/filter query so clicking a contact opens the page filtered to it."""
+    return os.environ.get("NTXP_CONTACTS_URL", "https://contacts.ntxpllc.com").rstrip("/")
+
+
 def db_path(override: str | os.PathLike | None = None) -> Path:
-    """Resolve the DB path: explicit override > NTXP_DB_PATH > default."""
-    if override:
+    """Resolve the SQLite DB path: explicit override > NTXP_DB_PATH > default."""
+    if override and not (isinstance(override, str) and _looks_like_url(override)):
         return Path(override).expanduser()
     env = os.environ.get("NTXP_DB_PATH")
     if env:
@@ -48,6 +78,38 @@ SOURCE_TRUST = {
 
 # Fields where the local master always wins over a remote CRM value.
 MASTER_WINS_FIELDS = {"license_no", "certifications"}
+
+# --- Reconciliation hub ------------------------------------------------------
+# Lightfield is the canonical first source: all tools reconcile back to it, and
+# on a field conflict a Lightfield value outranks every other system's. The
+# reconcile orchestrator applies the canonical source before the rest so that
+# gap-filling from lower-ranked systems never pre-empts canonical values.
+CANONICAL_SOURCE = "lightfield"
+
+# Higher rank wins a field conflict (used by the reconcile planner to decide
+# which side a disagreement should resolve toward, and to flag the other).
+SYSTEM_PRECEDENCE = {
+    "lightfield": 100,     # canonical
+    "jobtread": 60,
+    "quickbooks": 55,
+    "buildingconnected": 50,
+    "quo": 40,
+    # Google Workspace sweep channels (self-reported signature highest)
+    "gmail_signature": 48,
+    "gcontacts": 45,
+    "gmail_from": 40,
+    "people_api": 35,
+    "calendar_organizer": 35,
+    "gmail_to": 25,
+    "calendar_attendee": 25,
+    "drive_author": 22,
+    # bundled spreadsheet/import sources rank below live CRMs
+    "approved_subs": 30,
+    "buildingconnectd": 28,
+    "tips": 20,
+    "luncheon": 15,
+    "cjp_pdf": 10,
+}
 
 # Default country region for phone parsing.
 DEFAULT_PHONE_REGION = "US"
