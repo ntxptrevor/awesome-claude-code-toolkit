@@ -149,6 +149,16 @@ def build_server(db_override: str | None = None, stateless_http: bool = False):
         return json.dumps(Grader(_conn()).run(apply=apply), default=str)
 
     @mcp.tool()
+    def council_decide(task: dict) -> str:
+        """Decide a qualification task via the model council — JEV (free,
+        deterministic) decides, escalating to cheap LLM judges (DeepSeek/Grok/
+        OpenAI, key-gated) only when uncertain. task = {kind, question,
+        options:[{id,value,grade?,evidence?}]}. Returns choice + confidence +
+        provenance."""
+        from .council import decide
+        return json.dumps(decide(dict(task)), default=str)
+
+    @mcp.tool()
     def contact_context(query: str) -> str:
         """Context card for the best contact match of QUERY (name/email/company),
         with blue-link HTML ready to inject into any tool's output."""

@@ -5,6 +5,10 @@ All dates ISO. See `docs/BLUEPRINT.md` for the live status board and resume flag
 ## [Unreleased]
 
 ### Added
+- **F2b — mini model council** (`council/*`, `docs/COUNCIL.md`): JEV deterministic
+  default decides for free; escalates to the cheapest available key-gated LLM judge
+  (DeepSeek/Grok/OpenAI, env-overridable) only when uncertain; weighted vote with
+  provenance. `ntxp council` CLI; `council_decide` MCP tool.
 - **F2a — one-way iOS/iPhone contact sync** (`remote/vcard.py`, `remote/carddav.py`):
   vCard 3.0 rendering (exposure-gated) + a read-only CardDAV collection
   (OPTIONS/PROPFIND/REPORT/GET) mounted at `/carddav`, token-gated; `ntxp

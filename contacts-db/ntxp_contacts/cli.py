@@ -382,6 +382,18 @@ def qualify_cmd(ctx, do_apply):
     click.echo(json.dumps(Grader(conn).run(apply=do_apply), indent=2, default=str))
 
 
+@main.command("council")
+@click.argument("taskfile", type=click.Path(exists=True))
+@click.option("--escalate", type=int, default=1, help="Max LLM judges to consult on escalation.")
+@click.pass_context
+def council_cmd(ctx, taskfile, escalate):
+    """Decide a qualification task via the model council (JEV free; cheap LLMs on
+    escalation). TASKFILE is JSON: {kind, question, options:[{id,value,grade?}]}."""
+    from .council import decide
+    task = json.loads(Path(taskfile).read_text())
+    click.echo(json.dumps(decide(task, escalate=escalate), indent=2, default=str))
+
+
 @main.command("context")
 @click.argument("query")
 @click.pass_context

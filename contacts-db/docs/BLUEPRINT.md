@@ -30,7 +30,7 @@ JEV grades, enrichment backfills, and a user-facing page + MCP + hooks expose it
 | B | Tool-agnostic context hooks | DONE | `context/hotlink.py` |
 | **F1** | **Stateless cloud MCP 2.0 + OAuth + auto-hooks** | DONE (code) · BLOCKED(deploy) | `remote/*`, `hooks/*` |
 | **F2a** | **One-way iOS/iPhone contact sync (CardDAV/vCard)** | DONE (code) · BLOCKED(deploy) | `remote/vcard.py`, `remote/carddav.py` |
-| **F2b** | **Mini model council (JEV + cheap LLMs)** | TODO | `council/` (to build) |
+| **F2b** | **Mini model council (JEV + cheap LLMs)** | DONE | `council/*`, `docs/COUNCIL.md` |
 | **F2c** | **Whitelisted connector middle-layer (Zapier-style)** | TODO | `connectors/` (to build) |
 | M | Mirror to NTXP Forge repo `ntxp-contacts` | BLOCKED(repo access) | scratchpad bundle ready |
 
@@ -107,7 +107,17 @@ token grants access. No write-back (one-way by design).
 
 **Blockers:** hosting + per-user token issuance (ties to F1 auth).
 
-## F2b — Mini model council (JEV + cheap LLMs)  `TODO`
+## F2b — Mini model council (JEV + cheap LLMs)  `DONE`
+
+**Built:** `council/` — `JEVJudge` (free, deterministic, default decider) +
+key-gated OpenAI-compatible `DeepSeekJudge`/`GrokJudge`/`OpenAIJudge`; router
+escalates to the cheapest available judge only when JEV is uncertain, then
+weighted-votes with provenance. Env-overridable models/endpoints (near-zero
+maintenance). `ntxp council` CLI; `council_decide` MCP tool; `docs/COUNCIL.md`
+cost/capability table. Runs for free with no keys. 70 tests. **Live LLM voting
+needs API keys** (framework + JEV path need none).
+
+### Original plan (for reference)
 
 **Intent.** Near-zero-cost council that divides qualification/decision tasks
 across JEV (deterministic, free) + cheap LLMs (Grok, DeepSeek, others). Try the

@@ -181,6 +181,14 @@ ntxp qualify            # grade + set the exposure/sync gate
 ntxp qualify --plan     # compute and report without writing
 ```
 
+### Mini model council (near-zero cost)
+
+For contact decisions (which value / which match / which class), `ntxp council`
+routes via **JEV** (free, deterministic) and escalates to the **cheapest
+available** cheap LLM judge (DeepSeek/Grok/OpenAI, key-gated, env-overridable) only
+when uncertain, then weighted-votes with provenance. Runs for free with no keys.
+See [docs/COUNCIL.md](docs/COUNCIL.md).
+
 ### Cloud MCP (stateless, OAuth-gated) + auto-hooks
 
 A stateless, cloud-hostable **streamable-HTTP MCP** gives any tool/skill/workflow
