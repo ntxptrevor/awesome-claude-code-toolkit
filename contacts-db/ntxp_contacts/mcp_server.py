@@ -149,6 +149,28 @@ def build_server(db_override: str | None = None):
         return json.dumps(Grader(_conn()).run(apply=apply), default=str)
 
     @mcp.tool()
+    def contact_context(query: str) -> str:
+        """Context card for the best contact match of QUERY (name/email/company),
+        with blue-link HTML ready to inject into any tool's output."""
+        from .context import HotlinkIndex
+        conn = _conn()
+        res = Repository(conn).search(query, 1)
+        if not res:
+            return json.dumps({})
+        idx = HotlinkIndex(conn)
+        cid = res[0].get("contact_id")
+        return json.dumps({"card": idx.card(cid) if cid else res[0],
+                           "html": idx.card_html(cid) if cid else None}, default=str)
+
+    @mcp.tool()
+    def hotlink_text(text: str) -> str:
+        """Annotate text, wrapping every recognized contact/org/email/phone in a
+        blue hyperlink hotlink that opens the contacts page filtered to it.
+        Returns {html, links}."""
+        from .context import annotate
+        return json.dumps(annotate(_conn(), text), default=str)
+
+    @mcp.tool()
     def enrich_detect() -> str:
         """Live contacts missing primary fields (email/phone/address/website/photo/linkedin)."""
         from .enrich import detect_missing

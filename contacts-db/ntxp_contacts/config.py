@@ -38,6 +38,12 @@ def backend(override: str | os.PathLike | None = None) -> str:
     return "postgres" if db_url(override) else "sqlite"
 
 
+def contacts_url() -> str:
+    """Base URL of the user-facing contacts page. Hotlinks point here with a
+    focus/filter query so clicking a contact opens the page filtered to it."""
+    return os.environ.get("NTXP_CONTACTS_URL", "https://contacts.ntxpllc.com").rstrip("/")
+
+
 def db_path(override: str | os.PathLike | None = None) -> Path:
     """Resolve the SQLite DB path: explicit override > NTXP_DB_PATH > default."""
     if override and not (isinstance(override, str) and _looks_like_url(override)):

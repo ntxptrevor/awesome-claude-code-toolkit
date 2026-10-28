@@ -181,6 +181,22 @@ ntxp qualify            # grade + set the exposure/sync gate
 ntxp qualify --plan     # compute and report without writing
 ```
 
+### Tool-agnostic context hooks (blue hotlinks)
+
+Any NTXP tool can inject live contact context as **blue hyperlink hotlinks**:
+
+```bash
+ntxp context "Vaden"          # context card (+ blue-link HTML) for the best match
+ntxp hotlink notes.txt        # wrap known contacts/orgs/emails/phones in blue links
+```
+
+(also the `contact_context` / `hotlink_text` MCP tools). `hotlink_text` scans a
+string and wraps every recognized email, phone, multi-word name, and company name
+in `<a style="color:#2f6fd0">…</a>` pointing at the contacts page filtered to that
+entity (`?focus=contact:<id>`), so clicking a hotlink opens the filtered list.
+Matching is conservative (emails/phones exact; names multi-word only) to avoid
+false positives. Base URL via `NTXP_CONTACTS_URL`.
+
 ### Enrichment, photos & LinkedIn (candidate-based)
 
 `ntxp enrich` backfills missing primary fields (phone/email/address/website),

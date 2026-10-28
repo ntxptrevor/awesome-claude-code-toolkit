@@ -382,6 +382,36 @@ def qualify_cmd(ctx, do_apply):
     click.echo(json.dumps(Grader(conn).run(apply=do_apply), indent=2, default=str))
 
 
+@main.command("context")
+@click.argument("query")
+@click.pass_context
+def context_cmd(ctx, query):
+    """Context card (with blue-link HTML) for the best contact match of QUERY."""
+    from .context import HotlinkIndex
+    conn = _conn(ctx)
+    res = Repository(conn).search(query, 1)
+    if not res:
+        click.echo("{}")
+        return
+    cid = res[0].get("contact_id")
+    idx = HotlinkIndex(conn)
+    if cid:
+        click.echo(json.dumps({"card": idx.card(cid), "html": idx.card_html(cid)},
+                              indent=2, default=str))
+    else:
+        click.echo(json.dumps(res[0], indent=2, default=str))
+
+
+@main.command("hotlink")
+@click.argument("textfile", type=click.Path(exists=True))
+@click.pass_context
+def hotlink_cmd(ctx, textfile):
+    """Annotate a text file: wrap known contacts/orgs/emails/phones in blue hotlinks."""
+    from .context import annotate
+    conn = _conn(ctx)
+    click.echo(json.dumps(annotate(conn, Path(textfile).read_text()), indent=2, default=str))
+
+
 @main.group("enrich")
 def enrich_grp():
     """Backfill missing fields, photos, and LinkedIn via graded candidates."""
