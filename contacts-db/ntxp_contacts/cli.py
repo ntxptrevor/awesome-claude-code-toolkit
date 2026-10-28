@@ -382,6 +382,77 @@ def qualify_cmd(ctx, do_apply):
     click.echo(json.dumps(Grader(conn).run(apply=do_apply), indent=2, default=str))
 
 
+@main.group("enrich")
+def enrich_grp():
+    """Backfill missing fields, photos, and LinkedIn via graded candidates."""
+
+
+@enrich_grp.command("detect")
+@click.pass_context
+def enrich_detect_cmd(ctx):
+    """List live contacts missing primary fields (email/phone/address/website/photo/linkedin)."""
+    from .enrich import detect_missing
+    conn = _conn(ctx)
+    migrate(conn)
+    click.echo(json.dumps(detect_missing(conn), indent=2, default=str))
+
+
+@enrich_grp.command("generate")
+@click.option("--extra", type=click.Path(exists=True), default=None,
+              help="JSON list of agent/OSINT candidates to fold in.")
+@click.pass_context
+def enrich_generate_cmd(ctx, extra):
+    """Run resolvers for contacts with missing fields and store graded candidates."""
+    from .enrich import generate
+    conn = _conn(ctx)
+    migrate(conn)
+    extras = json.loads(Path(extra).read_text()) if extra else None
+    click.echo(json.dumps(generate(conn, extra=extras), indent=2, default=str))
+
+
+@enrich_grp.command("candidates")
+@click.option("--status", default="proposed")
+@click.option("--field", default=None)
+@click.option("--min-grade", type=float, default=0.0)
+@click.pass_context
+def enrich_candidates_cmd(ctx, status, field, min_grade):
+    """List enrichment candidates (highest grade first)."""
+    from .enrich import list_candidates
+    conn = _conn(ctx)
+    migrate(conn)
+    click.echo(json.dumps(list_candidates(conn, status, field, min_grade=min_grade),
+                          indent=2, default=str))
+
+
+@enrich_grp.command("confirm")
+@click.argument("cand_id", type=int)
+@click.pass_context
+def enrich_confirm_cmd(ctx, cand_id):
+    """Apply a candidate to the contact and mark it confirmed."""
+    from .enrich import confirm
+    click.echo(json.dumps(confirm(_conn(ctx), cand_id), default=str))
+
+
+@enrich_grp.command("reject")
+@click.argument("cand_id", type=int)
+@click.pass_context
+def enrich_reject_cmd(ctx, cand_id):
+    """Reject a candidate."""
+    from .enrich import reject
+    click.echo(json.dumps(reject(_conn(ctx), cand_id), default=str))
+
+
+@enrich_grp.command("linkedin")
+@click.option("--contact-id", type=int, required=True)
+@click.option("--url", required=True)
+@click.option("--photo", default=None, help="LinkedIn profile photo URL to promote.")
+@click.pass_context
+def enrich_linkedin_cmd(ctx, contact_id, url, photo):
+    """Confirm a LinkedIn match (saves the LinkedIn field + promotes the photo)."""
+    from .enrich import confirm_linkedin
+    click.echo(json.dumps(confirm_linkedin(_conn(ctx), contact_id, url, photo), default=str))
+
+
 @main.command("mcp-serve")
 @click.pass_context
 def mcp_serve(ctx):

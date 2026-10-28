@@ -149,6 +149,47 @@ def build_server(db_override: str | None = None):
         return json.dumps(Grader(_conn()).run(apply=apply), default=str)
 
     @mcp.tool()
+    def enrich_detect() -> str:
+        """Live contacts missing primary fields (email/phone/address/website/photo/linkedin)."""
+        from .enrich import detect_missing
+        return json.dumps(detect_missing(_conn()), default=str)
+
+    @mcp.tool()
+    def enrich_generate(extra: list[dict] | None = None) -> str:
+        """Run resolvers for contacts with missing fields and store graded
+        candidates. `extra` folds in out-of-band OSINT results (holehe/maigret/
+        GHunt/LinkedIn): dicts {contact_id, field, value, source, evidence?}."""
+        from .enrich import generate
+        return json.dumps(generate(_conn(), extra=list(extra) if extra else None), default=str)
+
+    @mcp.tool()
+    def enrich_candidates(status: str = "proposed", field: str = "", min_grade: float = 0.0) -> str:
+        """List enrichment candidates (highest grade first) for review."""
+        from .enrich import list_candidates
+        return json.dumps(list_candidates(_conn(), status, field or None, min_grade=min_grade), default=str)
+
+    @mcp.tool()
+    def enrich_confirm(cand_id: int) -> str:
+        """Apply a proposed candidate to the contact and mark it confirmed."""
+        from .enrich import confirm
+        return json.dumps(confirm(_conn(), cand_id), default=str)
+
+    @mcp.tool()
+    def enrich_reject(cand_id: int) -> str:
+        """Reject an enrichment candidate."""
+        from .enrich import reject
+        return json.dumps(reject(_conn(), cand_id), default=str)
+
+    @mcp.tool()
+    def confirm_linkedin(contact_id: int, url: str, photo_url: str = "",
+                         company_match: bool = True) -> str:
+        """Confirm a LinkedIn match the agent verified: saves the URL to the
+        contact's LinkedIn field (when it matches the employer) and promotes the
+        LinkedIn profile photo to the contact photo."""
+        from .enrich import confirm_linkedin as _cl
+        return json.dumps(_cl(_conn(), contact_id, url, photo_url or None, company_match), default=str)
+
+    @mcp.tool()
     def get_grade(contact_id: int) -> str:
         """The computed quality grade for one contact (grade, band, sources,
         age, exposure/sync flags, and a short reason)."""

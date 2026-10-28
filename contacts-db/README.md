@@ -181,6 +181,30 @@ ntxp qualify            # grade + set the exposure/sync gate
 ntxp qualify --plan     # compute and report without writing
 ```
 
+### Enrichment, photos & LinkedIn (candidate-based)
+
+`ntxp enrich` backfills missing primary fields (phone/email/address/website),
+resolves **profile photos**, and **cross-references LinkedIn** through one
+JEV-graded candidate pipeline — nothing overwrites canonical data without
+confirmation.
+
+```bash
+ntxp enrich detect                      # contacts missing primary fields
+ntxp enrich generate                    # run resolvers -> store graded candidates
+ntxp enrich candidates --field photo    # review (highest grade first)
+ntxp enrich confirm <cand_id>           # apply one candidate to the contact
+ntxp enrich linkedin --contact-id 42 --url https://linkedin.com/in/… --photo https://…
+```
+
+Built-in resolvers are deterministic/offline (Gravatar + Libravatar photos,
+company-website and public-entity-directory derivation, LinkedIn search
+candidates). Heavy OSINT tools (holehe, maigret, GHunt) run **out-of-band** via
+the agent and feed candidates into `enrich generate --extra`. Photo priority:
+saved contacts / public-entity domains / confirmed LinkedIn highest. LinkedIn is
+**never scraped** in code — the agent confirms a match and `confirm_linkedin`
+saves the field and promotes the profile photo. See
+[docs/ENRICHMENT.md](docs/ENRICHMENT.md) for the full tool evaluation.
+
 ## Configuration
 
 | Env var | Purpose | Default |
