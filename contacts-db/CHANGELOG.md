@@ -50,6 +50,13 @@ All dates ISO. See `docs/BLUEPRINT.md` for the live status board and resume flag
 ### Validation
 - Full suite: **51 tests pass** against SQLite and a real PostgreSQL 16 instance.
 
-### In progress / next (see BLUEPRINT flags)
-- F1 stateless cloud MCP 2.0 + OAuth + auto-hooks · F2a one-way iOS sync ·
-  F2b model council · F2c connector middle-layer · M mirror to NTXP Forge.
+### Packaging
+- Refreshed standalone installable plugin bundle (`ntxp-contacts-plugin.zip`,
+  v0.3.0) with the full current package + auto hook + remote MCP config.
+
+### Blocked (need external action)
+- **M — mirror to NTXP Forge `ntxp-contacts`**: no repo access from this session
+  (`not_found_or_no_access`). Needs the repo created + access granted, or the
+  exact Forge owner/repo.
+- Deploys: F1 cloud MCP + F2a CardDAV need the VPS + the Google OAuth app; F2b
+  live LLM voting needs API keys; F2c live Zapier needs the user's Zapier auth.

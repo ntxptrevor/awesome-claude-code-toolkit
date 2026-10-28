@@ -173,12 +173,21 @@ workflows.
 
 ## M — Mirror to NTXP Forge `ntxp-contacts`  `BLOCKED(repo access)`
 
-Standalone installable plugin bundle is prepared (scratchpad `ntxp-contacts/`:
-`.claude-plugin`, `.mcp.json`, `skills/`, `commands/`, `install.sh`, `pysrc/`).
-**Blocked:** this session's GitHub scope is only `ntxptrevor/awesome-claude-code-toolkit`;
-creating/pushing a new repo in NTXP Forge needs that repo added to scope (via
-`add_repo`/access grant). Once granted: push the bundle, keep this `contacts-db/`
-as upstream, mirror on release.
+Standalone installable plugin **bundle is refreshed** (scratchpad
+`ntxp-contacts/` + `ntxp-contacts-plugin.zip`, v0.3.0): `.claude-plugin/plugin.json`
+(hooks wired), `.mcp.json`, `hooks/hooks.json`, `skills/`, `commands/`,
+`install.sh` (`pip install pysrc[mcp,remote,postgres]`), `pysrc/` = the full
+current package (remote/hooks/council/connectors/collect/enrich/context/qualify/
+sync).
+
+**Blocked:** `check_repo_access ntxptrevor/ntxp-contacts` → `not_found_or_no_access`.
+This session's GitHub scope is only `ntxptrevor/awesome-claude-code-toolkit`.
+**To unblock:** create the repo and grant this session access (reconnect GitHub /
+add the repo to the Claude GitHub App at github.com/settings/installations), or
+tell me the exact NTXP Forge owner/repo. Then: `add_repo` → push `pysrc` + manifests
+→ keep `contacts-db/` as upstream, mirror on release.
+**Resume note for another model:** the zip is the deliverable; do not re-push a new
+repo without the user confirming the Forge owner.
 
 ---
 
