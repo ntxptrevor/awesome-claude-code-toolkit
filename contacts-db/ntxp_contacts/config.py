@@ -88,6 +88,15 @@ SYSTEM_PRECEDENCE = {
     "quickbooks": 55,
     "buildingconnected": 50,
     "quo": 40,
+    # Google Workspace sweep channels (self-reported signature highest)
+    "gmail_signature": 48,
+    "gcontacts": 45,
+    "gmail_from": 40,
+    "people_api": 35,
+    "calendar_organizer": 35,
+    "gmail_to": 25,
+    "calendar_attendee": 25,
+    "drive_author": 22,
     # bundled spreadsheet/import sources rank below live CRMs
     "approved_subs": 30,
     "buildingconnectd": 28,

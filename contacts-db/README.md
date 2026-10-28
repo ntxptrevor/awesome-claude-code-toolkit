@@ -143,6 +143,28 @@ push plans but never **echo** back to the system they came from. Field conflicts
 are surfaced for review; lower-ranked systems never overwrite a Lightfield value
 (`config.SYSTEM_PRECEDENCE`).
 
+### Nightly Google Workspace sweep (collection)
+
+The nightly agent casts a wide net across **all** NTXP Workspace users and
+platforms — Gmail, Google Contacts, Calendar, Drive, People — and hands the raw
+results to the collectors, which do **deterministic extraction only** (no
+inference spent qualifying). Each person is tagged with the *channel* it came
+from and the data point's **own date**, so a Gmail signature or a saved Google
+Contact grades as closest/newest and a years-old calendar event grades as far/old.
+
+```bash
+ntxp sweep bundle.json            # extract + dedup into canonical, then qualify
+```
+
+`bundle.json` buckets raw objects by channel:
+`{"gmail":[…], "gcontacts":[…], "calendar":[…], "drive":[…], "people":[…]}`
+(also the `workspace_sweep` MCP tool). Collection writes only locally; new/changed
+contacts fan out to the connectors on the next `ntxp sync push`.
+
+**Full nightly pipeline:** `sweep` (collect) → `reconcile` each CRM pull
+(Lightfield-canonical) → `qualify` (grade + exposure gate) → `sync push` (fan out
+only exposed/graded deltas). Each stage is change-only.
+
 ### Qualification & grading (JEV)
 
 `ntxp qualify` grades every contact on four axes — **source** trust

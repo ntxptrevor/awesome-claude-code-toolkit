@@ -30,6 +30,10 @@ DISTANCE = {
     "lightfield": 1, "jobtread": 1, "quickbooks": 1, "buildingconnected": 1,
     "quo": 1, "approved_subs": 1, "buildingconnectd": 1, "tips": 1,
     "luncheon": 2, "cjp_pdf": 3,
+    # Google Workspace sweep channels (closest -> farthest from the person).
+    "gcontacts": 0, "gmail_signature": 0, "people_api": 1, "gmail_from": 1,
+    "calendar_organizer": 1, "gmail_to": 2, "calendar_attendee": 2,
+    "drive_author": 2,
 }
 _DEFAULT_DISTANCE = 2
 
@@ -61,9 +65,17 @@ def _parse_ts(ts) -> datetime | None:
         return None
     if isinstance(ts, datetime):
         return ts
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
+    s = str(ts).strip()
+    if not s:
+        return None
+    try:  # handles date, 'YYYY-MM-DD HH:MM:SS', and ISO-8601 incl. trailing Z
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        pass
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f",
+                "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
         try:
-            return datetime.strptime(str(ts), fmt)
+            return datetime.strptime(s, fmt)
         except ValueError:
             continue
     return None

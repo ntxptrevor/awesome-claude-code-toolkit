@@ -221,13 +221,20 @@ class Repository:
         )
 
     def record_source(self, source: str, source_pk: str | None, row_hash: str,
-                      raw: dict, contact_id: int | None, org_id: int | None) -> None:
+                      raw: dict, contact_id: int | None, org_id: int | None,
+                      observed_at: str | None = None) -> None:
+        """Record provenance. `observed_at` is the data point's own date (e.g.
+        an email/event/doc timestamp); when given it stamps first/last_seen so
+        the grader ages the data point by when it happened, not when we swept
+        it. Defaults to now for ordinary imports."""
         self.conn.execute(
-            "INSERT INTO source_records(source, source_pk, row_hash, raw, contact_id, org_id) "
-            "VALUES (?,?,?,?,?,?) ON CONFLICT(source, source_pk, row_hash) DO UPDATE SET "
-            "last_seen_at = datetime('now')",
+            "INSERT INTO source_records(source, source_pk, row_hash, raw, contact_id, "
+            "org_id, first_seen_at, last_seen_at) VALUES "
+            "(?,?,?,?,?,?, COALESCE(?,datetime('now')), COALESCE(?,datetime('now'))) "
+            "ON CONFLICT(source, source_pk, row_hash) DO UPDATE SET "
+            "last_seen_at = COALESCE(excluded.last_seen_at, datetime('now'))",
             (source, source_pk, row_hash, json.dumps(raw, default=str),
-             contact_id, org_id),
+             contact_id, org_id, observed_at, observed_at),
         )
 
     # -- staging (OCR quarantine) ------------------------------------------

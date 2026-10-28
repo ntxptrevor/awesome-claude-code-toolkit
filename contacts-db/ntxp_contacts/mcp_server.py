@@ -130,6 +130,16 @@ def build_server(db_override: str | None = None):
         return json.dumps(reconcile(_conn(), system, list(records), apply=True), default=str)
 
     @mcp.tool()
+    def workspace_sweep(bundle: dict) -> str:
+        """Ingest a Google Workspace sweep bundle into the canonical store.
+        bundle buckets raw objects by channel: {"gmail":[...], "gcontacts":[...],
+        "calendar":[...], "drive":[...], "people":[...]}. Deterministic
+        collection + dedup only — no qualifying. Writes only locally; call
+        qualify_contacts afterward and sync_plan to fan out. Returns counts."""
+        from .collect import sweep
+        return json.dumps(sweep(_conn(), dict(bundle)), default=str)
+
+    @mcp.tool()
     def qualify_contacts(apply: bool = True) -> str:
         """Grade every contact (JEV qualification) on source trust, recency,
         corroboration and distance-from-person, and set the exposure/sync gate

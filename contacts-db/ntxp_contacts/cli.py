@@ -340,6 +340,31 @@ def reconcile_cmd(ctx, system, payloads, do_apply):
     click.echo(json.dumps(result, indent=2, default=str))
 
 
+@main.command("sweep")
+@click.argument("bundle", type=click.Path(exists=True))
+@click.option("--qualify/--no-qualify", "do_qualify", default=True,
+              help="Re-grade affected contacts after the sweep (default on).")
+@click.pass_context
+def sweep_cmd(ctx, bundle, do_qualify):
+    """Ingest a nightly Google Workspace sweep BUNDLE (JSON) into the canonical DB.
+
+    BUNDLE buckets raw Workspace objects by channel:
+    {"gmail":[...], "gcontacts":[...], "calendar":[...], "drive":[...], "people":[...]}.
+    Collection only — deterministic extraction + dedup; grading runs after.
+    Writes only to the local canonical store (fan-out to connectors happens on
+    the next `ntxp sync push`).
+    """
+    from .collect import sweep as _sweep
+    conn = _conn(ctx)
+    migrate(conn)
+    data = json.loads(Path(bundle).read_text())
+    result = _sweep(conn, data)
+    if do_qualify:
+        from .qualify import Grader
+        result["qualify"] = Grader(conn).run()
+    click.echo(json.dumps(result, indent=2, default=str))
+
+
 @main.command("qualify")
 @click.option("--apply/--plan", "do_apply", default=True,
               help="--apply writes grades (default); --plan computes without writing.")
