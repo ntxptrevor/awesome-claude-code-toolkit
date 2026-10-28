@@ -21,7 +21,7 @@ EDITABLE_FIELDS = {
     "contract_title", "contract_no", "contract_type", "owner_entity",
     "recipient", "location", "estimated_budget", "award_date", "duration",
     "expiration_date", "coefficient_multiplier", "cooperative_fee",
-    "allowable_scope", "notes", "pdf_url", "is_executed",
+    "allowable_scope", "notes", "pdf_url", "is_executed", "status", "pricebook",
 }
 # Free-text columns whose contents feed the FTS index — listed once and used by
 # both update_field (when to reindex) and _reindex (what to index), so they
@@ -141,12 +141,16 @@ class Repository:
                 "coefficient_multiplier = COALESCE(coefficient_multiplier, ?), "
                 "cooperative_fee = COALESCE(cooperative_fee, ?), "
                 "allowable_scope = COALESCE(allowable_scope, ?), notes = COALESCE(notes, ?), "
-                "pdf_url = COALESCE(pdf_url, ?), updated_at = datetime('now') "
-                "WHERE contract_id = ?",
+                "pdf_url = COALESCE(pdf_url, ?), status = COALESCE(status, ?), "
+                "pricebook = COALESCE(pricebook, ?), "
+                # A signed copy, once seen, stays seen.
+                "is_executed = MAX(is_executed, ?), attrs = ?, "
+                "updated_at = datetime('now') WHERE contract_id = ?",
                 (c.contract_type, owner_id, c.owner_entity, c.location,
                  c.estimated_budget, c.award_date, c.duration, c.expiration_date,
                  c.coefficient_multiplier, c.cooperative_fee, c.allowable_scope,
-                 c.notes, c.pdf_url, cid),
+                 c.notes, c.pdf_url, c.status, c.pricebook,
+                 1 if c.is_executed else 0, self._merged_attrs(cid, c.attrs), cid),
             )
             # Log the touch so dashboards polling changes_since() refresh after
             # an import (callers reach this branch only for new/changed rows).
@@ -161,13 +165,13 @@ class Repository:
             "INSERT INTO contracts(contract_title, contract_no, contract_no_norm, "
             "contract_type, owner_id, owner_entity, recipient, location, estimated_budget, "
             "award_date, duration, expiration_date, coefficient_multiplier, cooperative_fee, "
-            "allowable_scope, notes, pdf_url, is_executed, attrs) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "allowable_scope, notes, pdf_url, is_executed, status, pricebook, attrs) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (c.contract_title, c.contract_no, no_norm, c.contract_type, owner_id,
              c.owner_entity, c.recipient, c.location, c.estimated_budget, c.award_date,
              c.duration, c.expiration_date, c.coefficient_multiplier, c.cooperative_fee,
              c.allowable_scope, c.notes, c.pdf_url, 1 if c.is_executed else 0,
-             json.dumps(c.attrs, sort_keys=True)),
+             c.status, c.pricebook, json.dumps(c.attrs, sort_keys=True)),
         )
         cid = int(cur.lastrowid)
         self.conn.execute(
@@ -278,6 +282,9 @@ class Repository:
         return {
             "contract": c,
             "owner": owner,
+            "coefficients": self.list_coefficients(contract_id),
+            "contacts": self.list_contacts(contract_id, c.get("owner_id")),
+            "sources": self.list_sources(contract_id),
             "jobs": jobs,
             "totals": {
                 "job_count": len(jobs),
@@ -286,34 +293,142 @@ class Repository:
             },
         }
 
+    # -- coefficients / contacts / sources ----------------------------------
+    def set_coefficients(self, contract_id: int, tiers: list[dict]) -> None:
+        """Upsert published coefficient tiers ({label, value}). The first tier
+        also fills the primary coefficient_multiplier when that is blank."""
+        for t in tiers:
+            value = N.normalize_float(t.get("value"))
+            label = (t.get("label") or "").strip() or "Coefficient"
+            if value is None:
+                continue
+            self.conn.execute(
+                "INSERT INTO contract_coefficients(contract_id, label, value) VALUES (?,?,?) "
+                "ON CONFLICT(contract_id, label) DO UPDATE SET value = excluded.value",
+                (contract_id, label, value),
+            )
+        first = next((N.normalize_float(t.get("value")) for t in tiers
+                      if N.normalize_float(t.get("value")) is not None), None)
+        if first is not None:
+            self.conn.execute(
+                "UPDATE contracts SET coefficient_multiplier = COALESCE(coefficient_multiplier, ?) "
+                "WHERE contract_id = ?", (first, contract_id))
+
+    def list_coefficients(self, contract_id: int) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT label, value FROM contract_coefficients WHERE contract_id = ? "
+            "ORDER BY coefficient_id", (contract_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def upsert_contact(self, contact: dict, contract_id: int | None = None,
+                       owner_id: int | None = None) -> int | None:
+        """Add or fill a person tied to a contract/owner. Matches an existing
+        contact on the same contract or owner by email, else by name."""
+        name = (contact.get("name") or "").strip()
+        if not name:
+            return None
+        email = (contact.get("email") or "").strip().lower() or None
+        phone = N.normalize_phone(contact.get("phone")) or (contact.get("phone") or None)
+        # Same person = same email or name within the same contract (or, for an
+        # owner-level contact, the same owner) — never across contracts.
+        if contract_id is not None:
+            scope, arg = "contract_id = ?", contract_id
+        elif owner_id is not None:
+            scope, arg = "contract_id IS NULL AND owner_id = ?", owner_id
+        else:
+            scope, arg = "contract_id IS NULL AND owner_id IS NULL AND ? = 1", 1
+        row = self.conn.execute(
+            f"SELECT contact_id FROM contacts WHERE {scope} "
+            "AND ((? IS NOT NULL AND lower(email) = ?) OR lower(name) = lower(?)) LIMIT 1",
+            (arg, email, email, name)).fetchone()
+        if row:
+            cid = int(row["contact_id"])
+            self.conn.execute(
+                "UPDATE contacts SET title = COALESCE(title, ?), org = COALESCE(org, ?), "
+                "role = COALESCE(role, ?), email = COALESCE(email, ?), phone = COALESCE(phone, ?), "
+                "contract_id = COALESCE(contract_id, ?), owner_id = COALESCE(owner_id, ?), "
+                "source_url = COALESCE(source_url, ?), updated_at = datetime('now') "
+                "WHERE contact_id = ?",
+                (contact.get("title"), contact.get("org"), contact.get("role"), email, phone,
+                 contract_id, owner_id, contact.get("evidence_url"), cid))
+            return cid
+        cur = self.conn.execute(
+            "INSERT INTO contacts(contract_id, owner_id, name, title, org, role, email, phone, "
+            "source_url) VALUES (?,?,?,?,?,?,?,?,?)",
+            (contract_id, owner_id, name, contact.get("title"), contact.get("org"),
+             contact.get("role"), email, phone, contact.get("evidence_url")))
+        return int(cur.lastrowid)
+
+    def list_contacts(self, contract_id: int, owner_id: int | None = None) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM contacts WHERE contract_id = ? "
+            "OR (contract_id IS NULL AND owner_id = ?) ORDER BY role, name",
+            (contract_id, owner_id)).fetchall()
+        return [dict(r) for r in rows]
+
+    def add_source(self, contract_id: int, what: str, url: str | None) -> None:
+        if not (what or url):
+            return
+        self.conn.execute(
+            "INSERT OR IGNORE INTO contract_sources(contract_id, what, url) VALUES (?,?,?)",
+            (contract_id, what or url, url))
+
+    def list_sources(self, contract_id: int) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT what, url, added_at FROM contract_sources WHERE contract_id = ? "
+            "ORDER BY source_id", (contract_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def _merged_attrs(self, contract_id: int, new: dict) -> str:
+        row = self.conn.execute("SELECT attrs FROM contracts WHERE contract_id = ?",
+                                (contract_id,)).fetchone()
+        attrs = json.loads((row["attrs"] if row else None) or "{}")
+        for k, v in (new or {}).items():
+            if isinstance(v, list) and isinstance(attrs.get(k), list):
+                attrs[k] = attrs[k] + [x for x in v if x not in attrs[k]]
+            elif v not in (None, "", [], {}):
+                attrs.setdefault(k, v)
+        return json.dumps(attrs, sort_keys=True)
+
     # -- jobs ---------------------------------------------------------------
-    def upsert_job(self, job: Job) -> int:
-        contract = self.get_contract_by_no(job.contract_no)
-        contract_id = contract["contract_id"] if contract else None
+    def upsert_job(self, job: Job, contract_id: int | None = None) -> int:
+        """Cache one job. Linked to `contract_id` when given, else to the
+        contract whose number matches job.contract_no (unlinked if neither)."""
+        if contract_id is None and job.contract_no:
+            contract = self.get_contract_by_no(job.contract_no)
+            contract_id = contract["contract_id"] if contract else None
         row = None
         if job.external_id:
             row = self.conn.execute(
                 "SELECT job_id FROM jobs WHERE source = ? AND external_id = ?",
                 (job.source, job.external_id),
             ).fetchone()
+        fields = {
+            "contract_id": contract_id, "name": job.name, "customer": job.customer,
+            "status": job.status, "contract_value": job.contract_value,
+            "sales_amount": job.sales_amount, "paid_amount": job.paid_amount,
+            "job_number": job.job_number, "location": job.location,
+            "created_on": job.created_on, "closed_on": job.closed_on,
+            "link_confidence": job.link_confidence, "link_reason": job.link_reason,
+            "attrs": json.dumps(job.attrs, sort_keys=True),
+        }
         if row:
             jid = int(row["job_id"])
+            sets = ", ".join(f"{k} = ?" for k in fields)
             self.conn.execute(
-                "UPDATE jobs SET contract_id = ?, name = ?, customer = ?, status = ?, "
-                "contract_value = ?, sales_amount = ?, attrs = ?, synced_at = datetime('now') "
-                "WHERE job_id = ?",
-                (contract_id, job.name, job.customer, job.status, job.contract_value,
-                 job.sales_amount, json.dumps(job.attrs, sort_keys=True), jid),
-            )
+                f"UPDATE jobs SET {sets}, synced_at = datetime('now') WHERE job_id = ?",
+                [*fields.values(), jid])
             return jid
+        fields.update(source=job.source, external_id=job.external_id)
         cur = self.conn.execute(
-            "INSERT INTO jobs(contract_id, name, customer, status, contract_value, "
-            "sales_amount, source, external_id, attrs) VALUES (?,?,?,?,?,?,?,?,?)",
-            (contract_id, job.name, job.customer, job.status, job.contract_value,
-             job.sales_amount, job.source, job.external_id,
-             json.dumps(job.attrs, sort_keys=True)),
-        )
+            f"INSERT INTO jobs({', '.join(fields)}) VALUES ({', '.join('?' * len(fields))})",
+            list(fields.values()))
         return int(cur.lastrowid)
+
+    def list_unlinked_jobs(self) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM jobs WHERE contract_id IS NULL ORDER BY customer, name").fetchall()
+        return [_row_to_dict(r) for r in rows]
 
     def list_jobs(self, contract_id: int) -> list[dict]:
         rows = self.conn.execute(

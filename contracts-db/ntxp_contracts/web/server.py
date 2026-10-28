@@ -28,14 +28,17 @@ import re
 import sqlite3
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from .. import branding, contactfile, jobs as jobs_mod
-from ..config import CONTRACT_TYPES, SCOPE_VOCAB, WEB_HOST, WEB_POLL_MS, WEB_PORT
+from ..config import CONTRACT_STATUSES, CONTRACT_TYPES, SCOPE_VOCAB, WEB_HOST, WEB_POLL_MS, WEB_PORT
 from ..db import connect, migrate
 from ..db.repository import ConflictError, Repository
 
 STATIC = Path(__file__).parent / "static"
+_ASSET_TYPES = {".png": "image/png", ".svg": "image/svg+xml", ".webp": "image/webp",
+                ".jpg": "image/jpeg", ".ttf": "font/ttf", ".otf": "font/otf",
+                ".woff": "font/woff", ".woff2": "font/woff2"}
 
 
 # Migrations are applied once per process (at serve() startup); the schema does
@@ -144,6 +147,15 @@ def make_handler(db_override):
                     return self._file(f, ct + "; charset=utf-8")
                 return self._json({"error": "not found"}, 404)
 
+            m = re.match(r"^/api/branding/asset/([^/]+)$", path)
+            if m:
+                # Only files the resolver found inside the brand skill (logo,
+                # fonts) — an allow-list, so no arbitrary path is ever served.
+                f = branding.resolve_brand().assets.get(unquote(m.group(1)))
+                if not f:
+                    return self._json({"error": "not found"}, 404)
+                return self._file(Path(f), _ASSET_TYPES.get(Path(f).suffix.lower(),
+                                                             "application/octet-stream"))
             if path == "/api/branding":
                 return self._json(branding.resolve_brand().to_dict())
             if path == "/api/meta":
@@ -151,6 +163,7 @@ def make_handler(db_override):
                 try:
                     meta = {
                         "contract_types": list(CONTRACT_TYPES),
+                        "contract_statuses": list(CONTRACT_STATUSES),
                         "scope_vocab": list(SCOPE_VOCAB),
                         "poll_ms": WEB_POLL_MS,
                         "latest_seq": repo.changes_since(0)["latest_seq"],
