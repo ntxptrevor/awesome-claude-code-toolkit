@@ -28,7 +28,7 @@ JEV grades, enrichment backfills, and a user-facing page + MCP + hooks expose it
 | F | JEV qualification & grading | DONE | `qualify/grader.py` |
 | G/H/I | Enrichment / photos / LinkedIn | DONE | `enrich/*`, `docs/ENRICHMENT.md` |
 | B | Tool-agnostic context hooks | DONE | `context/hotlink.py` |
-| **F1** | **Stateless cloud MCP 2.0 + OAuth + auto-hooks** | TODO | `remote/` (to build) |
+| **F1** | **Stateless cloud MCP 2.0 + OAuth + auto-hooks** | DONE (code) · BLOCKED(deploy) | `remote/*`, `hooks/*` |
 | **F2a** | **One-way iOS/iPhone contact sync (CardDAV/vCard)** | TODO | `remote/carddav.py` (to build) |
 | **F2b** | **Mini model council (JEV + cheap LLMs)** | TODO | `council/` (to build) |
 | **F2c** | **Whitelisted connector middle-layer (Zapier-style)** | TODO | `connectors/` (to build) |
@@ -36,7 +36,20 @@ JEV grades, enrichment backfills, and a user-facing page + MCP + hooks expose it
 
 ---
 
-## F1 — Stateless cloud-hosted MCP 2.0 + OAuth + auto-hooks  `TODO`
+## F1 — Stateless cloud-hosted MCP 2.0 + OAuth + auto-hooks  `DONE (code) · BLOCKED(deploy)`
+
+**Built:** `remote/http_server.py` (stateless streamable-HTTP MCP via FastMCP v1 +
+pure-ASGI `AuthMiddleware`), `remote/auth.py` (Google-Workspace OAuth-token verify,
+`google|static|none` modes), `remote/maps.py` (Google/Apple maps links),
+`remote/plugin.mcp.json` (remote MCP the plugin ships → install = register),
+`hooks/contact_context.py` + `hooks/hooks.json` (UserPromptSubmit hook injects
+contact cards, blue hotlinks, Maps links, alternate-info preview), `locate_address`
+MCP tool, `ntxp serve-http` CLI, `remote` extra (`mcp<2`, uvicorn). Validated:
+app builds, `/health` 200, unauthorized `/mcp` 401, hook injects context; 58 tests.
+**Remaining (not code):** deploy to the VPS; register the Google OAuth app; set
+`NTXP_MCP_URL`/token in the plugin config.
+
+### Original plan (for reference)
 
 **Intent.** An optional, cloud-hosted, stateless **streamable-HTTP MCP** that any
 tool/skill/workflow can call for live company-contact access. Clicking it in

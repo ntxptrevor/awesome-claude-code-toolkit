@@ -12,7 +12,7 @@ from .db import connect, migrate
 from .db.repository import Repository
 
 
-def build_server(db_override: str | None = None):
+def build_server(db_override: str | None = None, stateless_http: bool = False):
     try:
         from mcp.server.fastmcp import FastMCP
     except Exception as exc:  # pragma: no cover
@@ -20,7 +20,7 @@ def build_server(db_override: str | None = None):
             "The 'mcp' package is required. Install with: pip install 'ntxp-contacts[mcp]'"
         ) from exc
 
-    mcp = FastMCP("ntxp-contacts")
+    mcp = FastMCP("ntxp-contacts", stateless_http=stateless_http)
 
     def _conn():
         c = connect(db_override)
@@ -161,6 +161,13 @@ def build_server(db_override: str | None = None):
         cid = res[0].get("contact_id")
         return json.dumps({"card": idx.card(cid) if cid else res[0],
                            "html": idx.card_html(cid) if cid else None}, default=str)
+
+    @mcp.tool()
+    def locate_address(address: str) -> str:
+        """Live location links (Google + Apple Maps) for an address string — for
+        injecting a clickable map link next to any contact address."""
+        from .remote.maps import maps_link, apple_maps_link
+        return json.dumps({"google": maps_link(address), "apple": apple_maps_link(address)})
 
     @mcp.tool()
     def hotlink_text(text: str) -> str:

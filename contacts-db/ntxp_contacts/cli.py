@@ -486,9 +486,25 @@ def enrich_linkedin_cmd(ctx, contact_id, url, photo):
 @main.command("mcp-serve")
 @click.pass_context
 def mcp_serve(ctx):
-    """Run the MCP server exposing the contacts DB as tools (Phase 6)."""
+    """Run the MCP server exposing the contacts DB as tools (stdio)."""
     from .mcp_server import serve
     serve(ctx.obj.get("db"))
+
+
+@main.command("serve-http")
+@click.option("--host", default="0.0.0.0")
+@click.option("--port", default=8080, type=int)
+@click.pass_context
+def serve_http(ctx, host, port):
+    """Run the stateless cloud MCP over streamable HTTP, gated by an OAuth token.
+
+    Auth via env NTXP_MCP_AUTH=google|static|none (see remote/auth.py). The MCP
+    endpoint is at /mcp; GET /health is open. Point NTXP_DB_URL at the cloud
+    Postgres so every caller shares one canonical store.
+    """
+    from .remote import serve as serve_remote
+    click.echo(f"NTXP contacts MCP (stateless HTTP) on {host}:{port} — endpoint /mcp", err=True)
+    serve_remote(ctx.obj.get("db"), host, port)
 
 
 if __name__ == "__main__":

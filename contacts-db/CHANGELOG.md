@@ -5,6 +5,14 @@ All dates ISO. See `docs/BLUEPRINT.md` for the live status board and resume flag
 ## [Unreleased]
 
 ### Added
+- **F1 — stateless cloud MCP 2.0 + OAuth + auto-hooks** (`remote/*`, `hooks/*`):
+  streamable-HTTP MCP (FastMCP v1, stateless) with a pure-ASGI Bearer-token gate
+  (`remote/auth.py`: Google Workspace OAuth / static / none); `remote/maps.py`
+  live Google/Apple maps links + `locate_address` MCP tool; `remote/plugin.mcp.json`
+  remote-MCP the plugin ships (install = register, zero setup beyond OAuth);
+  `hooks/contact_context.py` UserPromptSubmit hook that injects contact cards,
+  blue hotlinks, Maps links, and alternate-info previews; `ntxp serve-http` CLI;
+  `remote` extra (mcp<2 + uvicorn). card() now carries address+maps+alternates.
 - **Blueprint & handoff** (`docs/BLUEPRINT.md`) — staged flags + resume context so
   any model can continue mid-build.
 - **Layer B — context hooks** (`context/hotlink.py`): `hotlink_text` wraps

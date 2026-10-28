@@ -181,6 +181,23 @@ ntxp qualify            # grade + set the exposure/sync gate
 ntxp qualify --plan     # compute and report without writing
 ```
 
+### Cloud MCP (stateless, OAuth-gated) + auto-hooks
+
+A stateless, cloud-hostable **streamable-HTTP MCP** gives any tool/skill/workflow
+live contact access. Install the plugin and it registers the remote MCP
+(`remote/plugin.mcp.json`) — zero setup beyond OAuth.
+
+```bash
+NTXP_DB_URL='postgresql://…' NTXP_MCP_AUTH=google ntxp serve-http --port 8080
+# endpoint: POST /mcp (Bearer Google Workspace token) · GET /health is open
+```
+
+Auth modes (`NTXP_MCP_AUTH`): `google` (verify a Workspace token, require
+`ntxpllc.com`), `static` (`NTXP_MCP_TOKEN`), `none` (dev). The
+`hooks/contact_context.py` **UserPromptSubmit hook** auto-injects contact cards,
+blue hotlinks, live **Maps** location links, and alternate-info previews whenever
+a message mentions a known contact; `locate_address` returns map links on demand.
+
 ### Tool-agnostic context hooks (blue hotlinks)
 
 Any NTXP tool can inject live contact context as **blue hyperlink hotlinks**:

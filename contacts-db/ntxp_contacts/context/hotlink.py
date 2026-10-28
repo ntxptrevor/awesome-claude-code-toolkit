@@ -73,6 +73,7 @@ class HotlinkIndex:
 
     def card(self, contact_id: int) -> dict | None:
         from ..db.repository import Repository
+        from ..remote.maps import maps_link
         c = Repository(self.conn).get_contact(contact_id)
         if not c:
             return None
@@ -82,6 +83,18 @@ class HotlinkIndex:
         grade = self.conn.execute(
             "SELECT grade, grade_band, is_exposed FROM contact_grade WHERE contact_id=?",
             (contact_id,)).fetchone()
+        addr = (c.get("addresses") or [None])[0]
+        # Live preview of potential alternate contact info (proposed, not applied).
+        alternates = []
+        try:
+            for r in self.conn.execute(
+                    "SELECT field, value, source, grade FROM enrichment_candidates "
+                    "WHERE contact_id=? AND status='proposed' ORDER BY grade DESC LIMIT 3",
+                    (contact_id,)):
+                alternates.append({"field": r["field"], "value": r["value"],
+                                   "source": r["source"], "grade": r["grade"]})
+        except Exception:
+            pass
         return {
             "contact_id": contact_id,
             "name": c.get("full_name"),
@@ -89,11 +102,14 @@ class HotlinkIndex:
             "org": c.get("org_name"),
             "email": (c.get("emails") or [{}])[0].get("email"),
             "phone": (c.get("phones") or [{}])[0].get("phone_e164"),
+            "address": _fmt_addr(addr),
+            "maps": maps_link(addr) if addr else None,
             "labels": [t["value"] for t in (c.get("tags") or []) if t["kind"] in ("member", "region", "trade", "contact_type", "domain")],
             "photo_url": extra["photo_url"] if extra else None,
             "linkedin_url": extra["linkedin_url"] if extra else None,
             "grade": grade["grade"] if grade else None,
             "grade_band": grade["grade_band"] if grade else None,
+            "alternates": alternates,
             "href": self.href("contact", contact_id),
         }
 
@@ -108,6 +124,8 @@ class HotlinkIndex:
             bits.append(f'<a href="mailto:{html.escape(d["email"])}" style="{BLUE}">{html.escape(d["email"])}</a>')
         if d["phone"]:
             bits.append(f'<a href="tel:{html.escape(d["phone"])}" style="{BLUE}">{html.escape(d["phone"])}</a>')
+        if d.get("address") and d.get("maps"):
+            bits.append(f'<a href="{html.escape(d["maps"])}" style="{BLUE}">📍 {html.escape(d["address"])}</a>')
         return '<span class="ntxp-card">' + " — ".join(bits) + "</span>"
 
     # -- annotation ---------------------------------------------------------
@@ -166,6 +184,13 @@ class HotlinkIndex:
         for s, e, rep in sorted(spans, key=lambda x: x[0], reverse=True):
             out = out[:s] + rep + out[e:]
         return {"html": out, "links": links}
+
+
+def _fmt_addr(a) -> str | None:
+    if not a:
+        return None
+    parts = [a.get(k) for k in ("line1", "city", "state", "zip") if a.get(k)]
+    return ", ".join(str(p) for p in parts) or None
 
 
 def _coverage(spans):
