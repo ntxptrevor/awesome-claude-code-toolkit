@@ -62,6 +62,10 @@ class Contract:
     pdf_url: str | None = None              # live link to the signed PDF
     is_executed: bool = False              # False => flagged as unexecuted
 
+    # Award lifecycle + pricing basis
+    status: str | None = None               # see config.CONTRACT_STATUSES
+    pricebook: str | None = None            # RSMeans | Gordian ezIQC | BNI | ...
+
     # Anything extra without a schema change.
     attrs: dict[str, Any] = field(default_factory=dict)
 
@@ -81,6 +85,13 @@ class Job:
     status: str | None = None
     contract_value: float | None = None
     sales_amount: float | None = None       # invoiced / recognized sales
+    paid_amount: float | None = None
+    job_number: str | None = None
+    location: str | None = None
+    created_on: str | None = None           # ISO yyyy-mm-dd
+    closed_on: str | None = None
+    link_confidence: str | None = None      # how sure the contract link is: high|medium|low|none
+    link_reason: str | None = None
     source: str = "jobtread"
     external_id: str | None = None
     attrs: dict[str, Any] = field(default_factory=dict)

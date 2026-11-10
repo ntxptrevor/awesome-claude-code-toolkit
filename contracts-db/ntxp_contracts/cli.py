@@ -13,7 +13,7 @@ from . import __version__, branding
 from .config import db_path
 from .db import connect, migrate
 from .db.repository import Repository
-from .importer import import_csv
+from .importer import import_csv, import_json
 from .model import Contract
 
 
@@ -71,6 +71,21 @@ def cmd_import(args):
     print(json.dumps(summary, indent=2))
 
 
+def cmd_import_json(args):
+    repo = _repo(args.db)
+    print(json.dumps(import_json(repo, args.file, source=args.source), indent=2))
+
+
+def cmd_export(args):
+    from .export import dumps, export_json, export_xlsx
+    repo = _repo(args.db)
+    if args.out.lower().endswith(".xlsx"):
+        print(f"wrote {export_xlsx(repo, args.out)}")
+    else:
+        Path(args.out).write_text(dumps(export_json(repo)), encoding="utf-8")
+        print(f"wrote {args.out}")
+
+
 def cmd_stats(args):
     print(json.dumps(_repo(args.db).stats(), indent=2))
 
@@ -116,6 +131,14 @@ def build_parser():
     im = sub.add_parser("import", help="Idempotently import a CSV contract log.")
     im.add_argument("file"); im.add_argument("--source", default="csv")
     im.set_defaults(fn=cmd_import)
+
+    ij = sub.add_parser("import-json",
+                        help="Import contracts + contacts + coefficients + jobs from JSON.")
+    ij.add_argument("file"); ij.add_argument("--source", default=None)
+    ij.set_defaults(fn=cmd_import_json)
+
+    ex = sub.add_parser("export", help="Export everything to .xlsx (workbook) or .json.")
+    ex.add_argument("out"); ex.set_defaults(fn=cmd_export)
 
     sub.add_parser("stats", help="Counts + unexecuted flag totals.").set_defaults(fn=cmd_stats)
     sub.add_parser("brand", help="Print the brand resolved from Claude settings.").set_defaults(fn=cmd_brand)

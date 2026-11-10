@@ -35,6 +35,20 @@ CONTRACT_TYPES = (
     "Job Order Contract",
     "Cooperative Contract",
     "Master Subcontract Agreement",
+    "IDIQ / Term Contract",
+    "Subcontract Agreement",
+    "Project Contract",
+    "Consulting Agreement",
+)
+
+# Award lifecycle of a contract vehicle, shown as a badge and editable inline.
+CONTRACT_STATUSES = (
+    "awarded",
+    "tentative",
+    "pending-execution",
+    "expired",
+    "lost",
+    "unknown",
 )
 
 # Suggested allowable-scope terms surfaced as quick-pick chips in the UI. Free
