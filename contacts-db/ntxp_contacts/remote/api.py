@@ -544,7 +544,9 @@ def _render(spec: dict, fmt: str):
 
 def _csv_cell(v):
     """Contact fields are untrusted (Gmail/CRM/Form Fill): neutralise spreadsheet formulas."""
-    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+    if isinstance(v, str) and v.lstrip(" \t\r\n")[:1] in ("=", "+", "-", "@"):
+        return "'" + v
+    if isinstance(v, str) and v[:1] in ("\t", "\r"):
         return "'" + v
     return v
 

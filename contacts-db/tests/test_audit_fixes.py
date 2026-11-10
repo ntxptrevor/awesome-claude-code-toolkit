@@ -100,15 +100,60 @@ def test_token_audience_enforced_when_client_id_configured(google, monkeypatch):
     assert auth.verify_token("other-app") is not None
 
 
-def test_token_checks_are_cached_including_failures(google):
+def test_token_checks_are_cached_including_bad_verdicts(google):
     state, calls = google
     for _ in range(5):
         auth.verify_token("same")
     assert len(calls) == 1
-    state["userinfo"] = {"hd": "evil.com", "email_verified": True}
+    state["userinfo"] = {"hd": "evil.com", "email": "a@evil.com", "email_verified": True}
     for _ in range(5):
         assert auth.verify_token("bogus") is None
     assert len(calls) == 2                       # one upstream call for the bogus token, not five
+
+
+def test_transient_upstream_errors_are_not_cached(google):
+    state, calls = google
+    state["userinfo"] = urllib.error.URLError("timeout")
+    assert auth.verify_token("blip") is None
+    state["userinfo"] = {"hd": "ntxpllc.com", "email": "a@ntxpllc.com", "email_verified": True}
+    assert auth.verify_token("blip") is not None          # recovered immediately: the outage was not remembered
+    state["userinfo"] = urllib.error.HTTPError("u", 503, "x", {}, None)
+    assert auth.verify_token("five-oh-three") is None
+    state["userinfo"] = {"hd": "ntxpllc.com", "email": "a@ntxpllc.com", "email_verified": True}
+    assert auth.verify_token("five-oh-three") is not None
+
+
+def test_missing_email_verified_fails_closed(google):
+    state, _ = google
+    state["userinfo"] = {"hd": "ntxpllc.com", "email": "a@ntxpllc.com"}
+    assert auth.verify_token("no-claim") is None
+
+
+def test_azp_must_also_be_ours_and_cache_never_outlives_the_token(google, monkeypatch):
+    state, calls = google
+    monkeypatch.setenv("NTXP_GOOGLE_CLIENT_ID", "mine.apps.googleusercontent.com")
+    state["tokeninfo"] = {"aud": "mine.apps.googleusercontent.com", "azp": "attacker-client"}
+    assert auth.verify_token("mixed") is None
+    state["tokeninfo"] = {"aud": "mine.apps.googleusercontent.com", "azp": "mine.apps.googleusercontent.com", "expires_in": "0"}
+    assert auth.verify_token("expired-now") is None
+    state["tokeninfo"] = {"aud": "mine.apps.googleusercontent.com", "azp": "mine.apps.googleusercontent.com", "expires_in": "2"}
+    assert auth.verify_token("short-lived") is not None
+    key = auth.hashlib.sha256(b"short-lived").hexdigest()
+    assert auth._CACHE[key][0] - time.monotonic() <= 2.5
+
+
+def test_same_token_concurrently_costs_one_upstream_call(google, monkeypatch):
+    state, calls = google
+    orig = auth.urllib.request.urlopen
+
+    def slow(req, timeout=0):
+        time.sleep(0.2)
+        return orig(req, timeout)
+    monkeypatch.setattr(auth.urllib.request, "urlopen", slow)
+    ts = [threading.Thread(target=auth.verify_token, args=("burst",)) for _ in range(12)]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    assert len(calls) == 1
 
 
 def test_slow_token_check_does_not_stall_the_event_loop(google, monkeypatch):
@@ -153,7 +198,7 @@ def test_signature_and_service_token_with_non_ascii_are_rejected_not_crashing():
 # ---- API -------------------------------------------------------------------
 
 def test_csv_cells_neutralise_spreadsheet_formulas():
-    for evil in ('=HYPERLINK("http://x","y")', "+1+1", "-2", "@SUM(A1)", "\tcmd", "\rcmd"):
+    for evil in ('=HYPERLINK("http://x","y")', "+1+1", "-2", "@SUM(A1)", "\tcmd", "\rcmd", " =1+1", "\n=1+1", "  \t@x"):
         assert _csv_cell(evil).startswith("'")
     assert _csv_cell("Eric") == "Eric" and _csv_cell(5) == 5
 
@@ -308,7 +353,11 @@ def test_contracts_pull_survives_bad_peer_answers(conn):
     assert pc.pull(conn, Peer, force=True, get=getter(good))["contracts"] == 1
     n = conn.execute("SELECT COUNT(*) FROM peer_context WHERE kind='contract'").fetchone()[0]
     assert n == 1
-    for bad in ({"error": "x"}, "<html>502</html>", {"contracts": []}, {"contracts": None}):
-        out = pc.pull(conn, Peer, get=getter(bad))
-        assert "skipped" in out
+    for bad in ({"error": "x"}, "<html>502</html>", {"contracts": None}):
+        assert "skipped" in pc.pull(conn, Peer, get=getter(bad))
         assert conn.execute("SELECT COUNT(*) FROM peer_context WHERE kind='contract'").fetchone()[0] == n
+    # an empty list is believed only when confirmed on two consecutive polls
+    assert "skipped" in pc.pull(conn, Peer, get=getter({"contracts": []}))
+    assert conn.execute("SELECT COUNT(*) FROM peer_context WHERE kind='contract'").fetchone()[0] == n
+    out = pc.pull(conn, Peer, get=getter({"contracts": []}))
+    assert out.get("removed") == 1 and conn.execute("SELECT COUNT(*) FROM peer_context WHERE kind='contract'").fetchone()[0] == 0

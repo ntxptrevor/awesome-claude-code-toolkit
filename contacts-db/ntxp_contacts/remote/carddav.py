@@ -12,6 +12,7 @@ tested for well-formed multistatus XML and vCard payloads.
 from __future__ import annotations
 
 import asyncio
+import threading
 
 import xml.sax.saxutils as sx
 
@@ -151,14 +152,17 @@ class CardDAVApp:
     def __init__(self, db_override=None):
         self.db_override = db_override
         self._ready = False
+        self._lock = threading.Lock()
 
     def _handle(self, method, path, body: bytes, depth):
         from ..db import connect, migrate
         conn = connect(self.db_override)
         try:
             if not self._ready:
-                migrate(conn)
-                self._ready = True
+                with self._lock:                      # concurrent first requests must not both migrate
+                    if not self._ready:
+                        migrate(conn)
+                        self._ready = True
             return handle(conn, method, path, body.decode("utf-8", "replace"), depth)
         finally:
             conn.close()

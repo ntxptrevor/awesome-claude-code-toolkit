@@ -50,8 +50,15 @@ def pull(conn, peer, force: bool = False, get=_get) -> dict:
     if not contracts and not force:
         had = conn.execute("SELECT COUNT(*) FROM peer_context WHERE peer=? AND kind='contract'",
                            (peer.name,)).fetchone()[0]
-        if had:                                   # refuse to delete everything on an empty answer unless forced
-            return {"skipped": "peer returned no contracts; kept cached", "seq": latest}
+        if had:
+            # One empty answer is indistinguishable from a proxy/peer fault: keep the cache, and only accept
+            # "no contracts" when the peer says so on two polls in a row (so a real wind-down still propagates).
+            seen = int(get_cursor(conn, peer.name, "contracts_empty") or 0)
+            if seen < 1:
+                set_cursor(conn, peer.name, "contracts_empty", seen + 1)
+                conn.commit()
+                return {"skipped": "peer returned no contracts; kept cached (confirm on next poll)", "seq": latest}
+    set_cursor(conn, peer.name, "contracts_empty", 0)
     repo = Repository(conn)
     keep, matched, wanted_labels = set(), 0, {}
     for c in contracts:
