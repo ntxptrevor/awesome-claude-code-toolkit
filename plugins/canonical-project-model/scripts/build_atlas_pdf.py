@@ -104,6 +104,7 @@ def tbox(page, rect, text, fontname="helv", fontsize=8, color=INK, align=0):
         if w <= rect.width:
             text += "..."
             break
+    w = fitz.get_text_length(text, fontname=fontname, fontsize=fontsize)   # the width of what is actually drawn
     x = rect.x0 if align == 0 else rect.x0 + (rect.width - w) / 2 if align == 1 else rect.x1 - w
     page.insert_text((x, rect.y0 + fontsize * 0.92), text, fontname=fontname, fontsize=fontsize, color=color)
 
@@ -177,7 +178,7 @@ class Legend:
         self.md.append(f"\n{'#' * (level + 1)} {text}\n")
 
     def heading(self, text, sub=None, dest=None):
-        self.ensure(22)
+        self.ensure(30 if sub else 22)
         p = self.page
         t = latin(text).upper()
         tbox(p, fitz.Rect(MARGIN, self.y, PW - MARGIN, self.y + 12), t, fontname="hebo", fontsize=8,
@@ -234,7 +235,10 @@ class Legend:
             if x + w > PW - MARGIN:
                 x = MARGIN + 6
                 self.y += line_h
+            at = self.pno
             self.ensure(line_h + 2)
+            if self.pno != at:                           # a new page starts its row at the left margin
+                x = MARGIN + 6
             r = fitz.Rect(x, self.y, x + w, self.y + 10.5)
             self.page.draw_rect(r, color=WARM_EDGE, fill=WHITE if dest else WARM, width=0.5, radius=0.25)
             self.page.insert_text((x + 4.5, self.y + 7.8), text, fontname="hebo", fontsize=7,
@@ -267,7 +271,10 @@ class Legend:
             if x + w > PW - MARGIN:
                 x = MARGIN + 6
                 self.y += 12
+            at = self.pno
             self.ensure(12)
+            if self.pno != at:
+                x = MARGIN + 6
             self.page.draw_rect(fitz.Rect(x, self.y + 1.5, x + 9, self.y + 8.5), color=None, fill=_rgb(hexv))
             self.page.insert_text((x + 12, self.y + 8), name, fontname="helv", fontsize=6.8, color=INK)
             x += w + 6
@@ -307,6 +314,9 @@ class Legend:
         self.md.append("\n| " + " | ".join(latin(c) for c in columns) + " |\n|" + "---|" * ncol)
         for ri, r in enumerate(shown):
             cells = [wrap(r[c] if c < len(r) else "", "helv", size, widths[c] - 6) for c in range(ncol)]
+            cap = max(3, int((BODY_BOTTOM - BODY_TOP - 60) / (size + 2)))
+            # A cell taller than a page is cut with a visible mark; the full text stays in the knowledge base.
+            cells = [x if len(x) <= cap else x[:cap - 1] + ["... (continues in the knowledge base)"] for x in cells]
             h = max(len(x) for x in cells) * (size + 2) + 4
             if self.y + h > BODY_BOTTOM:
                 self.new_page()
