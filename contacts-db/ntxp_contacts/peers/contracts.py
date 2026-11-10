@@ -17,6 +17,15 @@ from ..model import Tag
 from . import context as ctx
 from .events import get_cursor, set_cursor
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Peers talk to fixed https hosts; a redirect would carry the bearer/secret elsewhere (or inward)."""
+    def redirect_request(self, *a, **k):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 LABEL_PREFIX = "Contract "
 
 
@@ -24,7 +33,7 @@ def _get(peer, path: str, timeout: float = 10.0):
     req = urllib.request.Request(peer.url.rstrip("/") + path, headers={
         "Accept": "application/json", "User-Agent": "ntxp-contacts/1",
         "Authorization": f"Bearer svc.contacts.{peer.secret}"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with _OPENER.open(req, timeout=timeout) as r:
         return json.load(r)
 
 
@@ -34,7 +43,15 @@ def pull(conn, peer, force: bool = False, get=_get) -> dict:
     latest = int(probe.get("latest_seq", 0))
     if cur is not None and not probe.get("changed") and not force:
         return {"skipped": "no changes", "seq": latest}
-    contracts = get(peer, "/api/contracts").get("contracts", [])
+    body = get(peer, "/api/contracts")
+    contracts = body.get("contracts") if isinstance(body, dict) else None
+    if not isinstance(contracts, list):
+        return {"skipped": "unexpected response from peer", "seq": latest}
+    if not contracts and not force:
+        had = conn.execute("SELECT COUNT(*) FROM peer_context WHERE peer=? AND kind='contract'",
+                           (peer.name,)).fetchone()[0]
+        if had:                                   # refuse to delete everything on an empty answer unless forced
+            return {"skipped": "peer returned no contracts; kept cached", "seq": latest}
     repo = Repository(conn)
     keep, matched, wanted_labels = set(), 0, {}
     for c in contracts:
