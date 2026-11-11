@@ -32,6 +32,23 @@ No skill is installed or copied into the user's environment.
 | `forge_sync` | read; `force` is sync | status only | yes |
 | `access_log` | read | own rows | any, with reason |
 
+## Auto deploy
+
+Four parts make a connected environment start from live Forge with no per-skill install.
+
+| Part | Where it runs | Effect |
+|---|---|---|
+| Server instructions | Every MCP client | Tell the model to call `forge_bootstrap` before its first reply. They also list every Forge package by name, rebuilt after each sync. |
+| Prompts | Every MCP client | One prompt per skill and plugin, shown in the client's prompt menu. A merge to Forge adds or removes prompts with no reinstall. |
+| `autoload` | `forge_bootstrap` | A package whose `mcp-init.json` sets `"autoload": true` sends its entry document with the bootstrap. Limit: 8 packages. |
+| `plugin/ntxp-forge-connect` | Claude Code, Cowork, desktop | One plugin: the connector, a session-start hook that orders the bootstrap call, and one router skill. It holds no Forge content. |
+
+On claude.ai, hooks do not run. Add the connector and put this line in the organization instructions:
+
+> Before your first reply in every session, call the `forge_bootstrap` tool of the NTXP Forge connector and follow what it returns.
+
+Hooks, slash commands and bundled MCP servers inside a Forge plugin still need a native install. The connector serves their files; it cannot run them.
+
 ## Deploy a skill to users in one task
 
 1. Merge the skill or plugin to NTXP Forge `main`. The server serves it within 300 seconds.

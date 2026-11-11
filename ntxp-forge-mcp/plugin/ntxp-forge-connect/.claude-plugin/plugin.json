@@ -1,0 +1,10 @@
+{
+  "name": "ntxp-forge-connect",
+  "version": "0.1.0",
+  "description": "One install that connects a Claude environment to the NTXP Forge MCP and starts every session from live NTXP Forge. Holds no skill copies: every NTXP skill, plugin and instruction is served by the connector.",
+  "author": {
+    "name": "NTXP LLC"
+  },
+  "license": "LicenseRef-NTXP-Internal",
+  "keywords": ["ntxp", "forge", "mcp", "skills", "bootstrap"]
+}

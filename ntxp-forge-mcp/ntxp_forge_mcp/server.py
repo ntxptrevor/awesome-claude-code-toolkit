@@ -20,6 +20,7 @@ from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from mcp.server.mcpserver.prompts.base import Prompt
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -35,8 +36,9 @@ from .policy import (ADMIN, APPENDABLE_KINDS, COPY, DELETE, READ, WRITE, Denied,
 INSTRUCTIONS = """\
 NTXP Forge MCP is the single entry point for NTXP skills and plugins.
 
-1. Call `forge_bootstrap` first in every new session. It returns your role, the
-   live catalog, the Forge instructions and what your environment still needs.
+1. Call `forge_bootstrap` before your first reply in every session, without
+   being asked. It returns your role, the Forge instructions, the always-on
+   skills and what your environment still needs. Follow what it returns.
 2. Load a skill with `skill_load` when a task needs it, then follow its
    SKILL.md. Read supporting files one at a time with `package_file`.
 3. Skills are served live from NTXP Forge. Do not save a skill or plugin into a
@@ -51,6 +53,9 @@ _CONFIG_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 _SCOPE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
 MAX_ENTRY_CHARS = 4000
 MAX_CONFIG_BYTES = 64 * 1024
+MAX_INDEX_CHARS = 6000          # catalog index inside the server instructions
+MAX_AUTOLOAD_PACKAGES = 8
+BOOTSTRAP_DESCRIPTION_CHARS = 200
 HANDLING = ("Served live from NTXP Forge. Use it in memory or in a temp dir for this task. "
             "Do not save it to a skills folder, a repo, Drive or memory.")
 
@@ -167,6 +172,65 @@ def build_server(settings: Settings, store: Store, forge: Forge,
             forge.package_root("plugin", name)
             return "plugin", name
 
+    live = {"key": None, "prompts": []}
+    live_lock = threading.Lock()
+
+    def prompt_name(item: dict, taken: set[str]) -> str:
+        """A skill keeps its name. A plugin whose name a skill already uses gets a suffix."""
+        return item["name"] if item["name"] not in taken else f"{item['name']}-{item['kind']}"
+
+    def package_prompt(kind: str, name: str) -> Callable[[str], str]:
+        def render(task: str = "") -> str:
+            def work(email: str, role: str, audit: Audit) -> dict:
+                loaded = forge.load(kind, name)
+                loaded["init"] = forge.init_plan(kind, name)
+                return loaded
+            loaded = run("prompt", READ, "package", f"{kind}:{name}", work)
+            entry = loaded["entry"]["content"] if loaded.get("entry") else "(no entry document)"
+            env = ", ".join(loaded["init"]["env"]) or "none"
+            return "\n\n".join(part for part in (
+                f"Use the NTXP {kind} `{name}` for this task." + (f" Task: {task}" if task else ""),
+                entry,
+                f"Environment variables it reads: {env}. Run `env_init` before first use.",
+                HANDLING) if part)
+        return render
+
+    def refresh_live_surface() -> None:
+        """Match the server instructions and the prompt list to the current catalog.
+
+        Runs after every sync. A merge to Forge therefore changes what every
+        connected client sees, with no reinstall and no reconnect."""
+        with live_lock:
+            catalog = forge.catalog()
+            key = tuple((c["kind"], c["name"], c["digest"]) for c in catalog)
+            if key == live["key"]:
+                return
+            for old in live["prompts"]:
+                mcp.remove_prompt(old)
+            live["prompts"], taken = [], set()
+            index = []
+            for item in catalog:
+                name = prompt_name(item, taken)
+                taken.add(name)
+                mcp.add_prompt(Prompt.from_function(
+                    package_prompt(item["kind"], item["name"]), name=name,
+                    title=f"NTXP {item['kind']}: {item['name']}",
+                    description=item["description"][:BOOTSTRAP_DESCRIPTION_CHARS] or name))
+                live["prompts"].append(name)
+                index.append(f"- {item['name']} ({item['kind']}): {item['description'][:90]}")
+            listing = "\n".join(index)
+            if len(listing) > MAX_INDEX_CHARS:
+                listing = listing[:MAX_INDEX_CHARS].rsplit("\n", 1)[0] + "\n- (more: call catalog_list)"
+            mcp._lowlevel_server.instructions = (
+                INSTRUCTIONS + f"\nLive catalog ({len(catalog)} packages). Load one with "
+                "`skill_load` when a task matches it:\n" + listing + "\n")
+            live["key"] = key
+
+    def sync(force: bool = False) -> dict:
+        status = forge.sync(force=force)
+        refresh_live_surface()
+        return status
+
     def env_plan(names: list[str], email: str) -> dict:
         plans, shell, requests, workflows = [], [], [], []
         for raw in names:
@@ -216,7 +280,7 @@ def build_server(settings: Settings, store: Store, forge: Forge,
         your environment; load each skill on demand with `skill_load`."""
         def work(email: str, role: str, audit: Audit) -> dict:
             first = store.touch_user(email)
-            status = forge.sync()
+            status = sync()
             catalog = forge.catalog()
             cfg_dir = settings.user_config_dir / email
             audit.detail = f"commit {status['commit']}; {len(catalog)} packages"
@@ -225,8 +289,16 @@ def build_server(settings: Settings, store: Store, forge: Forge,
                          "first_use": first},
                 "forge": status,
                 "instructions": forge.instructions(),
-                "catalog": [{k: c[k] for k in ("kind", "name", "description", "version", "digest")}
+                "catalog": [{"kind": c["kind"], "name": c["name"], "version": c["version"],
+                             "digest": c["digest"],
+                             "description": c["description"][:BOOTSTRAP_DESCRIPTION_CHARS]}
                             for c in catalog],
+                # Packages whose mcp-init.json sets "autoload": true. Their entry
+                # documents arrive here, so they apply from the first reply.
+                "autoloaded": [
+                    {"kind": c["kind"], "name": c["name"],
+                     "entry": forge.load(c["kind"], c["name"])["entry"]}
+                    for c in [c for c in catalog if c["autoload"]][:MAX_AUTOLOAD_PACKAGES]],
                 "ntxp_id": ntxp_id.status(settings, http=gate is not None),
                 "config_files": sorted(p.name for p in cfg_dir.glob("*.md")) if cfg_dir.is_dir() else [],
                 "init": env_plan(skills, email) if skills else None,
@@ -249,7 +321,7 @@ def build_server(settings: Settings, store: Store, forge: Forge,
         def work(email: str, role: str, audit: Audit) -> dict:
             if force and role != ADMIN:
                 raise Denied("Only the owner can force a Forge fetch.", "write_denied")
-            return forge.sync(force=force)
+            return sync(force=force)
         return run("forge_sync", "sync", "sync", "forge", work) if force else \
             run("forge_sync", READ, "sync", "forge", work)
 
@@ -267,7 +339,7 @@ def build_server(settings: Settings, store: Store, forge: Forge,
     def catalog_list(kind: str = "", query: str = "") -> dict[str, Any]:
         """List skills and plugins in NTXP Forge. Filter by kind ('skill', 'plugin') or text."""
         def work(email: str, role: str, audit: Audit) -> dict:
-            status = forge.sync()
+            status = sync()
             q = query.lower().strip()
             items = [c for c in forge.catalog()
                      if (not kind or c["kind"] == kind)
@@ -284,7 +356,7 @@ def build_server(settings: Settings, store: Store, forge: Forge,
         document. Fetch a supporting file with `package_file` only when the
         task needs that file."""
         def work(email: str, role: str, audit: Audit) -> dict:
-            forge.sync()
+            sync()
             k, n = resolve(name, kind)
             audit.target = f"{k}:{n}"
             out = forge.load(k, n)
@@ -302,7 +374,7 @@ def build_server(settings: Settings, store: Store, forge: Forge,
         and logged as a suspected copy. Use `package_export` (owner only) for a
         whole package."""
         def work(email: str, role: str, audit: Audit) -> dict:
-            forge.sync()
+            sync()
             k, n = resolve(name, kind)
             audit.target = f"{k}:{n}/{path.strip().lstrip('./')}"
             if role != ADMIN:
@@ -330,7 +402,7 @@ def build_server(settings: Settings, store: Store, forge: Forge,
         to run, and one NTXP ID VAULT REQUEST per credential. No credential
         value is ever returned."""
         def work(email: str, role: str, audit: Audit) -> dict:
-            forge.sync()
+            sync()
             return env_plan(names, email)
         return run("env_init", READ, "package", ",".join(names), work)
 
@@ -344,7 +416,7 @@ def build_server(settings: Settings, store: Store, forge: Forge,
             if len(reason.strip()) < 10:
                 raise Denied("State a reason of at least 10 characters for the export.",
                              "copy_no_reason")
-            forge.sync()
+            sync()
             k, n = resolve(name, kind)
             audit.target = f"{k}:{n}"
             audit.flag = "package_export"
@@ -487,6 +559,13 @@ def build_server(settings: Settings, store: Store, forge: Forge,
                                    flagged_only=flagged_only, since=since, limit=limit)
             return {"user": owner, "count": len(rows), "rows": rows}
         return run("access_log", READ, "access_log", f"access_log:{user or 'self'}", work)
+
+    # Fill the instructions and prompts now if a checkout already exists. With no
+    # checkout yet, the first tool call that syncs fills them.
+    try:
+        sync()
+    except ForgeError:
+        pass
 
     # -- HTTP-only routes ----------------------------------------------------------
     @mcp.custom_route("/health", methods=["GET"])

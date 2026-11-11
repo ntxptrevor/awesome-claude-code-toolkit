@@ -225,7 +225,17 @@ class Forge:
             "files": len(files),
             "bytes": sum(f["bytes"] for f in files),
             "digest": self._digest(kind, name, files),
+            "autoload": self._autoload(root),
         }
+
+    @staticmethod
+    def _autoload(root: Path) -> bool:
+        """True when the package's mcp-init.json asks to be loaded in every session."""
+        try:
+            declared = json.loads((root / INIT_FILE).read_text("utf-8"))
+        except (OSError, ValueError):
+            return False
+        return isinstance(declared, dict) and declared.get("autoload") is True
 
     def catalog(self) -> list[dict]:
         with self._lock:
