@@ -221,3 +221,26 @@ def test_malformed_metadata_does_not_break_the_catalog(call, settings, metadata)
     (bad / "SKILL.md").write_text(f"---\nname: bad-meta\nmetadata: {metadata}\n---\nBody.\n")
     items = {c["name"]: c for c in call("catalog_list")["items"]}
     assert items["bad-meta"]["version"] == ""
+
+
+def test_write_is_rolled_back_when_its_log_row_cannot_be_saved(call, store, monkeypatch):
+    real_log = store.log
+
+    def failing_log(*args, **kwargs):
+        if kwargs.get("outcome", "ok") == "ok":
+            raise sqlite3.OperationalError("disk is full")
+        return real_log(*args, **kwargs)
+    monkeypatch.setattr(store, "log", failing_log)
+    with pytest.raises(ToolError):
+        call("entry_append", kind="activity", scope="forge", text="must not be saved")
+    monkeypatch.setattr(store, "log", real_log)
+    assert call("entry_list")["count"] == 0
+    assert store.query_log(user=USER, action="write")[0]["outcome"] == "error"
+
+
+def test_database_failure_on_a_read_is_reported_not_raised_raw(call, store, monkeypatch):
+    def broken(*args, **kwargs):
+        raise sqlite3.OperationalError("database is locked")
+    monkeypatch.setattr(store, "list_entries", broken)
+    with pytest.raises(ToolError, match="server database"):
+        call("entry_list")

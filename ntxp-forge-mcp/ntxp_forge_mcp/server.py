@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import re
 import shlex
+import sqlite3
 import threading
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -100,9 +102,15 @@ def build_server(settings: Settings, store: Store, forge: Forge,
             work: Callable[[str, str, Audit], dict]) -> dict:
         email, role = identify(tool, action)
         audit = Audit(target=target)
+        # A write or delete and its log row are one transaction: if the log row
+        # cannot be saved, the database change is rolled back. A read holds no lock.
+        unit = store.transaction() if action in (WRITE, DELETE) else nullcontext()
         try:
-            require(role, action, resource)
-            result = work(email, role, audit)
+            with unit:
+                require(role, action, resource)
+                result = work(email, role, audit)
+                store.log(email, role, action, tool, target=audit.target, flag=audit.flag,
+                          reason=audit.reason, detail=audit.detail)
         except Denied as denied:
             logged = COPY if denied.flag.startswith("copy") else action
             store.log(email, role, logged, tool, target=audit.target, outcome="denied",
@@ -120,8 +128,14 @@ def build_server(settings: Settings, store: Store, forge: Forge,
             store.log(email, role, action, tool, target=audit.target, outcome="error",
                       detail=type(err).__name__)
             raise ToolError("The server could not read or write a file. Try again.") from None
-        store.log(email, role, action, tool, target=audit.target, flag=audit.flag,
-                  reason=audit.reason, detail=audit.detail)
+        except sqlite3.Error as err:  # database locked, disk full
+            try:
+                store.log(email, role, action, tool, target=audit.target, outcome="error",
+                          detail=type(err).__name__)
+            except sqlite3.Error:
+                pass  # the database itself is down; the caller still gets the error
+            raise ToolError("The server database could not be read or written, so the call was "
+                            "not completed. Try again.") from None
         return result
 
     def resolve(name: str, kind: str = "") -> tuple[str, str]:

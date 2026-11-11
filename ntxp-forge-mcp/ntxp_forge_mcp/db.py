@@ -9,6 +9,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -86,6 +87,18 @@ class Store:
         if self.path != ":memory:":
             self._db.execute("PRAGMA journal_mode=WAL")
         self._db.executescript(SCHEMA)
+
+    @contextmanager
+    def transaction(self):
+        """Run several statements as one unit: all are saved, or none is."""
+        with self._lock:
+            self._db.execute("BEGIN IMMEDIATE")
+            try:
+                yield
+            except BaseException:
+                self._db.execute("ROLLBACK")
+                raise
+            self._db.execute("COMMIT")
 
     def _all(self, sql: str, args: tuple = ()) -> list[dict]:
         with self._lock:
