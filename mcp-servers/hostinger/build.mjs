@@ -35,6 +35,10 @@ if (!spec?.paths || !spec?.info?.version) {
   process.exit(1);
 }
 
+// Hostinger's descriptions hold URL examples such as scheme://user:password@host.
+// Credential scanners report that shape, so the example is written as scheme://user[:password]@host.
+const CREDENTIAL_URL = /:\/\/([A-Za-z0-9_.-]+):([A-Za-z0-9_.-]+)@/g;
+const maskCredentialUrl = (s) => s.replace(CREDENTIAL_URL, '://$1[:$2]@');
 const DROP = new Set(['example', 'examples', 'x-scalar-ignore', 'x-optic-ignore-example', 'xml', 'externalDocs']);
 function deref(node, depth = 0) {
   if (Array.isArray(node)) return node.map((v) => deref(v, depth));
@@ -45,11 +49,14 @@ function deref(node, depth = 0) {
     return deref(target ?? {}, depth + 1);
   }
   const out = {};
-  for (const [k, v] of Object.entries(node)) if (!DROP.has(k)) out[k] = deref(v, depth);
+  for (const [k, v] of Object.entries(node)) {
+    if (DROP.has(k)) continue;
+    out[k] = typeof v === 'string' ? maskCredentialUrl(v) : deref(v, depth);
+  }
   return out;
 }
 const shorten = (s, n) => {
-  const t = String(s ?? '').replace(/\s+/g, ' ').trim();
+  const t = maskCredentialUrl(String(s ?? '').replace(/\s+/g, ' ')).trim();
   return t.length > n ? t.slice(0, n - 1) + '…' : t;
 };
 const writeClass = (id, method) => {

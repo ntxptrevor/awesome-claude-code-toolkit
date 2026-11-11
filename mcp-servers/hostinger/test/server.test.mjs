@@ -389,3 +389,10 @@ test('handler: node.mjs returns 500 on a request it cannot build and exits 1 whe
     child.kill();
   }
 });
+
+test('generated catalog holds no credential-shaped URL', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const catalog = await readFile(new URL('../src/catalog.mjs', import.meta.url), 'utf8');
+  assert.equal(catalog.match(/:\/\/[^:/?#\[\]@!$&'()*+,;=\s]+:[^:/?#\[\]@!$&'()*+,;=\s]+@/g), null);
+  assert.match(catalog, /mysql:\/\/user\[:password\]@host/);
+});

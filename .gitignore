@@ -54,3 +54,6 @@ contacts-db/deploy/assets/*
 
 # the contacts front end pins its dependency tree (Docker/CI use `npm ci`)
 !contacts-db/web-app/package-lock.json
+
+# Session logs written by a local plugin hook
+.cto-toolkit/
