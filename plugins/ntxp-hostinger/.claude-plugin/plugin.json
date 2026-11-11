@@ -1,0 +1,7 @@
+{
+  "name": "ntxp-hostinger",
+  "version": "4.0.0",
+  "description": "One Hostinger plugin: one skill and one stateless cloud MCP server with OAuth sign-in. Domain, DNS, CNAME, subdomain and hosting tools stay loaded. The other 400+ Hostinger operations stay out of context and run through hostinger_call from the skill catalog. Replaces the hostinger and hostinger-connector-v3 plugins.",
+  "author": { "name": "NTXP" },
+  "license": "MIT"
+}

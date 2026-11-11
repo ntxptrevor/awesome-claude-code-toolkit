@@ -1,0 +1,14 @@
+{
+  "name": "hostinger-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Stateless, zero-dependency Hostinger MCP server with OAuth bearer pass-through, generated from the Hostinger OpenAPI spec",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test",
+    "start": "node node.mjs",
+    "deploy": "npx wrangler deploy"
+  },
+  "engines": { "node": ">=18" }
+}

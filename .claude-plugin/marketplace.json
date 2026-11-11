@@ -510,6 +510,12 @@
       "version": "0.1.0"
     },
     {
+      "name": "ntxp-hostinger",
+      "source": "plugins/ntxp-hostinger",
+      "description": "One Hostinger plugin: a stateless cloud MCP server with OAuth sign-in. Domain, DNS, CNAME, subdomain and hosting tools stay loaded; 436 API operations run through hostinger_call from an on-demand skill catalog",
+      "version": "4.0.0"
+    },
+    {
       "name": "ntxp-contacts",
       "source": "plugins/ntxp-contacts",
       "description": "NTXP master contacts database: one de-duplicated source of truth with idempotent imports, full-text search, and bi-directional CRM sync",

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "hostinger": {
+      "type": "http",
+      "url": "https://<your-deployment>/mcp",
+      "description": "Stateless Hostinger MCP (mcp-servers/hostinger): OAuth sign-in at auth.hostinger.com, domain/DNS/CNAME/subdomain/hosting tools always listed, all 436 API operations through hostinger_call."
+    }
+  }
+}
