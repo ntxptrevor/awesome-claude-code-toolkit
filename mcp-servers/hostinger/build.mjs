@@ -35,7 +35,7 @@ if (!spec?.paths || !spec?.info?.version) {
   process.exit(1);
 }
 
-// Hostinger's descriptions hold URL examples such as scheme://user:password@host.
+// Hostinger's descriptions hold URL examples with a user name and a password before the host.
 // Credential scanners report that shape, so the example is written as scheme://user[:password]@host.
 const CREDENTIAL_URL = /:\/\/([A-Za-z0-9_.-]+):([A-Za-z0-9_.-]+)@/g;
 const maskCredentialUrl = (s) => s.replace(CREDENTIAL_URL, '://$1[:$2]@');
