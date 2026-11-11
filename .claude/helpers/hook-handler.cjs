@@ -99,12 +99,19 @@ const handlers = {
   'pre-bash': () => {
     var ti = hookInput.tool_input || hookInput.toolInput || {};
     var cmd = (ti.command || hookInput.command || prompt).toLowerCase();
-    var dangerous = ['rm -rf /', 'format c:', 'del /s /q c:\\', ':(){:|:&};:'];
+    var dangerous = ['format c:', 'del /s /q c:\\', ':(){:|:&};:'];
     for (var i = 0; i < dangerous.length; i++) {
       if (cmd.includes(dangerous[i])) {
         console.error('[BLOCKED] Dangerous command detected: ' + dangerous[i]);
         process.exit(2);
       }
+    }
+    // Recursive delete aimed at the filesystem root only: "/", "/*", with or without
+    // --no-preserve-root. Paths like /tmp/x are not matched.
+    if (/\brm\s+(-[a-z-]*\s+)*(--no-preserve-root\s+)?["']?\/\*?["']?(\s|$|;|&|\|)/.test(cmd) &&
+        /\brm\s+(?:-[a-z]*r|--recursive)/.test(cmd)) {
+      console.error('[BLOCKED] Dangerous command detected: recursive delete of /');
+      process.exit(2);
     }
     console.log('[OK] Command validated');
   },
