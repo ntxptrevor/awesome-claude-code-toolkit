@@ -1,0 +1,8 @@
+openpyxl>=3.1
+xlrd>=2.0
+phonenumbers>=8.13
+rapidfuzz>=3.0
+click>=8.1
+mcp>=1.0,<2
+uvicorn>=0.23
+psycopg[binary]>=3.1
