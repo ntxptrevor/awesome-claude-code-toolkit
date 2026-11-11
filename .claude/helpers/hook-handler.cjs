@@ -97,12 +97,13 @@ const handlers = {
   },
 
   'pre-bash': () => {
-    var cmd = (hookInput.command || prompt).toLowerCase();
+    var ti = hookInput.tool_input || hookInput.toolInput || {};
+    var cmd = (ti.command || hookInput.command || prompt).toLowerCase();
     var dangerous = ['rm -rf /', 'format c:', 'del /s /q c:\\', ':(){:|:&};:'];
     for (var i = 0; i < dangerous.length; i++) {
       if (cmd.includes(dangerous[i])) {
         console.error('[BLOCKED] Dangerous command detected: ' + dangerous[i]);
-        process.exit(1);
+        process.exit(2);
       }
     }
     console.log('[OK] Command validated');
@@ -114,7 +115,8 @@ const handlers = {
     }
     if (intelligence && intelligence.recordEdit) {
       try {
-        var file = hookInput.file_path || (hookInput.toolInput && hookInput.toolInput.file_path)
+        var ti = hookInput.tool_input || hookInput.toolInput || {};
+        var file = ti.file_path || hookInput.file_path
           || process.env.TOOL_INPUT_file_path || args[0] || '';
         intelligence.recordEdit(file);
       } catch (e) { /* non-fatal */ }

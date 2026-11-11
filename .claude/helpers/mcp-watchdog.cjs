@@ -322,12 +322,25 @@ const mode = process.argv[2] || 'scan';
 
 switch (mode) {
   case 'scan': {
-    // Read from stdin (UserPromptSubmit hook pipes context)
     let input = '';
     try {
-      input = fs.readFileSync(0, 'utf8');
+      const raw = fs.readFileSync(0, 'utf8');
+      // UserPromptSubmit stdin is JSON with prompt and transcript_path
+      try {
+        const parsed = JSON.parse(raw);
+        // Read the transcript file for MCP status notices
+        if (parsed.transcript_path && fs.existsSync(parsed.transcript_path)) {
+          const transcript = fs.readFileSync(parsed.transcript_path, 'utf8');
+          // Extract the last 5000 chars where MCP status notices appear
+          input = transcript.slice(-5000);
+        } else {
+          input = parsed.prompt || '';
+        }
+      } catch {
+        // Not JSON — use raw (e.g. manual test piping)
+        input = raw;
+      }
     } catch {
-      // No stdin — check environment for tool context
       input = process.env.CLAUDE_TOOL_INPUT || '';
     }
 

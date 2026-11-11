@@ -3,5 +3,11 @@ data/
 logs/
 sessions/
 neural/
+learning/
+swarm/
+pids/
 *.log
 *.tmp
+*.db
+last-guidance.txt
+session.json
