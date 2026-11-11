@@ -14,12 +14,18 @@ from starlette.testclient import TestClient
 from conftest import ADMIN, USER
 from ntxp_forge_mcp import ntxp_id
 from ntxp_forge_mcp.config import Settings
-from ntxp_forge_mcp.oauth import GoogleGate, identity_from_claims
+from ntxp_forge_mcp.oauth import MIN_KEY_CHARS, GoogleGate, identity_from_claims
 from ntxp_forge_mcp.policy import Denied
 from ntxp_forge_mcp.server import http_app
 
 REDIRECT = "https://claude.ai/api/mcp/auth_callback"
-VERIFIER = "v" * 50
+VERIFIER = "v" * 50            # PKCE verifier, inside the 43 to 128 character range
+OTHER_KEY = "z" * MIN_KEY_CHARS  # a valid key that is not the server's key
+SHORT_KEY = "k" * (MIN_KEY_CHARS - 1)
+TOKEN_TTL = 600
+ALREADY_EXPIRED = -1
+FAKE_ID_TOKEN = "google-id-token"
+CLIENT_ID = "c1"
 CHALLENGE = base64.urlsafe_b64encode(hashlib.sha256(VERIFIER.encode()).digest()).rstrip(b"=").decode()
 
 
@@ -49,12 +55,12 @@ def test_every_other_account_is_refused(claims):
 
 # -- provider round trip ---------------------------------------------------------------
 def make_gate(settings, store, claims):
-    return GoogleGate(settings, store, exchange=lambda code: {"id_token": "t"},
+    return GoogleGate(settings, store, exchange=lambda code: {"id_token": FAKE_ID_TOKEN},
                       verify_id_token=lambda tok: claims)
 
 
 def client_info(redirect=REDIRECT):
-    return OAuthClientInformationFull(client_id="c1", redirect_uris=[redirect],
+    return OAuthClientInformationFull(client_id=CLIENT_ID, redirect_uris=[redirect],
                                       token_endpoint_auth_method="none")
 
 
@@ -110,21 +116,21 @@ def test_outside_account_gets_no_code_and_is_logged(settings, store):
 
 
 def test_token_signed_with_another_key_is_refused(settings, store, tmp_path):
-    other = GoogleGate(Settings(data_dir=tmp_path / "o", signing_key="z" * 40), store)
-    forged = other._sign("access", 600, settings.resource_url, sub=ADMIN, cid="c1", sc=["forge"])
+    other = GoogleGate(Settings(data_dir=tmp_path / "o", signing_key=OTHER_KEY), store)
+    forged = other._sign("access", TOKEN_TTL, settings.resource_url, sub=ADMIN, cid=CLIENT_ID, sc=["forge"])
     gate = make_gate(settings, store, google(USER))
     assert anyio.run(gate.load_access_token, forged) is None
 
 
 def test_expired_and_empty_tokens_are_refused(settings, store):
     gate = make_gate(settings, store, google(USER))
-    expired = gate._sign("access", -1, settings.resource_url, sub=USER, cid="c1", sc=["forge"])
+    expired = gate._sign("access", ALREADY_EXPIRED, settings.resource_url, sub=USER, cid=CLIENT_ID, sc=["forge"])
     assert anyio.run(gate.load_access_token, expired) is None
     assert anyio.run(gate.load_access_token, "") is None
 
 
 def test_short_signing_key_is_refused(settings, store):
-    settings.signing_key = "k" * 31
+    settings.signing_key = SHORT_KEY
     with pytest.raises(ValueError):
         GoogleGate(settings, store)
 
@@ -174,7 +180,7 @@ def test_mcp_endpoint_needs_a_token(http):
 
 def test_one_post_with_a_token_calls_a_tool_with_no_session(http, store):
     client, gate = http
-    token = gate._issue(USER, "c1", ["forge"]).access_token
+    token = gate._issue(USER, CLIENT_ID, ["forge"]).access_token
     resp = rpc(client, "tools/call", {"name": "whoami", "arguments": {}}, token=token)
     assert resp.status_code == 200, resp.text
     assert "mcp-session-id" not in resp.headers

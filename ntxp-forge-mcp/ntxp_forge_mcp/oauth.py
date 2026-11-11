@@ -111,7 +111,7 @@ class GoogleGate:
                    "exp": now + ttl, "jti": secrets.token_urlsafe(24), **claims}
         return jwt.encode(payload, self.s.signing_key, algorithm="HS256")
 
-    def _read(self, token: str, typ: str, aud: str) -> dict | None:
+    def _decode(self, token: str, typ: str, aud: str) -> dict | None:
         try:
             claims = jwt.decode(token, self.s.signing_key, algorithms=["HS256"],
                                 audience=aud, issuer=self.s.public_url)
@@ -159,7 +159,7 @@ class GoogleGate:
 
     async def google_callback(self, request: Request) -> Response:
         """Finish Google sign-in, apply the domain rule, return a code to the client."""
-        state = self._read(request.query_params.get("state", ""), "state", self.s.public_url)
+        state = self._decode(request.query_params.get("state", ""), "state", self.s.public_url)
         if not state:
             return HTMLResponse("<h1>Sign-in expired</h1><p>Start the connection again.</p>",
                                 status_code=400)
@@ -196,7 +196,7 @@ class GoogleGate:
     # -- token endpoint -------------------------------------------------------
     async def load_authorization_code(self, client: OAuthClientInformationFull,
                                       authorization_code: str) -> AuthorizationCode | None:
-        c = self._read(authorization_code, "code", self.s.public_url)
+        c = self._decode(authorization_code, "code", self.s.public_url)
         if not c or c["cid"] != client.client_id or self.store.is_spent(c["jti"]):
             return None
         return AuthorizationCode(
@@ -217,14 +217,14 @@ class GoogleGate:
 
     async def exchange_authorization_code(self, client: OAuthClientInformationFull,
                                           authorization_code: AuthorizationCode) -> OAuthToken:
-        c = self._read(authorization_code.code, "code", self.s.public_url)
+        c = self._decode(authorization_code.code, "code", self.s.public_url)
         if not c or not self.store.spend(c["jti"], c["exp"]):
             raise TokenError("invalid_grant", "The authorization code was already used.")
         return self._issue(c["sub"], c["cid"], c["sc"])
 
     async def load_refresh_token(self, client: OAuthClientInformationFull,
                                  refresh_token: str) -> RefreshToken | None:
-        c = self._read(refresh_token, "refresh", self.s.public_url)
+        c = self._decode(refresh_token, "refresh", self.s.public_url)
         if not c or c["cid"] != client.client_id or self.store.is_spent(c["jti"]):
             return None
         return RefreshToken(token=refresh_token, client_id=c["cid"], scopes=c["sc"],
@@ -234,14 +234,14 @@ class GoogleGate:
     async def exchange_refresh_token(self, client: OAuthClientInformationFull,
                                      refresh_token: RefreshToken,
                                      scopes: list[str]) -> OAuthToken:
-        c = self._read(refresh_token.token, "refresh", self.s.public_url)
+        c = self._decode(refresh_token.token, "refresh", self.s.public_url)
         if not c or not self.store.spend(c["jti"], c["exp"]):
             raise TokenError("invalid_grant", "The refresh token was already used.")
         return self._issue(c["sub"], c["cid"], c["sc"])
 
     # -- every MCP request ----------------------------------------------------
     async def load_access_token(self, token: str) -> AccessToken | None:
-        c = self._read(token, "access", self.s.resource_url)
+        c = self._decode(token, "access", self.s.resource_url)
         if not c or self.store.is_spent(c["jti"]) or role_for(c.get("sub")) is None:
             return None
         return AccessToken(token=token, client_id=c["cid"], scopes=c["sc"],
@@ -250,6 +250,6 @@ class GoogleGate:
 
     async def revoke_token(self, token: AccessToken | RefreshToken) -> None:
         for typ, aud in (("access", self.s.resource_url), ("refresh", self.s.public_url)):
-            c = self._read(token.token, typ, aud)
+            c = self._decode(token.token, typ, aud)
             if c:
                 self.store.spend(c["jti"], c["exp"])
