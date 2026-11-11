@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ntxp-forge": {
+      "type": "http",
+      "url": "https://<your-forge-mcp-host>/mcp",
+      "description": "NTXP Forge MCP: one Google-gated endpoint for every NTXP skill and plugin, served live from the private NTXP Forge repo. Call forge_bootstrap first. Sign in with an ntxpllc.com Google Workspace account. Every call is logged."
+    }
+  }
+}

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ntxp-forge-mcp"
+version = "0.1.0"
+description = "NTXP Forge MCP: one Google-gated, stateless MCP endpoint that serves NTXP skills and plugins live from the private NTXP Forge repo, with role permissions and a SQLite access log."
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=2.0",           # MCPServer, stateless streamable HTTP (protocol 2026-07-28)
+    "PyJWT[crypto]>=2.8", # server tokens (HS256) and Google ID token checks (RS256)
+    "PyYAML>=6.0",        # SKILL.md frontmatter
+    "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "httpx>=0.27"]  # httpx: Starlette's TestClient
+
+[project.scripts]
+ntxp-forge-mcp = "ntxp_forge_mcp.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ntxp_forge_mcp*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
