@@ -275,3 +275,117 @@ test('pinnedLookup returns the fixed address for any host name', async () => {
   assert.deepEqual(seen, [['93.184.216.34', 4], [{ address: '2606:2800:220:1::1', family: 6 }]]);
   assert.throws(() => pinnedLookup('not-an-ip'));
 });
+
+// ---- One test for each error handler ------------------------------------------------
+
+test('handler: a body that is not JSON returns 400 with a parse error', async () => {
+  const res = await handle(new Request(BASE + '/mcp', { method: 'POST', headers: { authorization: 'Bearer tok' }, body: '{bad' }), env);
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).error.code, -32700);
+});
+
+test('handler: an unexpected fault inside a request returns 500 and no stack', async () => {
+  env = { HOSTINGER_CORE_TOOLS: 42 };
+  const res = await post({ jsonrpc: '2.0', id: 7, method: 'tools/list' });
+  assert.equal(res.status, 500);
+  assert.deepEqual(await res.json(), { jsonrpc: '2.0', id: 7, error: { code: -32603, message: 'Internal error' } });
+});
+
+test('handler: an upload URL that cannot be parsed is a tool error', async () => {
+  const out = await tool('hostinger_upload_from_url', {
+    upload_url: 'not a url', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.acme.org/a.zip', path: 'site.zip',
+  });
+  assert.ok(out.result.isError);
+  assert.match(out.result.content[0].text, /not a valid URL/);
+});
+
+test('handler: a failed source download and a failed TUS step are tool errors', async () => {
+  const args = { upload_url: 'https://files.hostingerfiles.net/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.acme.org/a.zip', path: 'site.zip' };
+  responder = () => new Response('gone', { status: 404 });
+  assert.match((await tool('hostinger_upload_from_url', args)).result.content[0].text, /source_url returned 404/);
+  responder = (url) => (url.startsWith('https://cdn.acme.org') ? new Response(new Uint8Array(2)) : new Response('denied', { status: 403 }));
+  assert.match((await tool('hostinger_upload_from_url', args)).result.content[0].text, /TUS create returned 403/);
+  responder = (url, init) => {
+    if (url.startsWith('https://cdn.acme.org')) return new Response(new Uint8Array(2));
+    if (init.method === 'POST') return new Response(null, { status: 201 });
+    return new Response(null, { status: 204, headers: { 'upload-offset': '1' } });
+  };
+  assert.match((await tool('hostinger_upload_from_url', args)).result.content[0].text, /offset 1 of 2/);
+  responder = (url) => { if (url.startsWith('https://cdn.acme.org')) throw new Error('socket closed'); };
+  assert.match((await tool('hostinger_upload_from_url', args)).result.content[0].text, /socket closed/);
+});
+
+test('handler: pinnedFetch rejects when the connection fails', async () => {
+  const { pinnedFetch } = await import('../src/pinned-fetch.mjs');
+  await assert.rejects(pinnedFetch('https://nothing.acme.org/', {}, '127.0.0.1'));
+});
+
+test('handler: build.mjs exits 1 with one line on each failure', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { mkdtempSync, writeFileSync, copyFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const build = new URL('../build.mjs', import.meta.url).pathname;
+  const dir = mkdtempSync(join(tmpdir(), 'hst-build-'));
+  const run = (file, args, extraEnv = {}) => spawnSync(process.execPath, [file, ...args], { encoding: 'utf8', env: { ...process.env, ...extraEnv } });
+
+  const missing = run(build, [join(dir, 'none.json')]);
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /^Cannot load the Hostinger spec/);
+
+  writeFileSync(join(dir, 'empty.json'), '{}');
+  const empty = run(build, [join(dir, 'empty.json')]);
+  assert.equal(empty.status, 1);
+  assert.match(empty.stderr, /no paths or no version/);
+
+  writeFileSync(join(dir, 'broken.json'), '{not json');
+  const broken = run(build, [join(dir, 'broken.json')]);
+  assert.equal(broken.status, 1);
+  assert.match(broken.stderr, /^Cannot load the Hostinger spec/);
+
+  writeFileSync(join(dir, 'small.json'), JSON.stringify({ info: { version: '0' }, paths: { '/a': { get: { operationId: 'x_aV1' } } } }));
+  const small = run(build, [join(dir, 'small.json')]);
+  assert.equal(small.status, 1);
+  assert.match(small.stderr, /Only 1 operations found/);
+
+  const offline = run(build, [], { HOSTINGER_SPEC_URL: 'https://127.0.0.1:1/openapi.json', HTTPS_PROXY: '', https_proxy: '' });
+  assert.equal(offline.status, 1);
+  assert.match(offline.stderr, /^Cannot load the Hostinger spec from https:\/\/127\.0\.0\.1:1/);
+
+  // A copy of the script in a folder with no src directory cannot write its output.
+  copyFileSync(build, join(dir, 'build.mjs'));
+  const big = { info: { version: '0' }, paths: {} };
+  for (let i = 0; i < 120; i++) big.paths[`/api/x/v1/r${i}`] = { get: { operationId: `x_r${i}V1`, tags: ['X: Y'] } };
+  writeFileSync(join(dir, 'big.json'), JSON.stringify(big));
+  const unwritable = run(join(dir, 'build.mjs'), [join(dir, 'big.json')]);
+  assert.equal(unwritable.status, 1);
+  assert.match(unwritable.stderr, /^Cannot write the catalog files/);
+});
+
+test('handler: node.mjs returns 500 on a request it cannot build and exits 1 when the port is taken', async () => {
+  const { spawn, spawnSync } = await import('node:child_process');
+  const net = await import('node:net');
+  const adapter = new URL('../node.mjs', import.meta.url).pathname;
+  const port = 18000 + Math.floor(Math.random() * 2000);
+  const child = spawn(process.execPath, [adapter], { env: { ...process.env, PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe'] });
+  try {
+    await new Promise((resolve, reject) => {
+      child.stdout.once('data', resolve);
+      child.once('exit', () => reject(new Error('adapter exited')));
+    });
+    const reply = await new Promise((resolve, reject) => {
+      const socket = net.connect(port, '127.0.0.1', () => socket.write('GET /healthz HTTP/1.1\r\nHost: [bad\r\nConnection: close\r\n\r\n'));
+      let data = '';
+      socket.on('data', (d) => (data += d));
+      socket.on('end', () => resolve(data));
+      socket.on('error', reject);
+    });
+    assert.match(reply, /^HTTP\/1\.1 500/);
+    assert.match(reply, /internal_error/);
+    const second = spawnSync(process.execPath, [adapter], { encoding: 'utf8', env: { ...process.env, PORT: String(port) } });
+    assert.equal(second.status, 1);
+    assert.match(second.stderr, /cannot listen on/);
+  } finally {
+    child.kill();
+  }
+});

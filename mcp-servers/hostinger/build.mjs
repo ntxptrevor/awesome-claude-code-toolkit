@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SPEC_URL = 'https://developers.hostinger.com/openapi/openapi.json';
+const SPEC_URL = process.env.HOSTINGER_SPEC_URL || 'https://developers.hostinger.com/openapi/openapi.json';
 const SKILL_DIR = join(HERE, '../../plugins/ntxp-hostinger/skills/hostinger/references');
 const METHODS = ['get', 'post', 'put', 'patch', 'delete'];
 
