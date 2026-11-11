@@ -14,6 +14,7 @@ const DEFAULTS = {
   HOSTINGER_OAUTH_ISSUER: 'https://auth.hostinger.com',
   MAX_RESULT_BYTES: '120000',
   MAX_UPLOAD_BYTES: '52428800',
+  DOH_URL: 'https://cloudflare-dns.com/dns-query',
 };
 
 // Tools that stay in the client's tool list at all times: domains, DNS and CNAME,
@@ -268,24 +269,70 @@ async function setCname({ domain, name, target, ttl }, ctx) {
   return callOperation('DNS_updateDNSRecordsV1', { domain, overwrite: true, zone }, ctx);
 }
 
-function publicHttps(value, label) {
+function isPrivateIp(ip) {
+  const v4 = ip.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return (
+      a === 0 || a === 10 || a === 127 || a >= 224 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && (b === 168 || b === 0)) ||
+      (a === 198 && (b === 18 || b === 19))
+    );
+  }
+  const v6 = ip.toLowerCase();
+  const mapped = v6.match(/(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return isPrivateIp(mapped[1]);
+  // Public IPv6 unicast is 2000::/3. Everything else is loopback, local, mapped or reserved.
+  return !/^[23]/.test(v6);
+}
+
+// Accepts only an https URL whose host is a DNS name that resolves to public addresses.
+// IP literals in any form (dotted, decimal, octal, hex, IPv6) are refused, because the host
+// must end in an alphabetic top-level domain. The name is then resolved over DNS-over-HTTPS
+// and every address is checked. The check fails closed when resolution fails.
+async function publicHttps(value, label, env) {
   let u;
   try {
     u = new URL(value);
   } catch {
     throw new Error(`${label} is not a valid URL`);
   }
-  const h = u.hostname;
-  const local =
-    h === 'localhost' || h.endsWith('.local') || h.endsWith('.internal') || h.includes(':') ||
-    /^(127\.|10\.|192\.168\.|169\.254\.|0\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);
-  if (u.protocol !== 'https:' || local) throw new Error(`${label} must be a public https URL`);
+  const host = u.hostname.toLowerCase().replace(/\.$/, '');
+  const dnsName = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host);
+  const reserved = /(^|\.)(localhost|local|internal|lan|home|corp|intranet|test|invalid|example|onion)$/.test(host);
+  if (u.protocol !== 'https:' || !dnsName || reserved || u.username || u.password || (u.port && u.port !== '443')) {
+    throw new Error(`${label} must be a public https URL with a DNS host name on port 443`);
+  }
+  const allow = (env?.UPLOAD_ALLOWED_HOSTS || '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+  if (allow.length && !allow.some((h) => host === h || host.endsWith(`.${h}`))) {
+    throw new Error(`${label} host is not in UPLOAD_ALLOWED_HOSTS`);
+  }
+  const addresses = [];
+  for (const type of ['A', 'AAAA']) {
+    let answer;
+    try {
+      const res = await fetch(`${cfg(env, 'DOH_URL')}?name=${encodeURIComponent(host)}&type=${type}`, {
+        headers: { accept: 'application/dns-json' },
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      answer = (await res.json()).Answer ?? [];
+    } catch {
+      throw new Error(`${label} host could not be resolved, so it was refused`);
+    }
+    for (const r of answer) if (r.type === 1 || r.type === 28) addresses.push(String(r.data));
+  }
+  if (!addresses.length || addresses.some(isPrivateIp)) {
+    throw new Error(`${label} host does not resolve to public addresses only`);
+  }
   return u;
 }
 
 async function uploadFromUrl({ upload_url, auth_key, rest_auth_key, source_url, path }, ctx) {
-  const base = publicHttps(upload_url, 'upload_url').toString().replace(/\/+$/, '');
-  let next = publicHttps(source_url, 'source_url').toString();
+  const base = (await publicHttps(upload_url, 'upload_url', ctx.env)).toString().replace(/\/+$/, '');
+  let next = (await publicHttps(source_url, 'source_url', ctx.env)).toString();
   if (/(^|\/)\.\.(\/|$)/.test(path) || path.startsWith('/')) throw new Error('path must be relative with no ".." part');
   const max = Number(cfg(ctx.env, 'MAX_UPLOAD_BYTES'));
   // Follow redirects by hand so that each hop is checked. A redirect must not reach a private host.
@@ -295,7 +342,7 @@ async function uploadFromUrl({ upload_url, auth_key, rest_auth_key, source_url, 
     if (source.status < 300 || source.status >= 400) break;
     const location = source.headers.get('location');
     if (!location || hop >= 5) return text('source_url redirected too many times or without a location', true);
-    next = publicHttps(new URL(location, next).toString(), 'source_url redirect').toString();
+    next = (await publicHttps(new URL(location, next).toString(), 'source_url redirect', ctx.env)).toString();
   }
   if (!source.ok) return text(`source_url returned ${source.status}`, true);
   const bytes = await source.arrayBuffer();

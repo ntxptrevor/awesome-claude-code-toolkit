@@ -6,10 +6,17 @@ import { OPS } from '../src/catalog.mjs';
 const BASE = 'https://mcp.example.com';
 let calls;
 let responder;
+let dns;
 beforeEach(() => {
   calls = [];
   responder = () => new Response('{"ok":true}', { status: 200 });
+  dns = { A: ['93.184.216.34'], AAAA: [] };
   globalThis.fetch = async (url, init = {}) => {
+    if (String(url).startsWith('https://cloudflare-dns.com/')) {
+      if (!dns) return new Response('', { status: 500 });
+      const type = new URL(url).searchParams.get('type');
+      return Response.json({ Answer: dns[type].map((data) => ({ type: type === 'A' ? 1 : 28, data })) });
+    }
     calls.push({ url: String(url), ...init });
     return responder(String(url), init);
   };
@@ -145,8 +152,8 @@ test('upstream error is a tool error with the status', async () => {
 });
 
 test('upload tool rejects private and non-https URLs', async () => {
-  const args = { upload_url: 'https://files.example.com/u', auth_key: 'a', rest_auth_key: 'b', path: 'site.zip' };
-  for (const source_url of ['http://example.com/a.zip', 'https://127.0.0.1/a.zip', 'https://localhost/a.zip']) {
+  const args = { upload_url: 'https://files.hostingerfiles.net/u', auth_key: 'a', rest_auth_key: 'b', path: 'site.zip' };
+  for (const source_url of ['http://cdn.example.org/a.zip', 'https://127.0.0.1/a.zip', 'https://localhost/a.zip', 'https://2130706433/a.zip', 'https://0x7f.1/a.zip', 'https://017700000001/a.zip', 'https://[::1]/a.zip', 'https://user@cdn.example.org/a.zip', 'https://cdn.example.org:8443/a.zip']) {
     const out = await tool('hostinger_upload_from_url', { ...args, source_url });
     assert.ok(out.result.isError, source_url);
   }
@@ -155,15 +162,15 @@ test('upload tool rejects private and non-https URLs', async () => {
 
 test('upload tool runs TUS create then patch and never sends the bearer', async () => {
   responder = (url, init) => {
-    if (url.startsWith('https://cdn.example.com')) return new Response(new Uint8Array(5));
+    if (url.startsWith('https://cdn.acme.org')) return new Response(new Uint8Array(5));
     if (init.method === 'POST') return new Response(null, { status: 201 });
     return new Response(null, { status: 204, headers: { 'upload-offset': '5' } });
   };
   const out = await tool('hostinger_upload_from_url', {
-    upload_url: 'https://files.example.com/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.example.com/site.zip', path: 'site.zip',
+    upload_url: 'https://files.hostingerfiles.net/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.acme.org/site.zip', path: 'site.zip',
   });
   assert.deepEqual(JSON.parse(out.result.content[0].text), { uploaded: 'site.zip', bytes: 5 });
-  assert.equal(calls[1].url, 'https://files.example.com/u/site.zip?override=true');
+  assert.equal(calls[1].url, 'https://files.hostingerfiles.net/u/site.zip?override=true');
   assert.equal(calls[1].headers['upload-length'], '5');
   for (const c of calls) assert.equal(c.headers?.authorization, undefined);
 });
@@ -196,11 +203,11 @@ test('authorization server metadata returns 502 when the issuer is unreachable',
 
 test('upload tool refuses a redirect to a private host', async () => {
   responder = (url) =>
-    url.startsWith('https://cdn.example.com')
+    url.startsWith('https://cdn.acme.org')
       ? new Response(null, { status: 302, headers: { location: 'https://169.254.169.254/latest/meta-data' } })
       : new Response('private data');
   const out = await tool('hostinger_upload_from_url', {
-    upload_url: 'https://files.example.com/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.example.com/site.zip', path: 'site.zip',
+    upload_url: 'https://files.hostingerfiles.net/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.acme.org/site.zip', path: 'site.zip',
   });
   assert.ok(out.result.isError);
   assert.equal(calls.length, 1);
@@ -211,4 +218,23 @@ test('a network failure on a tool call is a tool error', async () => {
   responder = () => { throw new Error('network down'); };
   const out = await tool('domains_getDomainListV1', {});
   assert.ok(out.result.isError);
+});
+
+test('upload tool refuses a public name that resolves to a private address', async () => {
+  const args = { upload_url: 'https://files.hostingerfiles.net/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://rebind.acme.org/a.zip', path: 'site.zip' };
+  for (const records of [{ A: ['10.0.0.5'], AAAA: [] }, { A: ['93.184.216.34'], AAAA: ['fd00::1'] }, { A: ['169.254.169.254'], AAAA: [] }, { A: [], AAAA: ['::ffff:127.0.0.1'] }, { A: [], AAAA: [] }]) {
+    dns = records;
+    const out = await tool('hostinger_upload_from_url', args);
+    assert.ok(out.result.isError, JSON.stringify(records));
+  }
+  assert.equal(calls.length, 0);
+});
+
+test('upload tool fails closed when the name cannot be resolved', async () => {
+  dns = null;
+  const out = await tool('hostinger_upload_from_url', {
+    upload_url: 'https://files.hostingerfiles.net/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.acme.org/a.zip', path: 'site.zip',
+  });
+  assert.ok(out.result.isError);
+  assert.equal(calls.length, 0);
 });

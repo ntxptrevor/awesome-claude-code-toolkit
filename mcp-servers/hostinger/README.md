@@ -50,6 +50,8 @@ All variables are optional.
 | `HOSTINGER_OAUTH_ISSUER` | `https://auth.hostinger.com` | Authorization server |
 | `MAX_RESULT_BYTES` | `120000` | Limit for one tool result |
 | `MAX_UPLOAD_BYTES` | `52428800` | Limit for `hostinger_upload_from_url` |
+| `UPLOAD_ALLOWED_HOSTS` | Not set | Comma list of host suffixes that `hostinger_upload_from_url` can read from and write to |
+| `DOH_URL` | `https://cloudflare-dns.com/dns-query` | DNS-over-HTTPS resolver for the upload host check |
 
 ## Endpoints
 
@@ -80,3 +82,14 @@ npm test
 ```
 
 `build.mjs` fetches the live spec and writes `src/catalog.mjs` and the skill catalog in `plugins/ntxp-hostinger`.
+
+## Upload host check
+
+`hostinger_upload_from_url` makes the server fetch a URL, so each URL and each redirect hop passes these checks:
+
+1. The scheme is `https`, the port is 443, and the URL has no user name.
+2. The host is a DNS name with an alphabetic top-level domain. An IP address in any form (dotted, decimal, octal, hex, IPv6) is refused.
+3. The name is resolved over DNS-over-HTTPS. Every A and AAAA address must be public. A failed lookup refuses the URL.
+4. When `UPLOAD_ALLOWED_HOSTS` is set, the host must match one suffix in the list.
+
+One limit remains: the runtime resolves the name again for the fetch, so a DNS record that changes between the check and the fetch is not caught. Cloudflare Workers cannot reach private addresses, which closes that gap. On a Node host inside a private network, set `UPLOAD_ALLOWED_HOSTS`.
