@@ -12,7 +12,12 @@ createServer(async (req, res) => {
     headers: req.headers,
     body: chunks.length ? Buffer.concat(chunks) : undefined,
   });
-  const response = await handle(request, process.env);
-  res.writeHead(response.status, Object.fromEntries(response.headers));
-  res.end(Buffer.from(await response.arrayBuffer()));
+  try {
+    const response = await handle(request, process.env);
+    res.writeHead(response.status, Object.fromEntries(response.headers));
+    res.end(Buffer.from(await response.arrayBuffer()));
+  } catch {
+    res.writeHead(500, { 'content-type': 'application/json' });
+    res.end('{"error":"internal_error"}');
+  }
 }).listen(port, () => console.log(`hostinger-mcp on :${port}`));

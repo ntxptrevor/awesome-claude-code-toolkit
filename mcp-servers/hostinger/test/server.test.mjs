@@ -187,3 +187,28 @@ test('every operation named in the skill exists in the spec', async () => {
     }
   }
 });
+
+test('authorization server metadata returns 502 when the issuer is unreachable', async () => {
+  responder = () => { throw new Error('network down'); };
+  const res = await handle(new Request(BASE + '/.well-known/oauth-authorization-server'));
+  assert.equal(res.status, 502);
+});
+
+test('upload tool refuses a redirect to a private host', async () => {
+  responder = (url) =>
+    url.startsWith('https://cdn.example.com')
+      ? new Response(null, { status: 302, headers: { location: 'https://169.254.169.254/latest/meta-data' } })
+      : new Response('private data');
+  const out = await tool('hostinger_upload_from_url', {
+    upload_url: 'https://files.example.com/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.example.com/site.zip', path: 'site.zip',
+  });
+  assert.ok(out.result.isError);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].redirect, 'manual');
+});
+
+test('a network failure on a tool call is a tool error', async () => {
+  responder = () => { throw new Error('network down'); };
+  const out = await tool('domains_getDomainListV1', {});
+  assert.ok(out.result.isError);
+});

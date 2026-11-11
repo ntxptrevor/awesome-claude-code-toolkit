@@ -285,10 +285,18 @@ function publicHttps(value, label) {
 
 async function uploadFromUrl({ upload_url, auth_key, rest_auth_key, source_url, path }, ctx) {
   const base = publicHttps(upload_url, 'upload_url').toString().replace(/\/+$/, '');
-  publicHttps(source_url, 'source_url');
+  let next = publicHttps(source_url, 'source_url').toString();
   if (/(^|\/)\.\.(\/|$)/.test(path) || path.startsWith('/')) throw new Error('path must be relative with no ".." part');
   const max = Number(cfg(ctx.env, 'MAX_UPLOAD_BYTES'));
-  const source = await fetch(source_url, { redirect: 'follow' });
+  // Follow redirects by hand so that each hop is checked. A redirect must not reach a private host.
+  let source;
+  for (let hop = 0; ; hop++) {
+    source = await fetch(next, { redirect: 'manual' });
+    if (source.status < 300 || source.status >= 400) break;
+    const location = source.headers.get('location');
+    if (!location || hop >= 5) return text('source_url redirected too many times or without a location', true);
+    next = publicHttps(new URL(location, next).toString(), 'source_url redirect').toString();
+  }
   if (!source.ok) return text(`source_url returned ${source.status}`, true);
   const bytes = await source.arrayBuffer();
   if (bytes.byteLength > max) return text(`File is ${bytes.byteLength} bytes. The limit is ${max}.`, true);
@@ -373,11 +381,15 @@ export async function handle(request, env = {}) {
   }
   if (path === '/.well-known/oauth-authorization-server') {
     // For clients that look for authorization server metadata on the MCP origin.
-    const upstream = await fetch(`${cfg(env, 'HOSTINGER_OAUTH_ISSUER')}/.well-known/oauth-authorization-server`);
-    return new Response(await upstream.text(), {
-      status: upstream.status,
-      headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600', ...CORS },
-    });
+    try {
+      const upstream = await fetch(`${cfg(env, 'HOSTINGER_OAUTH_ISSUER')}/.well-known/oauth-authorization-server`);
+      return new Response(await upstream.text(), {
+        status: upstream.status,
+        headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600', ...CORS },
+      });
+    } catch {
+      return json({ error: 'bad_gateway', message: 'The authorization server did not answer.' }, 502);
+    }
   }
   if (path === '/healthz') {
     return json({ ok: true, name: NAME, version: VERSION, spec: SPEC_VERSION, operations: Object.keys(OPS).length });
