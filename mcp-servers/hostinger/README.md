@@ -92,4 +92,6 @@ npm test
 3. The name is resolved over DNS-over-HTTPS. Every A and AAAA address must be public. A failed lookup refuses the URL.
 4. When `UPLOAD_ALLOWED_HOSTS` is set, the host must match one suffix in the list.
 
-One limit remains: the runtime resolves the name again for the fetch, so a DNS record that changes between the check and the fetch is not caught. Cloudflare Workers cannot reach private addresses, which closes that gap. On a Node host inside a private network, set `UPLOAD_ALLOWED_HOSTS`.
+5. The request goes to the address that passed step 3. On Node, `node.mjs` supplies `src/pinned-fetch.mjs`, which connects to that IP and keeps the host name for TLS. A DNS record that changes after the check has no effect. Cloudflare Workers cannot reach private addresses, so the plain `fetch` is used there.
+
+On any other runtime the tool refuses to run. All other tools work on every runtime.

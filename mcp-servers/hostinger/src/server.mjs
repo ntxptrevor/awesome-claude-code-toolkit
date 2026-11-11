@@ -327,38 +327,51 @@ async function publicHttps(value, label, env) {
   if (!addresses.length || addresses.some(isPrivateIp)) {
     throw new Error(`${label} host does not resolve to public addresses only`);
   }
-  return u;
+  return { url: u.toString(), ip: addresses[0] };
+}
+
+// Sends a request to a host that passed publicHttps. The connection must go to the checked
+// address, or the runtime must be unable to reach private networks. Any other runtime is
+// refused, so a DNS record that changes after the check cannot redirect the request.
+function fetchChecked(target, init, env) {
+  if (typeof env?.pinnedFetch === 'function') return env.pinnedFetch(target.url, init, target.ip);
+  if (globalThis.navigator?.userAgent === 'Cloudflare-Workers') return fetch(target.url, init);
+  throw new Error(
+    'hostinger_upload_from_url is off on this runtime. It runs on Cloudflare Workers, or on Node through node.mjs, which connects to the checked address.',
+  );
 }
 
 async function uploadFromUrl({ upload_url, auth_key, rest_auth_key, source_url, path }, ctx) {
-  const base = (await publicHttps(upload_url, 'upload_url', ctx.env)).toString().replace(/\/+$/, '');
-  let next = (await publicHttps(source_url, 'source_url', ctx.env)).toString();
+  const upload = await publicHttps(upload_url, 'upload_url', ctx.env);
+  const base = upload.url.replace(/\/+$/, '');
+  let next = await publicHttps(source_url, 'source_url', ctx.env);
   if (/(^|\/)\.\.(\/|$)/.test(path) || path.startsWith('/')) throw new Error('path must be relative with no ".." part');
   const max = Number(cfg(ctx.env, 'MAX_UPLOAD_BYTES'));
   // Follow redirects by hand so that each hop is checked. A redirect must not reach a private host.
   let source;
   for (let hop = 0; ; hop++) {
-    source = await fetch(next, { redirect: 'manual' });
+    source = await fetchChecked(next, { redirect: 'manual' }, ctx.env);
     if (source.status < 300 || source.status >= 400) break;
     const location = source.headers.get('location');
     if (!location || hop >= 5) return text('source_url redirected too many times or without a location', true);
-    next = (await publicHttps(new URL(location, next).toString(), 'source_url redirect', ctx.env)).toString();
+    next = await publicHttps(new URL(location, next.url).toString(), 'source_url redirect', ctx.env);
   }
   if (!source.ok) return text(`source_url returned ${source.status}`, true);
   const bytes = await source.arrayBuffer();
   if (bytes.byteLength > max) return text(`File is ${bytes.byteLength} bytes. The limit is ${max}.`, true);
   const dest = `${base}/${path.split('/').map(encodeURIComponent).join('/')}?override=true`;
   const tus = { 'x-auth': auth_key, 'x-auth-rest': rest_auth_key, 'tus-resumable': '1.0.0' };
-  const create = await fetch(dest, {
+  const destination = { url: dest, ip: upload.ip };
+  const create = await fetchChecked(destination, {
     method: 'POST',
     headers: { ...tus, 'upload-length': String(bytes.byteLength), 'upload-offset': '0' },
-  });
+  }, ctx.env);
   if (create.status !== 201) return text(`TUS create returned ${create.status}: ${(await create.text()).slice(0, 500)}`, true);
-  const patch = await fetch(dest, {
+  const patch = await fetchChecked(destination, {
     method: 'PATCH',
-    headers: { ...tus, 'content-type': 'application/offset+octet-stream', 'upload-offset': '0' },
+    headers: { ...tus, 'content-type': 'application/offset+octet-stream', 'upload-offset': '0', 'content-length': String(bytes.byteLength) },
     body: bytes,
-  });
+  }, ctx.env);
   const offset = Number(patch.headers.get('upload-offset'));
   if (patch.status !== 204 || offset !== bytes.byteLength) {
     return text(`TUS upload returned ${patch.status}, offset ${offset} of ${bytes.byteLength}`, true);

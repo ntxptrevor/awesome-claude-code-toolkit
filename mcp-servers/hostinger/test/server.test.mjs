@@ -7,10 +7,14 @@ const BASE = 'https://mcp.example.com';
 let calls;
 let responder;
 let dns;
+let env;
+let pinned;
 beforeEach(() => {
   calls = [];
   responder = () => new Response('{"ok":true}', { status: 200 });
   dns = { A: ['93.184.216.34'], AAAA: [] };
+  pinned = [];
+  env = { pinnedFetch: (url, init, ip) => { pinned.push(ip); return globalThis.fetch(url, init); } };
   globalThis.fetch = async (url, init = {}) => {
     if (String(url).startsWith('https://cloudflare-dns.com/')) {
       if (!dns) return new Response('', { status: 500 });
@@ -23,7 +27,7 @@ beforeEach(() => {
 });
 
 const post = (body, headers = { authorization: 'Bearer tok' }, path = '/mcp') =>
-  handle(new Request(BASE + path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) }));
+  handle(new Request(BASE + path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) }), env);
 const rpc = async (method, params, headers) => (await post({ jsonrpc: '2.0', id: 1, method, params }, headers)).json();
 const tool = (name, args) => rpc('tools/call', { name, arguments: args });
 
@@ -237,4 +241,37 @@ test('upload tool fails closed when the name cannot be resolved', async () => {
   });
   assert.ok(out.result.isError);
   assert.equal(calls.length, 0);
+});
+
+test('upload tool sends every request to the address that passed the check', async () => {
+  dns = { A: ['93.184.216.34'], AAAA: [] };
+  responder = (url, init) => {
+    if (url.startsWith('https://cdn.acme.org')) return new Response(new Uint8Array(3));
+    if (init.method === 'POST') return new Response(null, { status: 201 });
+    return new Response(null, { status: 204, headers: { 'upload-offset': '3' } });
+  };
+  const out = await tool('hostinger_upload_from_url', {
+    upload_url: 'https://files.hostingerfiles.net/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.acme.org/site.zip', path: 'site.zip',
+  });
+  assert.ok(!out.result.isError);
+  assert.deepEqual(pinned, ['93.184.216.34', '93.184.216.34', '93.184.216.34']);
+});
+
+test('upload tool is off on a runtime that cannot pin the connection', async () => {
+  env = {};
+  const out = await tool('hostinger_upload_from_url', {
+    upload_url: 'https://files.hostingerfiles.net/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.acme.org/site.zip', path: 'site.zip',
+  });
+  assert.ok(out.result.isError);
+  assert.match(out.result.content[0].text, /off on this runtime/);
+  assert.equal(calls.length, 0);
+});
+
+test('pinnedLookup returns the fixed address for any host name', async () => {
+  const { pinnedLookup } = await import('../src/pinned-fetch.mjs');
+  const seen = [];
+  pinnedLookup('93.184.216.34')('rebind.acme.org', {}, (e, address, family) => seen.push([address, family]));
+  pinnedLookup('2606:2800:220:1::1')('rebind.acme.org', { all: true }, (e, list) => seen.push(list));
+  assert.deepEqual(seen, [['93.184.216.34', 4], [{ address: '2606:2800:220:1::1', family: 6 }]]);
+  assert.throws(() => pinnedLookup('not-an-ip'));
 });

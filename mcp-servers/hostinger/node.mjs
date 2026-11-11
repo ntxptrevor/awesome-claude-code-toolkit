@@ -2,6 +2,9 @@
 // Node 18+ adapter for hosts without a fetch-handler runtime. Zero dependencies.
 import { createServer } from 'node:http';
 import { handle } from './src/server.mjs';
+import { pinnedFetch } from './src/pinned-fetch.mjs';
+
+const env = { ...process.env, pinnedFetch };
 
 const port = Number(process.env.PORT || 8787);
 createServer(async (req, res) => {
@@ -13,7 +16,7 @@ createServer(async (req, res) => {
     body: chunks.length ? Buffer.concat(chunks) : undefined,
   });
   try {
-    const response = await handle(request, process.env);
+    const response = await handle(request, env);
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(Buffer.from(await response.arrayBuffer()));
   } catch {
