@@ -7,7 +7,9 @@ on the VPS with no server-side session store.
 """
 from __future__ import annotations
 
+import hmac
 import json
+import os
 
 from .auth import verify_token, verify_token_async
 
@@ -163,8 +165,14 @@ class ApiApp:
         path = scope["path"]
         inbound = path.startswith("/api/v1/hooks/in/")          # peers authenticate by HMAC signature
         is_v1 = path.startswith("/api/v1/")
+        is_sync = path.startswith("/api/sync/")
         # A peer service token is honoured on /api/v1 only; the human /api never accepts it.
-        user = None if inbound else await verify_token_async(token, allow_service=is_v1)
+        if is_sync:                                              # machine surface: its own token, nothing else works here
+            want = os.environ.get("NTXP_SYNC_TOKEN", "")
+            ok = len(want) >= 32 and token and hmac.compare_digest(token.encode("utf-8", "replace"), want.encode("utf-8", "replace"))
+            user = {"email": "sync@service.invalid", "domain": "service"} if ok else None
+        else:
+            user = None if inbound else await verify_token_async(token, allow_service=is_v1)
         if user is None and not inbound:
             return await _send_bytes(send, 401, "application/json",
                                      b'{"error":"unauthorized","detail":"Sign in with your ntxpllc.com Google account."}')
@@ -201,6 +209,9 @@ class ApiApp:
         def run():
             conn = self._conn()
             try:
+                if is_sync:
+                    from .sync_api import handle_sync
+                    return handle_sync(conn, scope["method"], path, payload)
                 if is_v1:
                     from .api import ApiError, _json
                     from .peer_api import handle_v1

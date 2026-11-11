@@ -224,21 +224,8 @@ class LightfieldAdapter:
         raise NotImplementedError("Lightfield push is performed by the agent via MCP.")
 
     def to_canonical(self, remote: RemoteRecord) -> CanonicalRecord:
-        from .. import normalize as N
-        p = remote.payload
-        rec = CanonicalRecord(source="lightfield", source_pk=remote.external_id, raw=p)
-        rec.first_name = p.get("first_name")
-        rec.last_name = p.get("last_name")
-        rec.full_name = p.get("name") or " ".join(
-            x for x in (rec.first_name, rec.last_name) if x) or None
-        rec.name_norm = N.name_norm(rec.first_name, rec.last_name, rec.full_name)
-        rec.org_name = p.get("company") or p.get("account")
-        rec.org_name_norm = N.org_name_norm(rec.org_name or "") or None
-        em = N.normalize_email(p.get("email"))
-        if em:
-            rec.emails.append(Email(email=em, email_norm=em))
-        rec.tags.append(Tag("source", "lightfield"))
-        return rec
+        # Same person mapping as the other CRMs (emails[], phones[], title, company); source tag is added.
+        return JobTreadAdapter.to_canonical(self, remote)
 
     def from_canonical(self, rec: dict, external_id: str | None) -> dict:
         return {
@@ -248,3 +235,22 @@ class LightfieldAdapter:
             "email": rec.get("email"),
             "phone": rec.get("phone"),
         }
+
+
+@register_adapter
+class GContactsAdapter:
+    """Google Workspace people (Gmail / Calendar / Contacts sweeps). Pull is agent-mediated."""
+    system = "gcontacts"
+    transport = "mcp"
+
+    def pull(self, since):  # pragma: no cover
+        raise NotImplementedError("Google people are gathered by the agent via MCP.")
+
+    def push(self, batch):  # pragma: no cover
+        raise NotImplementedError("Google people are read-only here.")
+
+    def to_canonical(self, remote: RemoteRecord) -> CanonicalRecord:
+        return JobTreadAdapter.to_canonical(self, remote)
+
+    def from_canonical(self, rec: dict, external_id: str | None) -> dict:
+        return {"name": rec.get("full_name"), "email": rec.get("email")}

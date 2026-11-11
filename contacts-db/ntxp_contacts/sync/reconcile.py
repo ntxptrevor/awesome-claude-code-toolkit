@@ -133,7 +133,7 @@ class Reconciler:
         }
 
     # -- apply (writes to OUR canonical DB only) ----------------------------
-    def apply(self, remotes: list[RemoteRecord], origin: str | None = None) -> dict:
+    def apply(self, remotes: list[RemoteRecord], origin: str | None = None, reindex: bool = True) -> dict:
         origin = origin or f"pull:{self.system}"
         self.repo.defer_fts = True
         st = ReconcileStats(system=self.system)
@@ -161,7 +161,8 @@ class Reconciler:
                 st.linked += 1
             if decision.needs_review:
                 st.needs_review += 1
-        self.repo.rebuild_fts()
+        if reindex:
+            self.repo.rebuild_fts()
         self.conn.commit()
         return st.as_dict()
 
