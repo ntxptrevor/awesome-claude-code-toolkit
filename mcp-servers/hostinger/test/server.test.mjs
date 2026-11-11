@@ -396,3 +396,30 @@ test('generated catalog holds no credential-shaped URL', async () => {
   assert.equal(catalog.match(/:\/\/[^:/?#\[\]@!$&'()*+,;=\s]+:[^:/?#\[\]@!$&'()*+,;=\s]+@/g), null);
   assert.match(catalog, /mysql:\/\/user\[:password\]@host/);
 });
+
+test('upload tool stops reading a source that passes the size limit', async () => {
+  const args = { upload_url: 'https://files.hostingerfiles.net/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.acme.org/a.zip', path: 'site.zip' };
+  let limitSeen;
+  env = { MAX_UPLOAD_BYTES: '1000', pinnedFetch: (url, init, ip, limit) => { limitSeen = limit; return globalThis.fetch(url, init); } };
+
+  // A declared length over the limit is refused before any body byte is read.
+  responder = () => new Response(new Uint8Array(10), { headers: { 'content-length': '5000' } });
+  assert.match((await tool('hostinger_upload_from_url', args)).result.content[0].text, /larger than the limit of 1000 bytes/);
+  assert.equal(limitSeen, 1000);
+
+  // An endless stream with no declared length is cancelled after the limit.
+  let pulled = 0;
+  let cancelled = false;
+  responder = () =>
+    new Response(
+      new ReadableStream({
+        pull(controller) { pulled++; controller.enqueue(new Uint8Array(400)); },
+        cancel() { cancelled = true; },
+      }),
+    );
+  const out = await tool('hostinger_upload_from_url', args);
+  assert.match(out.result.content[0].text, /larger than the limit of 1000 bytes/);
+  assert.ok(cancelled);
+  assert.ok(pulled <= 5, `pulled ${pulled} chunks`);
+  assert.equal(calls.length, 2, 'no TUS request was sent');
+});

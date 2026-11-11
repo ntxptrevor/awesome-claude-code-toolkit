@@ -334,11 +334,43 @@ async function publicHttps(value, label, env) {
 // address, or the runtime must be unable to reach private networks. Any other runtime is
 // refused, so a DNS record that changes after the check cannot redirect the request.
 function fetchChecked(target, init, env) {
-  if (typeof env?.pinnedFetch === 'function') return env.pinnedFetch(target.url, init, target.ip);
+  if (typeof env?.pinnedFetch === 'function') {
+    return env.pinnedFetch(target.url, init, target.ip, Number(setting(env, 'MAX_UPLOAD_BYTES')));
+  }
   if (globalThis.navigator?.userAgent === 'Cloudflare-Workers') return fetch(target.url, init);
   throw new Error(
     'hostinger_upload_from_url is off on this runtime. It runs on Cloudflare Workers, or on Node through node.mjs, which connects to the checked address.',
   );
+}
+
+// Reads a response body with a running byte count. Returns null and stops the download as
+// soon as the body passes the limit, so a large or endless response cannot fill the memory.
+async function readUpToLimit(response, limit) {
+  if (Number(response.headers.get('content-length')) > limit) {
+    await response.body?.cancel();
+    return null;
+  }
+  if (!response.body) return new ArrayBuffer(0);
+  const reader = response.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const joined = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    joined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return joined.buffer;
 }
 
 async function uploadFromUrl({ upload_url, auth_key, rest_auth_key, source_url, path }, ctx) {
@@ -357,8 +389,8 @@ async function uploadFromUrl({ upload_url, auth_key, rest_auth_key, source_url, 
     next = await publicHttps(new URL(location, next.url).toString(), 'source_url redirect', ctx.env);
   }
   if (!source.ok) return toolResult(`source_url returned ${source.status}`, true);
-  const bytes = await source.arrayBuffer();
-  if (bytes.byteLength > max) return toolResult(`File is ${bytes.byteLength} bytes. The limit is ${max}.`, true);
+  const bytes = await readUpToLimit(source, max);
+  if (!bytes) return toolResult(`The file is larger than the limit of ${max} bytes. Nothing was uploaded.`, true);
   const dest = `${base}/${path.split('/').map(encodeURIComponent).join('/')}?override=true`;
   const tus = { 'x-auth': auth_key, 'x-auth-rest': rest_auth_key, 'tus-resumable': '1.0.0' };
   const destination = { url: dest, ip: upload.ip };
