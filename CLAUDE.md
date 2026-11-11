@@ -185,7 +185,7 @@ npx @claude-flow/cli@3.75.3 doctor --fix
 ## NTXP Environment
 
 - **Project setup**: use the `ntxp-project-init` skill (plugin at `plugins/ntxp-project-init/`). Hooks only offer it when a new project, bid or award is mentioned; always ask the user before running any step. Never run `claude-flow init --force` where `.claude/settings.json` or `CLAUDE.md` already exist.
-- **Data layer**: `.ntxp/` holds the IPDM project record, identity, skill bindings, council config, the Coda registry and crosswalk, and Highway routing. It is committed. `.claude-flow/` is runtime state and stays git-ignored.
+- **Data layer**: `.ntxp/` holds the IPDM project record, identity, skill bindings, council config, and the Coda registry and crosswalk. It is committed. `.claude-flow/` is runtime state and stays git-ignored.
 - **Credentials**: NTXP ID, then the NTXP Secrets Vault. Never write a key, token or password into a file, chat, commit, log or council field. A missing key is filed through the vault's Add Secret card, never requested in chat.
 - **Model Council**: look up the council knowledge base before multi-step work; convene only for decisions. Owner, client, bid, pricing and personnel content never goes to the DeepSeek or GLM seats. Never write council tabs 10-13 by hand or claim a consensus that was not run.
 - **Forge**: skills and plugins are delivered through `NTXP-TX/ntxp-forge`. Hooks must ship as a plugin (a skill's own `hooks/` folder does not run). Verify with `forge.py verify`, `forge.py marketplace` and `skill_mesh.py` before the PR. Never export the vault token.

@@ -29,7 +29,7 @@ Source in `/src`, tests `/tests`, docs `/docs`, config `/config`, scripts `/scri
 | 2 | Haiku | ~500ms | ~$0.0002 | Low complexity (<30%) |
 | 3 | Sonnet/Opus | 2-5s | $0.003-0.015 | Reasoning, architecture, security (>30%) |
 
-Check for `[AGENT_BOOSTER_AVAILABLE]` or `[TASK_MODEL_RECOMMENDATION]` before spawning agents; use Edit directly when the booster is available. NTXP Highway uses the same tiers for skill routing, so the two plans are one: Highway picks the skill, the tier picks the model.
+Check for `[AGENT_BOOSTER_AVAILABLE]` or `[TASK_MODEL_RECOMMENDATION]` before spawning agents; use Edit directly when the booster is available. NTXP's `ntxp-model-router` plays the same role for NTXP skills: it chooses the cheapest correct executor, and the tier here is the Claude Flow side of that decision.
 
 ## Swarm execution rules
 
@@ -72,6 +72,6 @@ Never hardcode keys or commit `.env`. Validate input at boundaries. Sanitize fil
 |---|---|---|
 | `.claude-flow/` runtime state | `.ntxp/` project data | Runtime stays git-ignored; `.ntxp/` project data is committed |
 | Hybrid memory / HNSW | IPDM + Coda (project knowledge base) | Project facts live in `.ntxp/`; learned patterns live in Claude Flow memory |
-| 3-tier routing | Highway routing + Model Council | Highway picks skill, Council picks model |
+| 3-tier routing | `ntxp-model-router` + Model Council | Router picks the executor, Council settles disputed decisions |
 | Swarm of Task agents | NTXP skills | Agents invoke skills; skills never spawn swarms on their own |
 | Watchdog / `doctor` | `mcp-watchdog.cjs`, ntxp-autonomous-repair | Watchdog detects, repair skill acts |

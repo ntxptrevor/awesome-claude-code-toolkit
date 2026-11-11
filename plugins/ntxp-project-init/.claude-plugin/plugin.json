@@ -1,6 +1,6 @@
 {
   "name": "ntxp-project-init",
   "version": "2.0.0",
-  "description": "Create, audit and hand off an NTXP project: Claude Flow, NTXP ID, IPDM, numbered Drive folders, Project Coda registry and crosswalk, knowledge-base wiring, Model Council and Highway routing. Hooks offer it on new-project intent.",
+  "description": "Create, audit and hand off an NTXP project: Claude Flow, NTXP ID, IPDM, numbered Drive folders, Project Coda registry and crosswalk, knowledge-base wiring, Model Council setup. Hooks offer it on new-project intent.",
   "author": { "name": "NTXP" }
 }

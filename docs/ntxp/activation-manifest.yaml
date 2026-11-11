@@ -3,25 +3,20 @@ activation_manifest:
   description: "NTXP skill activation chain — defines triggers, handoffs, and consolidation map"
 
   # ============================================================
-  # CONSOLIDATED LOCAL SKILLS (33 → 16)
+  # CONSOLIDATED LOCAL SKILLS (33 → 15)
   # ============================================================
 
   local_skills:
-    # --- NTXP Core (3: init absorbed auto-deploy and the Coda stub) ---
+    # --- NTXP core (2): init absorbed auto-deploy and the Coda stub; the local Highway skill was retired (name collides with Forge ntxp-highway v3.0.0) ---
     - name: ntxp-project-init
       replaces: ["auto-deploy-claude-flow", "ntxp-project-coda (local stub)"]
       triggers_on: ["new project", "new bid", "award", "project setup", "init", "bootstrap", "new repo", "access audit", "handoff", "crosswalk", "project links"]
-      hands_off_to: ["ntxp-ipdm", "ntxp-highway"]
+      hands_off_to: ["ntxp-ipdm"]
       activation: automatic
 
     - name: ntxp-ipdm
       triggers_on: ["project data", "project record", "platform lookup", "IPDM"]
-      hands_off_to: ["ntxp-project-init", "ntxp-highway"]
-      activation: automatic
-
-    - name: ntxp-highway
-      triggers_on: ["route", "which skill", "task routing", "multi-skill"]
-      hands_off_to: ["*"]  # routes to any skill
+      hands_off_to: ["ntxp-project-init"]
       activation: automatic
 
     # --- Merged: AgentDB (5 → 1) ---
@@ -68,7 +63,7 @@ activation_manifest:
     - name: swarm
       replaces: ["swarm-advanced", "swarm-orchestration"]
       triggers_on: ["swarm", "multi-agent", "mesh topology", "hierarchical swarm", "parallel agents"]
-      hands_off_to: ["ntxp-highway"]
+      hands_off_to: []
       activation: on-demand
 
     # --- Keep as-is (5) ---
@@ -167,16 +162,12 @@ activation_manifest:
           action: "Coda step: collect platform links + build crosswalk"
         - skill: "ntxp-model-council (anthropic)"
           action: "Configure model routing"
-        - skill: "ntxp-highway"
-          action: "Activate routing table"
 
     estimate_workflow:
       description: "End-to-end estimating pipeline"
       steps:
         - skill: "ntxp-ipdm"
           action: "Load project context (trades, contract type)"
-        - skill: "ntxp-highway"
-          action: "Route to appropriate estimating skill"
         - skill: "ntxp-estimating (anthropic)"
           action: "Produce estimate"
         - skill: "ntxp-project-init"

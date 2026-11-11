@@ -1,6 +1,6 @@
 ---
 name: "ntxp-project-init"
-description: "Creates, audits and hands off an NTXP project end to end, after asking the user to confirm: Claude Flow orchestration, NTXP ID authentication, the IPDM project record, the numbered NTXP Drive folder tree (1-13 plus !Public Share), the Project Coda link registry and platform crosswalk, knowledge-base wiring, and Model Council and Highway routing. Hooks offer it when a new project, bid or award is mentioned or no project record exists. Use for new projects and bids, awards, platform access audits, project handoff packages, and cross-platform ID or link lookups."
+description: "Creates, audits and hands off an NTXP project end to end, after asking the user to confirm: Claude Flow orchestration, NTXP ID authentication, the IPDM project record, the numbered NTXP Drive folder tree (1-13 plus !Public Share), the Project Coda link registry and platform crosswalk, knowledge-base wiring, and Model Council and model-router setup. Hooks offer it when a new project, bid or award is mentioned or no project record exists. Use for new projects and bids, awards, platform access audits, project handoff packages, and cross-platform ID or link lookups."
 version: "2.0.0"
 owner: "claude-code"
 requires: ["ntxp-id", "ntxp-secrets-vault", "ntxp-model-council", "ntxp-folder-system"]
@@ -89,9 +89,9 @@ Build the registry and crosswalk, validate links, produce the access card. Every
 
 Search-then-save for every NTXP skill: search `.ntxp/ipdm/project.yaml` and `.ntxp/coda/registry.yaml` before external calls, save outputs back to IPDM, register new links and ids in Coda and the crosswalk. Bindings live in `.ntxp/ipdm/skill-config.yaml` (template in `references/templates.md`).
 
-### Step 7 - Model Council and Highway
+### Step 7 - Model Council and routing
 
-Read or create `.ntxp/ipdm/model-council.yaml` through `anthropic-skills:ntxp-model-council`. Create `.ntxp/highway/config.yaml` from the 10-route table in `references/templates.md` and an empty `routing-log.jsonl`. Tier 1 local, Tier 2 Haiku, Tier 3 Sonnet or Opus.
+Read or create `.ntxp/ipdm/model-council.yaml` through `anthropic-skills:ntxp-model-council`. Executor choice, spend caps and task-aware model selection belong to the Forge `ntxp-model-router`; agent handoffs and provider calls belong to the Forge `ntxp-highway`. This skill does not define a routing table or duplicate either one. Record in the report which of them are installed.
 
 ### Step 8 - Verify
 
@@ -122,7 +122,7 @@ Share what was learned with the council (see Council wiring), then print the pro
 The Model Council is the team's shared channel and knowledge base.
 
 - **Look first**: Step 0. Cite workflow IDs you reuse.
-- **Convene for decisions, not chores.** Use `council_run` when a user wants to deviate from the numbering or add a root folder, change the platform keys, change the Highway table, or pick a method that would change how NTXP works (`change_type: methodology`, which always gates for approval). Routine setup uses `council_route`, not a council.
+- **Convene for decisions, not chores.** Use `council_run` when a user wants to deviate from the numbering or add a root folder, change the platform keys or the IPDM file layout, or pick a method that would change how NTXP works (`change_type: methodology`, which always gates for approval). Routine setup uses `council_route`, not a council.
 - **Confidentiality**: project owner, client, agency, bid, pricing and personnel content must never reach the Ledger (DeepSeek) or Mason (GLM) seats. Pass `confidential: true` for any subject that carries them.
 - **Hard rules** are enforced in code: at least 3 distinct providers, one short paragraph per turn, spend ceilings. Never put a secret in any council field.
 - **Gates**: show the gate text, wait for the user's direction, never pick an option on a methodology, classification, privacy or payment gate.
@@ -138,9 +138,8 @@ IPDM is the source of truth; this skill is its writer. File ownership:
 | `.ntxp/ipdm/project.yaml` | this skill | all skills |
 | `.ntxp/ipdm/identity.yaml` | `ntxp-id` plugin | all skills |
 | `.ntxp/ipdm/skill-config.yaml` | this skill | all skills |
-| `.ntxp/ipdm/model-council.yaml` | `ntxp-model-council` | Highway, this skill |
+| `.ntxp/ipdm/model-council.yaml` | `ntxp-model-council` | `ntxp-model-router`, this skill |
 | `.ntxp/coda/registry.yaml`, `crosswalk.yaml`, `sync-log.jsonl` | this skill | all skills |
-| `.ntxp/highway/config.yaml`, `routing-log.jsonl` | this skill (bootstrap), Highway | Highway |
 
 ## Forge wiring
 
@@ -169,7 +168,7 @@ Open the PR, wait for `skill-validate`, squash-merge. Retire the standalone `ntx
 
 ## Superseded
 
-Replaces `auto-deploy-claude-flow` and the local `ntxp-project-coda` stub. `ntxp-ipdm` and `ntxp-highway` remain as the data and routing layers.
+Replaces `auto-deploy-claude-flow` and the local `ntxp-project-coda` stub. `ntxp-ipdm` remains the data layer. Routing belongs to the Forge `ntxp-model-router` and handoffs to the Forge `ntxp-highway`; the local routing-table skill that shared the `ntxp-highway` name was retired to avoid a collision.
 
 ## NTXP Interop
 

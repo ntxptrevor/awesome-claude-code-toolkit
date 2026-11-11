@@ -20,12 +20,10 @@ All NTXP skills follow these conventions. When in doubt, these are authoritative
 | `.ntxp/ipdm/project.yaml` | Canonical project record | NTXP Project Init (write), all skills (read) |
 | `.ntxp/ipdm/identity.yaml` | Authenticated session context | NTXP ID (write), all skills (read) |
 | `.ntxp/ipdm/skill-config.yaml` | Skill read/write bindings and rewiring | NTXP Project Init (write), all skills (read) |
-| `.ntxp/ipdm/model-council.yaml` | Model routing configuration | Model Council (write), Highway (read) |
+| `.ntxp/ipdm/model-council.yaml` | Model routing configuration | Model Council (write), model-router (read) |
 | `.ntxp/coda/registry.yaml` | Platform link index (read-optimized) | NTXP Project Init / Coda (write from IPDM), all skills (read) |
 | `.ntxp/coda/crosswalk.yaml` | Cross-platform entity map | NTXP Project Init / Coda (write), all skills (read) |
 | `.ntxp/coda/sync-log.jsonl` | Coda sync audit trail | NTXP Project Init / Coda (append) |
-| `.ntxp/highway/config.yaml` | Routing table and tier config | Highway (write), NTXP Project Init (bootstrap) |
-| `.ntxp/highway/routing-log.jsonl` | Routing decision log | Highway (append) |
 
 ### Platform Keys (use these exact keys everywhere)
 
@@ -55,7 +53,7 @@ When a skill needs to select an AI model:
 
 1. **Read** `.ntxp/ipdm/model-council.yaml` for the project's model configuration
 2. **Call** `anthropic-skills:ntxp-model-council` if no config exists or a new task class needs routing
-3. **Log** model selection to `.ntxp/highway/routing-log.jsonl` for optimization
+3. **Record** the selection in the project's council entry; routing history is kept by `ntxp-model-router`
 
 ### Knowledge Base Protocol
 
@@ -112,7 +110,7 @@ The single crosswalk lives at `.ntxp/coda/crosswalk.yaml` (owned by NTXP Project
 ### Step 1 — Create the IPDM record
 
 ```bash
-mkdir -p .ntxp/ipdm .ntxp/coda .ntxp/highway
+mkdir -p .ntxp/ipdm .ntxp/coda
 cat > .ntxp/ipdm/project.yaml << 'YAML'
 project:
   id: ""
@@ -154,7 +152,6 @@ All NTXP skills read `.ntxp/ipdm/project.yaml` before performing platform-specif
 | NTXP ID | — | identity.yaml (session auth) |
 | NTXP Model Council | project context | model-council.yaml |
 | NTXP Project Init (Coda step) | all platform URLs | .ntxp/coda/ registry, crosswalk, sync log |
-| NTXP Highway | skill-config.yaml, model-council.yaml | routing-log.jsonl |
 | NTXP Estimating | project.trades, project.contract_type | documents[], ntxp_tools refs |
 | NTXP ITB Generator | project.trades, contacts[] | documents[] |
 | NTXP Submittals | project.trades, documents[] | ntxp_tools.submittal_register |

@@ -141,7 +141,7 @@ When another skill creates a link or id (a Drive folder, a JobTread job, a Build
 |---|---|
 | NTXP folder system | Receives the Drive folder URL after creation, written to IPDM then Coda |
 | NTXP ID | Provides identity before any validation |
-| Highway | Calls `resolve` for URLs and ids |
+| Forge `ntxp-highway`, `ntxp-model-router` | Call `resolve` for URLs and ids |
 | Estimating, ITB, submittals | Register workspace and register links |
 | OAC dashboard | Reads the links section |
 | BuildingConnected, JobTread, eBuilder connectors | Write platform ids to the crosswalk |
