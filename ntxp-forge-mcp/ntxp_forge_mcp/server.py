@@ -100,6 +100,15 @@ def build_server(settings: Settings, store: Store, forge: Forge,
             raise ToolError(f"Sign in with a {ALLOWED_DOMAIN} Google Workspace account.")
         return email, role
 
+    def restore_file(audit: Audit) -> None:
+        """Put a config file back as it was before a call that did not complete."""
+        if audit.undo_file_change is None:
+            return
+        try:
+            audit.undo_file_change()
+        except OSError:
+            pass  # the caller is still told the call did not complete
+
     def run(tool: str, action: str, resource: str, target: str,
             work: Callable[[str, str, Audit], dict]) -> dict:
         email, role = identify(tool, action)
@@ -127,15 +136,12 @@ def build_server(settings: Settings, store: Store, forge: Forge,
                       detail=str(err))
             raise ToolError(str(err)) from None
         except OSError as err:  # disk full, file removed mid-read, permission
+            restore_file(audit)  # a write that failed part way leaves no half-written file
             store.log(email, role, action, tool, target=audit.target, outcome="error",
                       detail=type(err).__name__)
             raise ToolError("The server could not read or write a file. Try again.") from None
         except sqlite3.Error as err:  # database locked, disk full
-            if audit.undo_file_change is not None:
-                try:
-                    audit.undo_file_change()
-                except OSError:
-                    pass  # reported below; the caller is told the call did not complete
+            restore_file(audit)
             try:
                 store.log(email, role, action, tool, target=audit.target, outcome="error",
                           detail=type(err).__name__)

@@ -264,3 +264,20 @@ def test_config_file_change_is_undone_when_its_log_row_cannot_be_saved(call, sto
     monkeypatch.setattr(store, "log", real_log)
     assert call("config_list", as_user=ADMIN)["files"] == ["prefs.md"]
     assert call("config_read", as_user=ADMIN, name="prefs")["content"] == "# first\n"
+
+
+def test_config_write_that_fails_part_way_restores_the_old_file(call, monkeypatch):
+    from pathlib import Path
+    call("config_write", as_user=ADMIN, name="prefs", content="# first\n")
+    real_write = Path.write_text
+
+    def write_then_fail(self, data, *args, **kwargs):
+        real_write(self, data[:3], *args, **kwargs)          # a partial write reaches disk
+        if data == "# second\n":
+            raise OSError("No space left on device")
+        real_write(self, data, *args, **kwargs)
+    monkeypatch.setattr(Path, "write_text", write_then_fail)
+    with pytest.raises(ToolError, match="could not read or write a file"):
+        call("config_write", as_user=ADMIN, name="prefs", content="# second\n")
+    monkeypatch.setattr(Path, "write_text", real_write)
+    assert call("config_read", as_user=ADMIN, name="prefs")["content"] == "# first\n"
