@@ -63,17 +63,18 @@ def handle(message):
     # mkstemp creates the file with mode 0600, so only this user can read
     # or replace the text before runner.sh shows it.
     fd, path = tempfile.mkstemp(prefix="send-to-terminal-", suffix=".txt")
-    with os.fdopen(fd, "wb") as handle_:
-        handle_.write(data)
-        if not data.endswith(b"\n"):
-            handle_.write(b"\n")
-
-    source = message.get("source")
-    source = source if isinstance(source, str) else ""
-    command = " ".join(
-        shlex.quote(part) for part in ("/bin/bash", RUNNER, path, kind, source[:2048])
-    )
     try:
+        with os.fdopen(fd, "wb") as payload_file:
+            payload_file.write(data)
+            if not data.endswith(b"\n"):
+                payload_file.write(b"\n")
+
+        source = message.get("source")
+        source = source if isinstance(source, str) else ""
+        command = " ".join(
+            shlex.quote(part)
+            for part in ("/bin/bash", RUNNER, path, kind, source[:2048])
+        )
         subprocess.run(
             ["/usr/bin/osascript", "-e", APPLESCRIPT, command],
             check=True,
@@ -81,7 +82,11 @@ def handle(message):
             timeout=20,
         )
     except Exception:
-        os.unlink(path)
+        # Terminal did not start, so runner.sh will not delete the file.
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
         raise
 
 

@@ -20,7 +20,10 @@ echo "Send to Terminal: $kind from ${source_url:-unknown page}"
 echo "------------------------------------------------------------"
 # cat -v prints control characters as visible text (^[ for ESC), so a web
 # page cannot hide part of a command with terminal escape sequences.
-cat -v "$payload"
+if ! cat -v "$payload"; then
+  echo "send-to-terminal: could not read the payload file." >&2
+  exit 1
+fi
 echo "------------------------------------------------------------"
 
 if LC_ALL=C grep -q '[^[:print:][:space:]]' "$payload"; then
@@ -40,8 +43,13 @@ case "$choice" in
     echo "Exit status: $?"
     ;;
   s|S)
-    sent="$(cat "$payload")"
-    printf '%s' "$sent" | pbcopy
+    if ! sent="$(cat "$payload")"; then
+      echo "send-to-terminal: could not read the payload file." >&2
+      exit 1
+    fi
+    if ! printf '%s' "$sent" | pbcopy; then
+      echo "Clipboard copy failed. The text is still in \$SENT."
+    fi
     sudo /usr/bin/env SENT="$sent" /bin/bash
     ;;
   *)
