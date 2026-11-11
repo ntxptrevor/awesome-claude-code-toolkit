@@ -6,6 +6,10 @@ const HOST_NAME = "com.ntxp.send_to_terminal";
 
 // Must match MAX_PAYLOAD_BYTES in host/send_to_terminal_host.py.
 const MAX_PAYLOAD_BYTES = 64 * 1024;
+// The host shows at most this many characters of the source address. A
+// longer address (a large data: page) would push the message over the
+// host size limit.
+const MAX_SOURCE_CHARS = 2048;
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
@@ -25,6 +29,13 @@ function pickPayload(info) {
   if (info.srcUrl) return { kind: "media", text: info.srcUrl };
   if (info.pageUrl) return { kind: "page", text: info.pageUrl };
   return null;
+}
+
+// The address of the document the text came from. Inside an iframe that is
+// the frame, which can be a different site from the tab.
+function pickSource(info, tab) {
+  const source = info.frameUrl || info.pageUrl || tab?.url || "";
+  return source.slice(0, MAX_SOURCE_CHARS);
 }
 
 function notify(message) {
@@ -53,7 +64,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
   chrome.runtime.sendNativeMessage(
     HOST_NAME,
-    { ...payload, source: tab?.url ?? info.pageUrl ?? "" },
+    { ...payload, source: pickSource(info, tab) },
     (response) => {
       if (chrome.runtime.lastError) {
         notify(
