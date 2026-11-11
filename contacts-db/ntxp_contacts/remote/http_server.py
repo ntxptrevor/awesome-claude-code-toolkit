@@ -211,7 +211,8 @@ class ApiApp:
             try:
                 if is_sync:
                     from .sync_api import handle_sync
-                    return handle_sync(conn, scope["method"], path, payload)
+                    arg = payload if scope["method"] == "POST" else {k: (v[0] if isinstance(v, list) else v) for k, v in query.items()}
+                    return handle_sync(conn, scope["method"], path, arg)
                 if is_v1:
                     from .api import ApiError, _json
                     from .peer_api import handle_v1

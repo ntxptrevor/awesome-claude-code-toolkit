@@ -579,6 +579,9 @@ def handle(conn, user: str, method: str, path: str, query: dict, body: dict):
             offset = max(int(_q1(query, "offset", "0") or 0), 0)
             total, rows = _rows(conn, query, limit, offset)
             return _json(200, {"total": total, "offset": offset, "limit": limit, "rows": rows})
+        if p == "/api/connections" and m == "GET":
+            from .sync_api import connections
+            return _json(200, connections(conn))
         if p == "/api/facets" and m == "GET":
             return _json(200, _facets(conn, query))
         mm = re.match(r"^/api/contacts/(\d+)$", p)

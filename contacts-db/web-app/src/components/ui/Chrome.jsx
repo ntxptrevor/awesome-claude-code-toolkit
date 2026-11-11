@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { longDate } from "../../lib/format";
+import { ConnectionStrip } from "../ConnectionStrip";
 
 /** The reversed NTXP logo from the NTXP Document Engine assets (mounted at deploy time, never in git).
  *  Standard 2.1: fixed 1.55in zone, height-governed at 0.82in. Never recoloured, redrawn or faked: if the
@@ -35,7 +36,8 @@ export function Header({ total, user, menuOpen, onMenu }) {
           <h1 className="m-0 text-[37px] max-[640px]:text-[22px] leading-[1.05] font-bold tracking-[.09em] uppercase whitespace-nowrap overflow-hidden text-ellipsis">NTXP Contacts</h1>
           <p className="mt-1 mb-0 text-[19px] leading-[1.1] font-normal whitespace-nowrap overflow-hidden text-ellipsis max-[640px]:hidden">Canonical directory · Lightfield is the source of truth</p>
         </div>
-        <div className="acct flex items-center gap-2 text-xs max-w-[230px]">
+        <div className="acct flex items-center gap-3 text-xs max-w-[300px]">
+          <ConnectionStrip />
           <span className="who overflow-hidden text-ellipsis whitespace-nowrap max-[640px]:hidden" id="who">{user?.email || ""}</span>
           <span id="av" aria-hidden="true" className="av size-[30px] rounded-full bg-white text-navy grid place-items-center font-bold text-xs shrink-0">{initial}</span>
         </div>

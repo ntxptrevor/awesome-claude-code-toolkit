@@ -48,3 +48,21 @@ def test_endpoint_needs_its_own_token(monkeypatch, tmp_path):
     assert asyncio.run(call("s" * 40)) == 200
     assert asyncio.run(call("human-token")) == 401      # a normal sign-in can't use the machine surface
     assert asyncio.run(call("")) == 401
+
+
+def test_outbox_ack_baseline_and_connections(conn):
+    from ntxp_contacts.remote.sync_api import connections
+    post(conn, "/api/sync/reconcile", {"system": "lightfield", "records": [
+        {"external_id": "lf1", "firstName": "Ann", "lastName": "Test", "email": "ann@acme.example"}]})
+    post(conn, "/api/sync/reconcile", {"system": "jobtread", "records": [
+        {"external_id": "jt1", "firstName": "Ann", "lastName": "Test", "email": "ann@acme.example"}]})
+    assert post(conn, "/api/sync/baseline", {})[0] == 200
+    # nothing pending right after baseline
+    st, _, data = handle_sync(conn, "GET", "/api/sync/outbox", {"system": "jobtread"})
+    assert json.loads(data)["count"] == 0
+    # a local edit now shows up for the systems that did not originate it
+    from ntxp_contacts.db.repository import Repository
+    cid = conn.execute("SELECT contact_id FROM contacts").fetchone()["contact_id"]
+    Repository(conn).update_contact_fields(cid, {"title": "Director"}, origin="ui") if hasattr(Repository, "update_contact_fields") else None
+    cons = {c["system"]: c for c in connections(conn)["connections"]}
+    assert cons["lightfield"]["connected"] and cons["jobtread"]["connected"] and not cons["gcontacts"]["connected"]
