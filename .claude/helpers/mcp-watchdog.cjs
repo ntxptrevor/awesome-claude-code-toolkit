@@ -264,7 +264,7 @@ function attemptRepair() {
             results.push({
               serverId,
               action: 'flagged-for-restart',
-              message: `${serverId} needs restart — run: claude mcp restart ${serverId}`,
+              message: `${serverId} needs restart — reconnect it from the /mcp menu in Claude Code`,
             });
           } catch (e) {
             log(`REPAIR FAILED: ${serverId} — ${e.message}`);
@@ -318,6 +318,31 @@ function getStatus() {
 // Main
 // ============================================================
 
+// Transcript is JSONL, so quotes inside text are escaped. Decode each of the
+// last lines and join the plain strings so the failure regexes can match.
+function readTranscriptTail(file, maxBytes = 200000, maxLines = 40) {
+  const fd = fs.openSync(file, 'r');
+  try {
+    const size = fs.fstatSync(fd).size;
+    const start = Math.max(0, size - maxBytes);
+    const buf = Buffer.alloc(size - start);
+    fs.readSync(fd, buf, 0, buf.length, start);
+    const lines = buf.toString('utf8').split('\n').filter(Boolean).slice(-maxLines);
+    const out = [];
+    const walk = (v) => {
+      if (typeof v === 'string') out.push(v);
+      else if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+    };
+    for (const line of lines) {
+      try { walk(JSON.parse(line)); } catch { /* partial first line or non-JSON */ }
+    }
+    return out.join('\n');
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 const mode = process.argv[2] || 'scan';
 
 switch (mode) {
@@ -330,9 +355,7 @@ switch (mode) {
         const parsed = JSON.parse(raw);
         // Read the transcript file for MCP status notices
         if (parsed.transcript_path && fs.existsSync(parsed.transcript_path)) {
-          const transcript = fs.readFileSync(parsed.transcript_path, 'utf8');
-          // Extract the last 5000 chars where MCP status notices appear
-          input = transcript.slice(-5000);
+          input = readTranscriptTail(parsed.transcript_path);
         } else {
           input = parsed.prompt || '';
         }

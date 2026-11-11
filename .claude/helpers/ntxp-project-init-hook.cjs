@@ -21,12 +21,11 @@ const INTENT = new RegExp(
   [
     'new (ntxp )?project',
     'new bid',
-    'kick ?off',
+    'kick ?off (a |the |our )?(new )?(project|bid)',
     'got (the )?award',
     'we (were|got) awarded',
-    'awarded (the )?(project|contract|job)',
-    'set ?up (a |the )?(new )?(project|bid|job)',
-    'start(ing)? (a |the )?(new )?(project|bid|job)',
+    'awarded (the )?(project|contract)',
+    'set ?up (a |the )?new (project|bid)',
     'project init',
     'ntxp-\\d{4}-\\d+',
   ].join('|'),
@@ -34,7 +33,8 @@ const INTENT = new RegExp(
 );
 
 const OFFER = [
-  '[NTXP Project Init] This looks like a new project. Do NOT start setup yet.',
+  '[NTXP Project Init] This may be a new construction project or bid. Ignore this notice if the',
+  'message is about software (a code project, repo, or background job). Do NOT start setup yet.',
   'Ask the user with AskUserQuestion whether they want to create a new NTXP project now.',
   'If yes, use the "NTXP Project Init" skill and collect: project name, client/owner, contract type,',
   'cooperative, status. Workflow steps it will run (user can deselect any):',
@@ -66,9 +66,9 @@ function hasProject() {
     return !!(m && m[1].trim());
   } catch { return false; }
 }
-function suppressed(state) {
+function suppressed(state, key) {
   if (state.declined) return true;
-  return state.offeredAt && Date.now() - state.offeredAt < COOLDOWN_MS;
+  return state[key] && Date.now() - state[key] < COOLDOWN_MS;
 }
 
 const mode = process.argv[2];
@@ -77,16 +77,16 @@ const state = readState();
 if (mode === 'prompt') {
   const input = readStdin();
   const prompt = String(input.prompt || '');
-  if (INTENT.test(prompt) && !/ntxp project init/i.test(prompt) && !suppressed(state)) {
-    state.offeredAt = Date.now();
+  if (INTENT.test(prompt) && !/ntxp project init/i.test(prompt) && !suppressed(state, 'promptOfferedAt')) {
+    state.promptOfferedAt = Date.now();
     writeState(state);
     console.log(OFFER);
   }
 } else if (mode === 'session') {
   readStdin();
   delete state.declined;
-  if (!hasProject() && !suppressed(state)) {
-    state.offeredAt = Date.now();
+  if (!hasProject() && !suppressed(state, 'sessionOfferedAt')) {
+    state.sessionOfferedAt = Date.now();
     writeState(state);
     console.log(
       '[NTXP Project Init] No project record found (.ntxp/ipdm/project.yaml). ' +

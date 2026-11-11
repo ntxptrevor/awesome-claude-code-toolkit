@@ -31,13 +31,20 @@ Run the confirmed steps in order. Steps within a phase that don't depend on each
 
 Purpose, architecture, config and optimization plan are in `references/claude-flow.md`. In short: hierarchical-mesh swarm, 6-8 agents for coding work, hybrid memory with HNSW, 3-tier model routing, hooks for learning and checkpoints.
 
+`--force` overwrites `.claude/settings.json`, `CLAUDE.md` and the hooks. Never use it on a workspace that already has them.
+
 ```bash
-npx claude-flow@alpha init --force
+if [ -f .claude/settings.json ] || [ -f CLAUDE.md ]; then
+  echo "already initialized: skip init, verify only"   # ask the user before any --force; back up first:
+  # cp -r .claude ".claude.bak-$(date +%s)" && cp CLAUDE.md "CLAUDE.md.bak-$(date +%s)"
+else
+  npx claude-flow@alpha init
+fi
 test -f CLAUDE.md && test -f .mcp.json && test -d .claude/agents && test -d .claude/skills \
   && test -f .claude/settings.json && test -d .claude-flow && echo "claude-flow OK"
 ```
 
-If a check fails, re-run init once, then report what is missing. Version pinning: prefer a pinned `@claude-flow/cli@<version>` in `.mcp.json` over `@latest`, and do not widen the `npx` allow rules in `settings.json`.
+If a check fails on a fresh workspace, re-run init once, then report what is missing. Version pinning: prefer a pinned `@claude-flow/cli@<version>` in `.mcp.json` over `@latest`, and do not widen the `npx` allow rules in `settings.json`.
 
 ### Step 2 — Auth
 
