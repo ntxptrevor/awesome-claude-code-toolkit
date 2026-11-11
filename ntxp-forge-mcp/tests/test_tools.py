@@ -244,3 +244,23 @@ def test_database_failure_on_a_read_is_reported_not_raised_raw(call, store, monk
     monkeypatch.setattr(store, "list_entries", broken)
     with pytest.raises(ToolError, match="server database"):
         call("entry_list")
+
+
+def test_config_file_change_is_undone_when_its_log_row_cannot_be_saved(call, store, monkeypatch):
+    call("config_write", as_user=ADMIN, name="prefs", content="# first\n")
+    real_log = store.log
+
+    def failing_log(*args, **kwargs):
+        if kwargs.get("outcome", "ok") == "ok":
+            raise sqlite3.OperationalError("disk is full")
+        return real_log(*args, **kwargs)
+    monkeypatch.setattr(store, "log", failing_log)
+    with pytest.raises(ToolError):
+        call("config_write", as_user=ADMIN, name="prefs", content="# second\n")   # overwrite
+    with pytest.raises(ToolError):
+        call("config_write", as_user=ADMIN, name="fresh", content="# new\n")      # new file
+    with pytest.raises(ToolError):
+        call("config_delete", as_user=ADMIN, name="prefs")                         # delete
+    monkeypatch.setattr(store, "log", real_log)
+    assert call("config_list", as_user=ADMIN)["files"] == ["prefs.md"]
+    assert call("config_read", as_user=ADMIN, name="prefs")["content"] == "# first\n"

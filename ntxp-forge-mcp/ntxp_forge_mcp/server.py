@@ -62,6 +62,8 @@ class Audit:
     flag: str = ""
     reason: str = ""
     detail: str = ""
+    # Reverses a file change. Called when the log row for that change cannot be saved.
+    undo_file_change: Callable[[], None] | None = None
 
 
 def build_server(settings: Settings, store: Store, forge: Forge,
@@ -129,6 +131,11 @@ def build_server(settings: Settings, store: Store, forge: Forge,
                       detail=type(err).__name__)
             raise ToolError("The server could not read or write a file. Try again.") from None
         except sqlite3.Error as err:  # database locked, disk full
+            if audit.undo_file_change is not None:
+                try:
+                    audit.undo_file_change()
+                except OSError:
+                    pass  # reported below; the caller is told the call did not complete
             try:
                 store.log(email, role, action, tool, target=audit.target, outcome="error",
                           detail=type(err).__name__)
@@ -430,6 +437,10 @@ def build_server(settings: Settings, store: Store, forge: Forge,
                              "secret_in_write")
             path = config_path(owner, name)
             path.parent.mkdir(parents=True, exist_ok=True)
+            previous = path.read_text("utf-8") if path.is_file() else None
+            audit.undo_file_change = (
+                (lambda: path.write_text(previous, "utf-8")) if previous is not None
+                else (lambda: path.unlink(missing_ok=True)))
             path.write_text(content, "utf-8")
             return {"user": owner, "name": path.name, "bytes": path.stat().st_size}
         return run("config_write", WRITE, "config", f"config:{user or 'self'}/{name}", work)
@@ -445,6 +456,8 @@ def build_server(settings: Settings, store: Store, forge: Forge,
             path = config_path(owner, name)
             if not path.is_file():
                 raise ForgeError(f"No config file {name!r} for {owner}")
+            previous = path.read_text("utf-8")
+            audit.undo_file_change = lambda: path.write_text(previous, "utf-8")
             path.unlink()
             return {"deleted": path.name, "user": owner}
         return run("config_delete", DELETE, "config", f"config:{user or 'self'}/{name}", work)
