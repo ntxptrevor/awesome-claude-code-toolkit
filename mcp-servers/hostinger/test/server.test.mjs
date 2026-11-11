@@ -423,3 +423,34 @@ test('upload tool stops reading a source that passes the size limit', async () =
   assert.ok(pulled <= 5, `pulled ${pulled} chunks`);
   assert.equal(calls.length, 2, 'no TUS request was sent');
 });
+
+test('handler: a source stream that fails during the read is a tool error', async () => {
+  responder = (url) => {
+    if (!url.startsWith('https://cdn.acme.org')) return new Response(null, { status: 201 });
+    let sent = false;
+    return new Response(
+      new ReadableStream({
+        pull(controller) {
+          if (sent) return controller.error(new Error('connection reset'));
+          sent = true;
+          controller.enqueue(new Uint8Array(8));
+        },
+      }),
+    );
+  };
+  const out = await tool('hostinger_upload_from_url', {
+    upload_url: 'https://files.hostingerfiles.net/u', auth_key: 'a', rest_auth_key: 'b', source_url: 'https://cdn.acme.org/a.zip', path: 'site.zip',
+  });
+  assert.ok(out.result.isError);
+  assert.match(out.result.content[0].text, /connection reset/);
+  assert.equal(calls.length, 1, 'no TUS request was sent');
+});
+
+test('handler: the pinned connection byte collector refuses the chunk that passes the limit', async () => {
+  const { createByteCollector } = await import('../src/pinned-fetch.mjs');
+  const collector = createByteCollector(10);
+  assert.equal(collector.add(Buffer.alloc(6)), true);
+  assert.equal(collector.add(Buffer.alloc(4)), true);
+  assert.equal(collector.add(Buffer.alloc(1)), false);
+  assert.equal(collector.bytes().length, 10);
+});

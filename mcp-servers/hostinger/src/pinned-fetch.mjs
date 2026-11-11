@@ -12,6 +12,21 @@ export function pinnedLookup(ip) {
     options?.all ? callback(null, [{ address: ip, family }]) : callback(null, ip, family);
 }
 
+// Collects response chunks and refuses the chunk that takes the total over the limit.
+export function createByteCollector(maxBytes) {
+  const chunks = [];
+  let size = 0;
+  return {
+    add(chunk) {
+      size += chunk.length;
+      if (size > maxBytes) return false;
+      chunks.push(chunk);
+      return true;
+    },
+    bytes: () => Buffer.concat(chunks),
+  };
+}
+
 export function pinnedFetch(url, init = {}, ip, maxBytes = 64 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
@@ -27,19 +42,22 @@ export function pinnedFetch(url, init = {}, ip, maxBytes = 64 * 1024 * 1024) {
         agent: false,
       },
       (res) => {
-        const chunks = [];
-        let size = 0;
+        const collector = createByteCollector(maxBytes);
+        let overLimit = false;
         res.on('data', (chunk) => {
-          size += chunk.length;
-          if (size > maxBytes) return req.destroy(new Error(`Response is larger than ${maxBytes} bytes`));
-          chunks.push(chunk);
+          if (overLimit || collector.add(chunk)) return;
+          // Reject here. The 'end' event can still fire after destroy when the body came in one chunk.
+          overLimit = true;
+          reject(new Error(`Response is larger than ${maxBytes} bytes`));
+          req.destroy();
         });
         res.on('error', reject);
         res.on('end', () => {
+          if (overLimit) return;
           const headers = new Headers();
           for (const [k, v] of Object.entries(res.headers)) headers.set(k, Array.isArray(v) ? v.join(', ') : String(v));
           const empty = res.statusCode === 204 || res.statusCode === 304 || (res.statusCode >= 300 && res.statusCode < 400);
-          resolve(new Response(empty ? null : Buffer.concat(chunks), { status: res.statusCode, headers }));
+          resolve(new Response(empty ? null : collector.bytes(), { status: res.statusCode, headers }));
         });
       },
     );
