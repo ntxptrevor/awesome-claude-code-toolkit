@@ -153,7 +153,7 @@ python3 skills/ntxp-skill-forge/forge/forge.py marketplace --repo .
 python3 .github/ntxp/skill_mesh.py skills plugins --deps-warn
 ```
 
-Open the PR, wait for `skill-validate`, squash-merge. Retire the standalone `ntxp-project-coda` stub and `auto-deploy-claude-flow` in the same change. Forge never rewrites skill wording; hooks and scripts are Claude Code only, other platforms use the manual trigger.
+Open the PR, wait for `skill-validate`, squash-merge. Do not remove or change the existing Forge `ntxp-project-coda` (v1.0.0): this plugin delegates to it and does not replace it. Only the old local `auto-deploy-claude-flow` and local Coda stub were retired, and neither is in the Forge. Forge never rewrites skill wording; hooks and scripts are Claude Code only, other platforms use the manual trigger.
 
 ## Error handling
 
