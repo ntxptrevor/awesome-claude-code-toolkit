@@ -1,6 +1,6 @@
 # Project Init Templates
 
-All files use the six standard platform keys: `google_drive`, `ebuilder`, `jobtread`, `building_connected`, `procore`, `hubspot`. No secrets in any of these files.
+IPDM and Highway files use the six standard platform keys: `google_drive`, `ebuilder`, `jobtread`, `building_connected`, `procore`, `hubspot`. No secrets in any of these files.
 
 ## `.ntxp/ipdm/project.yaml`
 
@@ -24,50 +24,9 @@ project:
   documents: []               # indexed by folder number, e.g. 5.1
 ```
 
-## `.ntxp/coda/registry.yaml`
+## Coda files
 
-```yaml
-coda:
-  project_id: ""
-  project_name: ""
-  last_updated: ""
-  platforms:
-    google_drive: { url: "", status: "pending" }      # connected | pending | unreachable | not-applicable
-    ebuilder: { url: "", status: "pending" }
-    jobtread: { url: "", status: "pending" }
-    building_connected: { url: "", status: "pending" }
-    procore: { url: "", status: "not-applicable" }
-    hubspot: { url: "", status: "pending" }
-  ntxp_tools:
-    estimating_workspace: ""
-    submittal_register: ""
-    bid_dashboard: ""
-    schedule_of_values: ""
-    daily_reports: ""
-  external:
-    owner_portal: ""
-    architect_portal: ""
-    testing_lab: ""
-    permit_portal: ""
-  team: []                    # name, role, email, platforms[]
-```
-
-## `.ntxp/coda/crosswalk.yaml`
-
-One entity maps to its id on every platform. This is the only crosswalk; no other file duplicates it.
-
-```yaml
-crosswalk:
-  - entity: "Main Project"
-    google_drive: ""
-    ebuilder: ""
-    jobtread: ""
-    building_connected: ""
-    procore: ""
-    hubspot: ""
-```
-
-`sync-log.jsonl` is append-only, one JSON object per validation or sync.
+`.ntxp/coda/registry.yaml`, `crosswalk.yaml` and `sync-log.jsonl` are defined in `coda.md` (single source; do not copy them here).
 
 ## `.ntxp/ipdm/skill-config.yaml`
 

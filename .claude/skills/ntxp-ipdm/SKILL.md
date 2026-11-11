@@ -1,6 +1,6 @@
 ---
 name: "NTXP IPDM Environment"
-description: "Integrated Project Data Management environment for NTXP. Centralizes project metadata, document indices, scope registers, and environment variables across all NTXP tools. Provides the shared data layer that NTXP Folder Structure, NTXP ID, Model Council, and Project Coda read from and write to. Use when initializing a new NTXP project environment, syncing project data across skills, or resolving cross-platform data references."
+description: "Integrated Project Data Management environment for NTXP. Centralizes project metadata, document indices, scope registers, and environment variables across all NTXP tools. Provides the shared data layer that NTXP Folder Structure, NTXP ID, Model Council, and NTXP Project Init (which owns the Coda registry) read from and write to. Use when initializing a new NTXP project environment, syncing project data across skills, or resolving cross-platform data references."
 ---
 
 # NTXP IPDM Environment
@@ -17,14 +17,14 @@ All NTXP skills follow these conventions. When in doubt, these are authoritative
 
 | File | Purpose | Owner |
 |------|---------|-------|
-| `.ntxp/ipdm/project.yaml` | Canonical project record | IPDM (write), all skills (read) |
+| `.ntxp/ipdm/project.yaml` | Canonical project record | NTXP Project Init (write), all skills (read) |
 | `.ntxp/ipdm/identity.yaml` | Authenticated session context | NTXP ID (write), all skills (read) |
-| `.ntxp/ipdm/skill-config.yaml` | Skill read/write bindings and rewiring | Auto-Deploy (write), all skills (read) |
+| `.ntxp/ipdm/skill-config.yaml` | Skill read/write bindings and rewiring | NTXP Project Init (write), all skills (read) |
 | `.ntxp/ipdm/model-council.yaml` | Model routing configuration | Model Council (write), Highway (read) |
-| `.ntxp/coda/registry.yaml` | Platform link index (read-optimized) | Coda (write from IPDM), all skills (read) |
-| `.ntxp/coda/crosswalk.yaml` | Cross-platform entity map | Coda (write), all skills (read) |
-| `.ntxp/coda/sync-log.jsonl` | Coda sync audit trail | Coda (append) |
-| `.ntxp/highway/config.yaml` | Routing table and tier config | Highway (write), Auto-Deploy (bootstrap) |
+| `.ntxp/coda/registry.yaml` | Platform link index (read-optimized) | NTXP Project Init / Coda (write from IPDM), all skills (read) |
+| `.ntxp/coda/crosswalk.yaml` | Cross-platform entity map | NTXP Project Init / Coda (write), all skills (read) |
+| `.ntxp/coda/sync-log.jsonl` | Coda sync audit trail | NTXP Project Init / Coda (append) |
+| `.ntxp/highway/config.yaml` | Routing table and tier config | Highway (write), NTXP Project Init (bootstrap) |
 | `.ntxp/highway/routing-log.jsonl` | Routing decision log | Highway (append) |
 
 ### Platform Keys (use these exact keys everywhere)
@@ -70,7 +70,7 @@ Every NTXP skill follows this search-then-save pattern:
 
 - Initializing a new NTXP project workspace
 - Any skill needs to look up project metadata (owner, contract, address, trades, platforms)
-- Syncing state between NTXP Folder Structure, NTXP ID, Model Council, and Project Coda
+- Syncing state between NTXP Folder Structure, NTXP ID, Model Council, and NTXP Project Init
 - Resolving a document or record across platforms (eBuilder, JobTread, BuildingConnected, Google Drive)
 
 ## Core Data Model
@@ -99,7 +99,7 @@ project:
 
 ### Crosswalk
 
-The single crosswalk lives at `.ntxp/coda/crosswalk.yaml` (owned by Coda). IPDM writes platform IDs into `project.platforms`; Coda assembles the full entity-level crosswalk from those IDs.
+The single crosswalk lives at `.ntxp/coda/crosswalk.yaml` (owned by NTXP Project Init, Coda step). IPDM writes platform IDs into `project.platforms`; Project Init assembles the full entity-level crosswalk from those IDs.
 
 | Entity | google_drive | ebuilder | jobtread | building_connected | procore | hubspot |
 |--------|-------------|----------|----------|-------------------|---------|---------|
@@ -153,7 +153,7 @@ All NTXP skills read `.ntxp/ipdm/project.yaml` before performing platform-specif
 | NTXP Folder Structure | project.name, project.id | platforms.google_drive, documents[] |
 | NTXP ID | — | identity.yaml (session auth) |
 | NTXP Model Council | project context | model-council.yaml |
-| NTXP Project Coda | all platform URLs | (writes to .ntxp/coda/ instead) |
+| NTXP Project Init (Coda step) | all platform URLs | .ntxp/coda/ registry, crosswalk, sync log |
 | NTXP Highway | skill-config.yaml, model-council.yaml | routing-log.jsonl |
 | NTXP Estimating | project.trades, project.contract_type | documents[], ntxp_tools refs |
 | NTXP ITB Generator | project.trades, contacts[] | documents[] |

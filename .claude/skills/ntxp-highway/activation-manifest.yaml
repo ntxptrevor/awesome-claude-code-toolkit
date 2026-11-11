@@ -3,29 +3,25 @@ activation_manifest:
   description: "NTXP skill activation chain — defines triggers, handoffs, and consolidation map"
 
   # ============================================================
-  # CONSOLIDATED LOCAL SKILLS (33 → 15)
+  # CONSOLIDATED LOCAL SKILLS (33 → 16)
   # ============================================================
 
   local_skills:
-    # --- NTXP Core (keep all 4) ---
+    # --- NTXP Core (3: init absorbed auto-deploy and the Coda stub) ---
     - name: ntxp-project-init
-      triggers_on: ["project setup", "init", "deploy", "bootstrap", "new repo"]
+      replaces: ["auto-deploy-claude-flow", "ntxp-project-coda (local stub)"]
+      triggers_on: ["new project", "new bid", "award", "project setup", "init", "bootstrap", "new repo", "access audit", "handoff", "crosswalk", "project links"]
       hands_off_to: ["ntxp-ipdm", "ntxp-highway"]
       activation: automatic
 
     - name: ntxp-ipdm
       triggers_on: ["project data", "project record", "platform lookup", "IPDM"]
-      hands_off_to: ["ntxp-project-coda", "ntxp-highway"]
+      hands_off_to: ["ntxp-project-init", "ntxp-highway"]
       activation: automatic
 
     - name: ntxp-highway
       triggers_on: ["route", "which skill", "task routing", "multi-skill"]
       hands_off_to: ["*"]  # routes to any skill
-      activation: automatic
-
-    - name: ntxp-project-coda
-      triggers_on: ["project links", "platform crosswalk", "handoff", "access map"]
-      hands_off_to: ["ntxp-ipdm"]
       activation: automatic
 
     # --- Merged: AgentDB (5 → 1) ---
@@ -167,8 +163,8 @@ activation_manifest:
         - skill: "ntxp-folder-system (anthropic)"
           action: "Create Drive folders"
           parallel: true
-        - skill: "ntxp-project-coda"
-          action: "Collect platform links + build crosswalk"
+        - skill: "ntxp-project-init"
+          action: "Coda step: collect platform links + build crosswalk"
         - skill: "ntxp-model-council (anthropic)"
           action: "Configure model routing"
         - skill: "ntxp-highway"
@@ -183,8 +179,8 @@ activation_manifest:
           action: "Route to appropriate estimating skill"
         - skill: "ntxp-estimating (anthropic)"
           action: "Produce estimate"
-        - skill: "ntxp-project-coda"
-          action: "Register estimate document link"
+        - skill: "ntxp-project-init"
+          action: "Coda sync: register estimate document link"
 
     code_review_workflow:
       description: "PR review with quality gates"

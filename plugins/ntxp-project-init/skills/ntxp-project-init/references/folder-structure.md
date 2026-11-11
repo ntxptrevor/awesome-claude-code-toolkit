@@ -117,6 +117,12 @@ Claude cannot change Drive sharing. Flag to a human with Drive admin rights and 
 
 If an output type isn't listed, use the closest match and note the gap. Do not add a root-level folder without checking with Trevor.
 
+## Numbering note (needs confirmation)
+
+Council decision C-261005-11B0 (folder structure v1.2, 2026-10-05) says "retain 0 - Knowledge Base" and Forge Coda stores records under `0.2 Structured Data`. The current `ntxp-folder-system` skill numbers roots from 1 (`1 - Project Knowledge Base`, `1.2 Records & Sync`). This skill follows `ntxp-folder-system` because it states it is canonical. If the owner confirms v1.2 numbering instead, change this file once; nothing else hard-codes the number.
+
+The same decision requires quarantine-before-move, a copy-only dry run, and human review of uncertain classifications before any live sorting. Project Init only creates folders and never moves files, so it does not trigger that rule.
+
 ## Rules
 
 - **Submittals (5.x)**: each stage change drops a dated copy in that stage's folder; never overwrite.

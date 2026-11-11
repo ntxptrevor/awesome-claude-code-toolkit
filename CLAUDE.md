@@ -60,7 +60,7 @@ npm run lint
 - NEVER commit .env files or any file containing secrets
 - Always validate user input at system boundaries
 - Always sanitize file paths to prevent directory traversal
-- Run `npx @claude-flow/cli@latest security scan` after security-related changes
+- Run `npx @claude-flow/cli@3.75.3 security scan` after security-related changes
 
 ## Concurrency: 1 MESSAGE = ALL RELATED OPERATIONS
 
@@ -99,7 +99,7 @@ npm run lint
 - Keep shared memory namespace for all agents
 
 ```bash
-npx @claude-flow/cli@latest swarm init --topology hierarchical --max-agents 8 --strategy specialized
+npx @claude-flow/cli@3.75.3 swarm init --topology hierarchical --max-agents 8 --strategy specialized
 ```
 
 ## Swarm Execution Rules
@@ -128,11 +128,11 @@ npx @claude-flow/cli@latest swarm init --topology hierarchical --max-agents 8 --
 ### Quick CLI Examples
 
 ```bash
-npx @claude-flow/cli@latest init --wizard
-npx @claude-flow/cli@latest agent spawn -t coder --name my-coder
-npx @claude-flow/cli@latest swarm init --v3-mode
-npx @claude-flow/cli@latest memory search --query "authentication patterns"
-npx @claude-flow/cli@latest doctor --fix
+npx @claude-flow/cli@3.75.3 init --wizard
+npx @claude-flow/cli@3.75.3 agent spawn -t coder --name my-coder
+npx @claude-flow/cli@3.75.3 swarm init --v3-mode
+npx @claude-flow/cli@3.75.3 memory search --query "authentication patterns"
+npx @claude-flow/cli@3.75.3 doctor --fix
 ```
 
 ## Available Agents (60+ Types)
@@ -156,24 +156,24 @@ npx @claude-flow/cli@latest doctor --fix
 
 ```bash
 # Store (REQUIRED: --key, --value; OPTIONAL: --namespace, --ttl, --tags)
-npx @claude-flow/cli@latest memory store --key "pattern-auth" --value "JWT with refresh" --namespace patterns
+npx @claude-flow/cli@3.75.3 memory store --key "pattern-auth" --value "JWT with refresh" --namespace patterns
 
 # Search (REQUIRED: --query; OPTIONAL: --namespace, --limit, --threshold)
-npx @claude-flow/cli@latest memory search --query "authentication patterns"
+npx @claude-flow/cli@3.75.3 memory search --query "authentication patterns"
 
 # List (OPTIONAL: --namespace, --limit)
-npx @claude-flow/cli@latest memory list --namespace patterns --limit 10
+npx @claude-flow/cli@3.75.3 memory list --namespace patterns --limit 10
 
 # Retrieve (REQUIRED: --key; OPTIONAL: --namespace)
-npx @claude-flow/cli@latest memory retrieve --key "pattern-auth" --namespace patterns
+npx @claude-flow/cli@3.75.3 memory retrieve --key "pattern-auth" --namespace patterns
 ```
 
 ## Quick Setup
 
 ```bash
-claude mcp add claude-flow -- npx -y @claude-flow/cli@latest
-npx @claude-flow/cli@latest daemon start
-npx @claude-flow/cli@latest doctor --fix
+claude mcp add claude-flow -- npx -y @claude-flow/cli@3.75.3
+npx @claude-flow/cli@3.75.3 daemon start
+npx @claude-flow/cli@3.75.3 doctor --fix
 ```
 
 ## Claude Code vs CLI Tools
@@ -181,6 +181,16 @@ npx @claude-flow/cli@latest doctor --fix
 - Claude Code's Task tool handles ALL execution: agents, file ops, code generation, git
 - CLI tools handle coordination via Bash: swarm init, memory, hooks, routing
 - NEVER use CLI tools as a substitute for Task tool agents
+
+## NTXP Environment
+
+- **Project setup**: use the `ntxp-project-init` skill (plugin at `plugins/ntxp-project-init/`). Hooks only offer it when a new project, bid or award is mentioned; always ask the user before running any step. Never run `claude-flow init --force` where `.claude/settings.json` or `CLAUDE.md` already exist.
+- **Data layer**: `.ntxp/` holds the IPDM project record, identity, skill bindings, council config, the Coda registry and crosswalk, and Highway routing. It is committed. `.claude-flow/` is runtime state and stays git-ignored.
+- **Credentials**: NTXP ID, then the NTXP Secrets Vault. Never write a key, token or password into a file, chat, commit, log or council field. A missing key is filed through the vault's Add Secret card, never requested in chat.
+- **Model Council**: look up the council knowledge base before multi-step work; convene only for decisions. Owner, client, bid, pricing and personnel content never goes to the DeepSeek or GLM seats. Never write council tabs 10-13 by hand or claim a consensus that was not run.
+- **Forge**: skills and plugins are delivered through `NTXP-TX/ntxp-forge`. Hooks must ship as a plugin (a skill's own `hooks/` folder does not run). Verify with `forge.py verify`, `forge.py marketplace` and `skill_mesh.py` before the PR. Never export the vault token.
+- **Hook contract**: input arrives as JSON on stdin (`tool_input.command`, `tool_input.file_path`); a blocking guard must exit 2; `timeout` in `settings.json` is in seconds.
+- **Version pin**: the Claude Flow CLI is pinned to `@claude-flow/cli@3.75.3` in `.mcp.json` and in the commands above. Do not use `@latest` or widen the `npx` allow rules.
 
 ## Support
 

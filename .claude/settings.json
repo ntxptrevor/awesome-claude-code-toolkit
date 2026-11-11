@@ -59,7 +59,7 @@
           },
           {
             "type": "command",
-            "command": "sh -c 'exec node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/ntxp-project-init-hook.cjs\" prompt'",
+            "command": "sh -c 'exec node \"${CLAUDE_PROJECT_DIR:-.}/plugins/ntxp-project-init/scripts/ntxp-project-init-hook.cjs\" prompt'",
             "timeout": 5
           }
         ]
@@ -85,7 +85,7 @@
           },
           {
             "type": "command",
-            "command": "sh -c 'exec node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/ntxp-project-init-hook.cjs\" session'",
+            "command": "sh -c 'exec node \"${CLAUDE_PROJECT_DIR:-.}/plugins/ntxp-project-init/scripts/ntxp-project-init-hook.cjs\" session'",
             "timeout": 5
           }
         ]
@@ -183,9 +183,8 @@
   },
   "permissions": {
     "allow": [
-      "Bash(npx @claude-flow*)",
-      "Bash(npx claude-flow*)",
-      "Bash(node .claude/*)",
+      "Bash(node .claude/helpers/mcp-watchdog.cjs status)",
+      "Bash(node .claude/helpers/mcp-watchdog.cjs reset)",
       "mcp__claude-flow__:*"
     ],
     "deny": [

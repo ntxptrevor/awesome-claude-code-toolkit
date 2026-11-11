@@ -33,7 +33,7 @@ Check for `[AGENT_BOOSTER_AVAILABLE]` or `[TASK_MODEL_RECOMMENDATION]` before sp
 
 ## Swarm execution rules
 
-- Initialize with `npx @claude-flow/cli@latest swarm init --topology hierarchical --max-agents 8 --strategy specialized`
+- Initialize with `npx @claude-flow/cli@3.75.3 swarm init --topology hierarchical --max-agents 8 --strategy specialized`
 - Spawn all agents in one message with `run_in_background: true`, then stop. Do not poll status.
 - Review all returned results before proceeding.
 - Run checkpoints through `post-task` hooks; share one memory namespace across agents.
@@ -64,7 +64,7 @@ PreToolUse (Bash guard, edit tracking), PostToolUse, UserPromptSubmit (routing),
 
 ## Security rules
 
-Never hardcode keys or commit `.env`. Validate input at boundaries. Sanitize file paths. Run the security scan after security-related changes. Prefer a pinned CLI version over `@latest`, and keep `npx` allow rules narrow.
+Never hardcode keys or commit `.env`. Validate input at boundaries. Sanitize file paths. Run the security scan after security-related changes. Pin the CLI (`@claude-flow/cli@3.75.3`, set in `.mcp.json`); never `@latest`. Keep `npx` allow rules narrow.
 
 ## Reconciliation with NTXP
 

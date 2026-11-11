@@ -40,7 +40,7 @@ const OFFER = [
   'cooperative, status. Workflow steps it will run (user can deselect any):',
   '  1 Claude Flow core   2 NTXP ID auth   3 IPDM project record   4 Drive folders 1-13 + !Public Share',
   '  5 Project Coda registry + crosswalk   6 Knowledge-base wiring   7 Model Council + Highway routing',
-  '  8 Verify   9 Commit/push (separate confirmation)   10 Report',
+  '  8 Verify   9 Commit/push (separate confirmation)   10 Share back + report',
   'If the user declines, do not ask again this session.',
 ].join('\n');
 

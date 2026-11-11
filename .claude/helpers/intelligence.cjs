@@ -53,7 +53,7 @@ function tokenize(text) {
 function bootstrapFromMemoryFiles() {
   var entries = [];
   var candidates = [
-    path.join(os.homedir(), ".claude", "projects"),
+    path.join(os.homedir(), ".claude", "projects", process.cwd().replace(/[^a-zA-Z0-9]/g, "-")),
     path.join(process.cwd(), ".claude-flow", "memory"),
     path.join(process.cwd(), ".claude", "memory"),
   ];

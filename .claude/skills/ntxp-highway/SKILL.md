@@ -109,7 +109,7 @@ ntxp-ipdm (create project record → .ntxp/ipdm/project.yaml)
     +---> ntxp-project-init (init repo)                          [parallel]
     |
     v
-ntxp-project-coda (collect links → .ntxp/coda/registry.yaml + crosswalk.yaml)
+ntxp-project-init, Coda step (collect links → .ntxp/coda/registry.yaml + crosswalk.yaml)
     |
     v
 ntxp-model-council (configure routing → .ntxp/ipdm/model-council.yaml)
