@@ -163,3 +163,14 @@ def test_session_start_hook_fails_open_when_its_text_is_missing(tmp_path):
     script.write_text((PLUGIN / "hooks" / "bin" / "session-start.sh").read_text())
     done = subprocess.run(["bash", str(script)], capture_output=True, text=True, timeout=5)
     assert (done.returncode, done.stdout) == (0, "")
+
+
+def test_server_starts_when_the_checkout_cannot_be_read(settings, store, forge, monkeypatch):
+    def unreadable():
+        raise OSError("Input/output error")
+    monkeypatch.setattr(forge, "catalog", unreadable)
+    server = build_server(settings, store, forge)
+    assert prompt_names(server) == set()
+    with pytest.raises(Exception, match="could not read or write a file"):
+        anyio.run(server.call_tool, "catalog_list", {})
+    assert store.query_log(limit=1)[0]["outcome"] == "error"

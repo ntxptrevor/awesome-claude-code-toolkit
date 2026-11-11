@@ -564,8 +564,8 @@ def build_server(settings: Settings, store: Store, forge: Forge,
     # checkout yet, the first tool call that syncs fills them.
     try:
         sync()
-    except ForgeError:
-        pass
+    except (ForgeError, OSError):
+        pass  # an unreadable checkout must not stop the server from starting
 
     # -- HTTP-only routes ----------------------------------------------------------
     @mcp.custom_route("/health", methods=["GET"])
