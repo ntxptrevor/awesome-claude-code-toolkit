@@ -103,7 +103,7 @@ const EXTRA_TOOLS = [
   },
 ];
 
-const cfg = (env, key) => (env && env[key]) || DEFAULTS[key];
+const setting = (env, key) => (env && env[key]) || DEFAULTS[key];
 const coreList = (env) =>
   (env?.HOSTINGER_CORE_TOOLS ? env.HOSTINGER_CORE_TOOLS.split(',').map((s) => s.trim()) : CORE).filter((id) => OPS[id]);
 
@@ -121,7 +121,7 @@ function toolFor(id) {
   };
 }
 
-const json = (body, status = 200, headers = {}) =>
+const jsonResponse = (body, status = 200, headers = {}) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...CORS, ...headers },
@@ -132,11 +132,11 @@ const CORS = {
   'access-control-allow-headers': 'authorization, content-type, accept, mcp-protocol-version, mcp-session-id',
   'access-control-expose-headers': 'www-authenticate',
 };
-const text = (t, isError = false) => ({ content: [{ type: 'text', text: t }], ...(isError ? { isError: true } : {}) });
+const toolResult = (t, isError = false) => ({ content: [{ type: 'text', text: t }], ...(isError ? { isError: true } : {}) });
 
 class Unauthorized extends Error {}
 
-function origin(request, env) {
+function publicOrigin(request, env) {
   if (env?.PUBLIC_URL) return env.PUBLIC_URL.replace(/\/+$/, '');
   const u = new URL(request.url);
   const proto = request.headers.get('x-forwarded-proto') || u.protocol.replace(':', '');
@@ -144,8 +144,8 @@ function origin(request, env) {
 }
 
 function unauthorized(request, env) {
-  const meta = `${origin(request, env)}/.well-known/oauth-protected-resource`;
-  return json({ error: 'unauthorized', message: 'Sign in to Hostinger to use this server.' }, 401, {
+  const meta = `${publicOrigin(request, env)}/.well-known/oauth-protected-resource`;
+  return jsonResponse({ error: 'unauthorized', message: 'Sign in to Hostinger to use this server.' }, 401, {
     'www-authenticate': `Bearer realm="hostinger-mcp", resource_metadata="${meta}"`,
   });
 }
@@ -173,7 +173,7 @@ export function buildRequest(id, params = {}, env) {
   }
   if (/\{[^}]+\}/.test(path)) throw new Error(`Unfilled path parameter in ${path}`);
   const qs = query.toString();
-  return { method: op.m, url: `${cfg(env, 'HOSTINGER_API_URL')}${path}${qs ? `?${qs}` : ''}`, body };
+  return { method: op.m, url: `${setting(env, 'HOSTINGER_API_URL')}${path}${qs ? `?${qs}` : ''}`, body };
 }
 
 async function callOperation(id, params, ctx) {
@@ -190,20 +190,20 @@ async function callOperation(id, params, ctx) {
   });
   if (res.status === 401) throw new Unauthorized();
   let out = await res.text();
-  const max = Number(cfg(ctx.env, 'MAX_RESULT_BYTES'));
+  const max = Number(setting(ctx.env, 'MAX_RESULT_BYTES'));
   if (out.length > max) {
     out = `${out.slice(0, max)}\n[truncated at ${max} characters. Narrow the request with filters or a smaller per_page.]`;
   }
   if (!res.ok) {
     const retry = res.headers.get('retry-after');
-    return text(`Hostinger API ${res.status} on ${req.method} ${OPS[id].p}${retry ? ` (retry after ${retry}s)` : ''}\n${out}`, true);
+    return toolResult(`Hostinger API ${res.status} on ${req.method} ${OPS[id].p}${retry ? ` (retry after ${retry}s)` : ''}\n${out}`, true);
   }
-  return text(out || `{"status":${res.status}}`);
+  return toolResult(out || `{"status":${res.status}}`);
 }
 
 // ---- Extra tools ---------------------------------------------------------------------
 
-function suggest(name) {
+function suggestOperations(name) {
   const words = String(name).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
   return Object.keys(OPS)
     .map((id) => [id, words.filter((w) => `${id} ${OPS[id].s}`.toLowerCase().includes(w)).length])
@@ -213,24 +213,24 @@ function suggest(name) {
     .map(([id]) => `${id} (${CLASS[OPS[id].k]}): ${OPS[id].s}`);
 }
 
-function resolve(name) {
+function resolveOperationId(name) {
   if (OPS[name]) return name;
   return Object.keys(OPS).find((id) => id.replace(/\./g, '_') === name);
 }
 
-function unknown(name) {
-  const near = suggest(name);
-  return text(
+function unknownOperation(name) {
+  const near = suggestOperations(name);
+  return toolResult(
     `Unknown operation "${name}".${near.length ? ` Closest matches:\n${near.join('\n')}` : ' Read the catalog in the hostinger skill.'}`,
     true,
   );
 }
 
-function describe({ operation }) {
-  const id = resolve(operation);
-  if (!id) return unknown(operation);
+function describeOperation({ operation }) {
+  const id = resolveOperationId(operation);
+  if (!id) return unknownOperation(operation);
   const op = OPS[id];
-  return text(
+  return toolResult(
     JSON.stringify(
       {
         operation: id,
@@ -249,12 +249,12 @@ function describe({ operation }) {
   );
 }
 
-async function call({ operation, params, confirm }, ctx) {
-  const id = resolve(operation);
-  if (!id) return unknown(operation);
+async function callGated({ operation, params, confirm }, ctx) {
+  const id = resolveOperationId(operation);
+  if (!id) return unknownOperation(operation);
   const op = OPS[id];
   if (op.k !== 'r' && confirm !== true) {
-    return text(
+    return toolResult(
       `${id} is a ${CLASS[op.k]} operation (${op.m} ${op.p}). It did not run. Tell the user the exact target${op.k === '$' ? ' and the price' : ''}, get a yes, then call again with confirm: true.`,
       true,
     );
@@ -265,7 +265,7 @@ async function call({ operation, params, confirm }, ctx) {
 async function setCname({ domain, name, target, ttl }, ctx) {
   const zone = [{ name, type: 'CNAME', ttl: ttl ?? 14400, records: [{ content: target }] }];
   const check = await callOperation('DNS_validateDNSRecordsV1', { domain, overwrite: true, zone }, ctx);
-  if (check.isError) return text(`Validation failed. Nothing changed.\n${check.content[0].text}`, true);
+  if (check.isError) return toolResult(`Validation failed. Nothing changed.\n${check.content[0].text}`, true);
   return callOperation('DNS_updateDNSRecordsV1', { domain, overwrite: true, zone }, ctx);
 }
 
@@ -314,7 +314,7 @@ async function publicHttps(value, label, env) {
   for (const type of ['A', 'AAAA']) {
     let answer;
     try {
-      const res = await fetch(`${cfg(env, 'DOH_URL')}?name=${encodeURIComponent(host)}&type=${type}`, {
+      const res = await fetch(`${setting(env, 'DOH_URL')}?name=${encodeURIComponent(host)}&type=${type}`, {
         headers: { accept: 'application/dns-json' },
       });
       if (!res.ok) throw new Error(String(res.status));
@@ -346,19 +346,19 @@ async function uploadFromUrl({ upload_url, auth_key, rest_auth_key, source_url, 
   const base = upload.url.replace(/\/+$/, '');
   let next = await publicHttps(source_url, 'source_url', ctx.env);
   if (/(^|\/)\.\.(\/|$)/.test(path) || path.startsWith('/')) throw new Error('path must be relative with no ".." part');
-  const max = Number(cfg(ctx.env, 'MAX_UPLOAD_BYTES'));
+  const max = Number(setting(ctx.env, 'MAX_UPLOAD_BYTES'));
   // Follow redirects by hand so that each hop is checked. A redirect must not reach a private host.
   let source;
   for (let hop = 0; ; hop++) {
     source = await fetchChecked(next, { redirect: 'manual' }, ctx.env);
     if (source.status < 300 || source.status >= 400) break;
     const location = source.headers.get('location');
-    if (!location || hop >= 5) return text('source_url redirected too many times or without a location', true);
+    if (!location || hop >= 5) return toolResult('source_url redirected too many times or without a location', true);
     next = await publicHttps(new URL(location, next.url).toString(), 'source_url redirect', ctx.env);
   }
-  if (!source.ok) return text(`source_url returned ${source.status}`, true);
+  if (!source.ok) return toolResult(`source_url returned ${source.status}`, true);
   const bytes = await source.arrayBuffer();
-  if (bytes.byteLength > max) return text(`File is ${bytes.byteLength} bytes. The limit is ${max}.`, true);
+  if (bytes.byteLength > max) return toolResult(`File is ${bytes.byteLength} bytes. The limit is ${max}.`, true);
   const dest = `${base}/${path.split('/').map(encodeURIComponent).join('/')}?override=true`;
   const tus = { 'x-auth': auth_key, 'x-auth-rest': rest_auth_key, 'tus-resumable': '1.0.0' };
   const destination = { url: dest, ip: upload.ip };
@@ -366,7 +366,7 @@ async function uploadFromUrl({ upload_url, auth_key, rest_auth_key, source_url, 
     method: 'POST',
     headers: { ...tus, 'upload-length': String(bytes.byteLength), 'upload-offset': '0' },
   }, ctx.env);
-  if (create.status !== 201) return text(`TUS create returned ${create.status}: ${(await create.text()).slice(0, 500)}`, true);
+  if (create.status !== 201) return toolResult(`TUS create returned ${create.status}: ${(await create.text()).slice(0, 500)}`, true);
   const patch = await fetchChecked(destination, {
     method: 'PATCH',
     headers: { ...tus, 'content-type': 'application/offset+octet-stream', 'upload-offset': '0', 'content-length': String(bytes.byteLength) },
@@ -374,12 +374,12 @@ async function uploadFromUrl({ upload_url, auth_key, rest_auth_key, source_url, 
   }, ctx.env);
   const offset = Number(patch.headers.get('upload-offset'));
   if (patch.status !== 204 || offset !== bytes.byteLength) {
-    return text(`TUS upload returned ${patch.status}, offset ${offset} of ${bytes.byteLength}`, true);
+    return toolResult(`TUS upload returned ${patch.status}, offset ${offset} of ${bytes.byteLength}`, true);
   }
-  return text(JSON.stringify({ uploaded: path, bytes: bytes.byteLength }));
+  return toolResult(JSON.stringify({ uploaded: path, bytes: bytes.byteLength }));
 }
 
-const EXTRA = { dns_set_cname: setCname, hostinger_describe: describe, hostinger_call: call, hostinger_upload_from_url: uploadFromUrl };
+const EXTRA = { dns_set_cname: setCname, hostinger_describe: describeOperation, hostinger_call: callGated, hostinger_upload_from_url: uploadFromUrl };
 
 // ---- JSON-RPC ------------------------------------------------------------------------
 
@@ -411,7 +411,7 @@ async function rpc(msg, ctx) {
         return ok(await callOperation(opId, args, ctx));
       } catch (e) {
         if (e instanceof Unauthorized) throw e;
-        return ok(text(e.message, true));
+        return ok(toolResult(e.message, true));
       }
     }
     default:
@@ -428,10 +428,10 @@ export async function handle(request, env = {}) {
 
   if (path.startsWith('/.well-known/oauth-protected-resource')) {
     const suffix = path.slice('/.well-known/oauth-protected-resource'.length);
-    return json(
+    return jsonResponse(
       {
-        resource: `${origin(request, env)}${suffix}`,
-        authorization_servers: [cfg(env, 'HOSTINGER_OAUTH_ISSUER')],
+        resource: `${publicOrigin(request, env)}${suffix}`,
+        authorization_servers: [setting(env, 'HOSTINGER_OAUTH_ISSUER')],
         bearer_methods_supported: ['header'],
         resource_name: 'Hostinger MCP',
       },
@@ -442,20 +442,20 @@ export async function handle(request, env = {}) {
   if (path === '/.well-known/oauth-authorization-server') {
     // For clients that look for authorization server metadata on the MCP origin.
     try {
-      const upstream = await fetch(`${cfg(env, 'HOSTINGER_OAUTH_ISSUER')}/.well-known/oauth-authorization-server`);
+      const upstream = await fetch(`${setting(env, 'HOSTINGER_OAUTH_ISSUER')}/.well-known/oauth-authorization-server`);
       return new Response(await upstream.text(), {
         status: upstream.status,
         headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600', ...CORS },
       });
     } catch {
-      return json({ error: 'bad_gateway', message: 'The authorization server did not answer.' }, 502);
+      return jsonResponse({ error: 'bad_gateway', message: 'The authorization server did not answer.' }, 502);
     }
   }
   if (path === '/healthz') {
-    return json({ ok: true, name: NAME, version: VERSION, spec: SPEC_VERSION, operations: Object.keys(OPS).length });
+    return jsonResponse({ ok: true, name: NAME, version: VERSION, spec: SPEC_VERSION, operations: Object.keys(OPS).length });
   }
-  if (path !== '/' && path !== '/mcp') return json({ error: 'not_found' }, 404);
-  if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, { allow: 'POST, OPTIONS' });
+  if (path !== '/' && path !== '/mcp') return jsonResponse({ error: 'not_found' }, 404);
+  if (request.method !== 'POST') return jsonResponse({ error: 'method_not_allowed' }, 405, { allow: 'POST, OPTIONS' });
 
   const auth = request.headers.get('authorization') || '';
   if (!/^Bearer\s+\S+/i.test(auth)) return unauthorized(request, env);
@@ -464,19 +464,19 @@ export async function handle(request, env = {}) {
   try {
     payload = await request.json();
   } catch {
-    return json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400);
+    return jsonResponse({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400);
   }
   const ctx = { env, auth };
   try {
     if (Array.isArray(payload)) {
       const out = (await Promise.all(payload.map((m) => rpc(m, ctx)))).filter(Boolean);
-      return out.length ? json(out) : new Response(null, { status: 202, headers: CORS });
+      return out.length ? jsonResponse(out) : new Response(null, { status: 202, headers: CORS });
     }
     const out = await rpc(payload, ctx);
-    return out ? json(out) : new Response(null, { status: 202, headers: CORS });
+    return out ? jsonResponse(out) : new Response(null, { status: 202, headers: CORS });
   } catch (e) {
     if (e instanceof Unauthorized) return unauthorized(request, env);
-    return json({ jsonrpc: '2.0', id: payload?.id ?? null, error: { code: -32603, message: 'Internal error' } }, 500);
+    return jsonResponse({ jsonrpc: '2.0', id: payload?.id ?? null, error: { code: -32603, message: 'Internal error' } }, 500);
   }
 }
 

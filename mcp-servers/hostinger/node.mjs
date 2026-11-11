@@ -7,20 +7,25 @@ import { pinnedFetch } from './src/pinned-fetch.mjs';
 const env = { ...process.env, pinnedFetch };
 
 const port = Number(process.env.PORT || 8787);
-createServer(async (req, res) => {
-  const chunks = [];
-  for await (const c of req) chunks.push(c);
-  const request = new Request(`http://${req.headers.host}${req.url}`, {
-    method: req.method,
-    headers: req.headers,
-    body: chunks.length ? Buffer.concat(chunks) : undefined,
-  });
+const server = createServer(async (req, res) => {
   try {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    const request = new Request(`http://${req.headers.host}${req.url}`, {
+      method: req.method,
+      headers: req.headers,
+      body: chunks.length ? Buffer.concat(chunks) : undefined,
+    });
     const response = await handle(request, env);
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(Buffer.from(await response.arrayBuffer()));
   } catch {
-    res.writeHead(500, { 'content-type': 'application/json' });
+    if (!res.headersSent) res.writeHead(500, { 'content-type': 'application/json' });
     res.end('{"error":"internal_error"}');
   }
-}).listen(port, () => console.log(`hostinger-mcp on :${port}`));
+});
+server.on('error', (e) => {
+  console.error(`hostinger-mcp cannot listen on :${port}: ${e.message}`);
+  process.exit(1);
+});
+server.listen(port, () => console.log(`hostinger-mcp on :${port}`));
