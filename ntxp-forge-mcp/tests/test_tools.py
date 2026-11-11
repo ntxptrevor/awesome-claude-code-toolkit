@@ -191,3 +191,33 @@ def test_access_log_rows_cannot_be_changed_or_deleted(call, store):
         with pytest.raises(sqlite3.DatabaseError):
             store._run(sql)
     assert len(store.query_log()) == 1
+
+
+def test_parallel_reads_cannot_pass_the_copy_limit(settings, store, forge):
+    from concurrent.futures import ThreadPoolExecutor
+
+    import anyio
+
+    from ntxp_forge_mcp.server import build_server
+    server = build_server(settings, store, forge)   # one server, as in production
+
+    def read(i):
+        try:
+            anyio.run(server.call_tool, "package_file",
+                      {"name": "demo-skill", "path": f"references/ref{i:02d}.md"})
+            return True
+        except ToolError:
+            return False
+    with ThreadPoolExecutor(max_workers=20) as pool:
+        served = sum(pool.map(read, range(20)))
+    assert served == settings.copy_max_per_package
+
+
+@pytest.mark.parametrize("metadata", ["1", "[]", "text", "null"])
+def test_malformed_metadata_does_not_break_the_catalog(call, settings, metadata):
+    from pathlib import Path
+    bad = Path(settings.forge_local) / "skills" / "bad-meta"
+    bad.mkdir()
+    (bad / "SKILL.md").write_text(f"---\nname: bad-meta\nmetadata: {metadata}\n---\nBody.\n")
+    items = {c["name"]: c for c in call("catalog_list")["items"]}
+    assert items["bad-meta"]["version"] == ""

@@ -215,7 +215,8 @@ class Forge:
                 meta = self._frontmatter(skill_md.read_text("utf-8", errors="replace"))
         else:
             meta = self._plugin_manifest(root)
-        version = meta.get("version") or (meta.get("metadata") or {}).get("version") or ""
+        nested = meta.get("metadata")
+        version = meta.get("version") or (nested.get("version") if isinstance(nested, dict) else "") or ""
         return {
             "kind": kind,
             "name": name,

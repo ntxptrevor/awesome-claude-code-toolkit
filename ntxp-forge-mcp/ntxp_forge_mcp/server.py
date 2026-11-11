@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import shlex
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -77,6 +78,8 @@ def build_server(settings: Settings, store: Store, forge: Forge,
         )
     mcp = MCPServer("ntxp-forge", title="NTXP Forge", version=__version__,
                     instructions=INSTRUCTIONS, auth_server_provider=gate, auth=auth)
+
+    copy_lock = threading.Lock()
 
     # -- identity, policy and logging around every tool ------------------------
     def identify(tool: str, action: str) -> tuple[str, str]:
@@ -286,7 +289,10 @@ def build_server(settings: Settings, store: Store, forge: Forge,
             out = forge.read_file(k, n, path)
             out["handling"] = HANDLING
             return out
-        return run("package_file", READ, "package", f"{kind or '?'}:{name}/{path}", work)
+        # One lock covers the limit check, the read and the log row. Without it,
+        # parallel requests all see the same count and pass the limit together.
+        with copy_lock:
+            return run("package_file", READ, "package", f"{kind or '?'}:{name}/{path}", work)
 
     @mcp.tool()
     def env_init(names: list[str]) -> dict[str, Any]:
