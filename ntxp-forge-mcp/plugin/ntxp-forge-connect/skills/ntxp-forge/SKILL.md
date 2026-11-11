@@ -8,6 +8,9 @@ owner: NTXP
 requires:
   connectors:
   - ntxp-forge
+provides:
+- forge-bootstrap
+- live-skill-loading
 ---
 
 # NTXP Forge
