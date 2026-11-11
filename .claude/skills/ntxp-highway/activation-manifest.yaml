@@ -8,7 +8,7 @@ activation_manifest:
 
   local_skills:
     # --- NTXP Core (keep all 4) ---
-    - name: auto-deploy-claude-flow
+    - name: ntxp-project-init
       triggers_on: ["project setup", "init", "deploy", "bootstrap", "new repo"]
       hands_off_to: ["ntxp-ipdm", "ntxp-highway"]
       activation: automatic
@@ -158,7 +158,7 @@ activation_manifest:
     new_project:
       description: "Full project initialization sequence"
       steps:
-        - skill: "auto-deploy-claude-flow"
+        - skill: "ntxp-project-init"
           action: "Initialize claude-flow + NTXP stack"
         - skill: "ntxp-id (plugin)"
           action: "Authenticate session"

@@ -71,7 +71,7 @@ This is the canonical routing table. Auto-deploy bootstraps `.ntxp/highway/confi
 | `submittal\|RFI` | ntxp-submittal-command | specs-skill | 2 |
 | `credential\|key\|secret\|token` | ntxp-secrets-vault | — | 1 |
 | `markup\|redline\|plan` | ntxp-pdf-markups-and-redlines | apply-construction-markups | 2 |
-| `project setup\|init\|deploy` | auto-deploy-claude-flow | init | 1 |
+| `project setup\|init\|deploy` | ntxp-project-init | init | 1 |
 | `model\|council\|AI\|routing` | ntxp-model-council | — | 2 |
 
 ## Model Selection at Routing Time
@@ -106,7 +106,7 @@ ntxp-id (auth → .ntxp/ipdm/identity.yaml)
 ntxp-ipdm (create project record → .ntxp/ipdm/project.yaml)
     |
     +---> ntxp-folder-system (Drive folders → platforms.google_drive)  [parallel]
-    +---> auto-deploy-claude-flow (init repo)                          [parallel]
+    +---> ntxp-project-init (init repo)                          [parallel]
     |
     v
 ntxp-project-coda (collect links → .ntxp/coda/registry.yaml + crosswalk.yaml)
@@ -125,7 +125,7 @@ ntxp-model-council (configure routing → .ntxp/ipdm/model-council.yaml)
 
 ## Persistence
 
-Highway routing decisions and performance metrics are logged to `.ntxp/highway/routing-log.jsonl` for continuous optimization. The routing config lives at `.ntxp/highway/config.yaml` (bootstrapped by auto-deploy, updated by this skill). Both files are committed to the repo.
+Highway routing decisions and performance metrics are logged to `.ntxp/highway/routing-log.jsonl` for continuous optimization. The routing config lives at `.ntxp/highway/config.yaml` (bootstrapped by ntxp-project-init, updated by this skill). Both files are committed to the repo.
 
 
 ## NTXP Interop

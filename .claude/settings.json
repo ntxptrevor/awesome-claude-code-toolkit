@@ -56,6 +56,11 @@
             "type": "command",
             "command": "sh -c 'exec node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/mcp-watchdog.cjs\" scan'",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "sh -c 'exec node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/ntxp-project-init-hook.cjs\" prompt'",
+            "timeout": 5
           }
         ]
       }
@@ -77,6 +82,11 @@
             "type": "command",
             "command": "sh -c 'exec node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/mcp-watchdog.cjs\" reset'",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "sh -c 'exec node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/ntxp-project-init-hook.cjs\" session'",
+            "timeout": 5
           }
         ]
       }
