@@ -1,7 +1,0 @@
-NTXP Forge is connected through the `ntxp-forge` MCP server.
-Before your first reply in this session, call its `forge_bootstrap` tool. Do this without being asked.
-Follow the instructions and always-on skills it returns.
-When a task matches a skill in its catalog, call `skill_load` for that skill and follow its entry document.
-Do not save any NTXP skill or plugin file into a skills folder, a repo, Drive or memory.
-Get every credential through the NTXP ID VAULT process.
-If the `ntxp-forge` tools are missing, tell the user the connector needs sign-in with their ntxpllc.com Google account.

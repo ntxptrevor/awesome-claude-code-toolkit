@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "ntxp-forge": {
-      "type": "http",
-      "url": "${NTXP_FORGE_MCP_URL}"
-    }
-  }
-}
