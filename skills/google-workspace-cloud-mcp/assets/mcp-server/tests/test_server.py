@@ -402,14 +402,39 @@ def test_empty_and_missing_arguments(client):
     assert CALLS == []
 
 
-def test_grant_expiry_boundary(client):
+GRANT_TTL_SECONDS = 60        # life of the grant under test
+BEFORE_EXPIRY_SECONDS = 59    # 1 second of life left
+AFTER_EXPIRY_SECONDS = 61     # 1 second past the end
+
+
+def advance_clock(monkeypatch, seconds):
+    """Move the clock that token verification reads. PyJWT calls
+    datetime.now() in jwt.api_jwt, so that is the name replaced."""
+    import datetime as dt
+    import jwt.api_jwt
+
+    class Shifted(dt.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return dt.datetime.now(tz) + dt.timedelta(seconds=seconds)
+
+    monkeypatch.setattr(jwt.api_jwt, "datetime", Shifted)
+
+
+def test_grant_expires_when_its_time_passes(client, monkeypatch):
     t = token_for(ALICE)
-    # 60 seconds left: accepted. Expiring this very second: refused.
-    live = auth.sign("grant", 60, sub=ALICE, perms=["gmail.read"], targets=[BOB])
-    assert "m1" in call(client, t, "gmail_search", user_email=BOB, grant=live)
-    at_expiry = auth.sign("grant", 0, sub=ALICE, perms=["gmail.read"], targets=[BOB])
-    assert call(client, t, "gmail_search", user_email=BOB,
-                grant=at_expiry).startswith("Access")
+    grant = auth.sign("grant", GRANT_TTL_SECONDS, sub=ALICE,
+                      perms=["gmail.read"], targets=[BOB])
+
+    def read_bobs_mail():
+        return call(client, t, "gmail_search", user_email=BOB, grant=grant)
+
+    assert "m1" in read_bobs_mail()                       # fresh
+    advance_clock(monkeypatch, BEFORE_EXPIRY_SECONDS)
+    assert "m1" in read_bobs_mail()                       # 1 second left
+    advance_clock(monkeypatch, AFTER_EXPIRY_SECONDS)
+    refused = read_bobs_mail()                            # same grant, now expired
+    assert refused.startswith("Access") and "expired" in refused
 
 
 def test_grant_ttl_is_capped():
