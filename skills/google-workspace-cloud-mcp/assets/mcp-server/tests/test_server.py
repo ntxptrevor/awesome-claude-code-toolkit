@@ -432,6 +432,8 @@ def test_grant_expires_when_its_time_passes(client, monkeypatch):
     assert "m1" in read_bobs_mail()                       # fresh
     advance_clock(monkeypatch, BEFORE_EXPIRY_SECONDS)
     assert "m1" in read_bobs_mail()                       # 1 second left
+    advance_clock(monkeypatch, GRANT_TTL_SECONDS)
+    assert read_bobs_mail().startswith("Access")          # the exact expiry instant
     advance_clock(monkeypatch, AFTER_EXPIRY_SECONDS)
     refused = read_bobs_mail()                            # same grant, now expired
     assert refused.startswith("Access") and "expired" in refused
