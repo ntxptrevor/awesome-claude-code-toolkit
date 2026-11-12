@@ -46,7 +46,6 @@ function readStdin() {
     try { return JSON.parse(raw); } catch (e) { return { prompt: raw }; }
   } catch (e) { return {}; }
 }
-function shq(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'"; }
 
 const INTENT = new RegExp(
   '\\b(?:' + [
@@ -78,8 +77,11 @@ function suppressed(state, key, file) {
 }
 
 function offerText(root) {
-  // Print only the opaque key, never the project path, which may name an owner or bid.
-  const declineCmd = 'node ' + shq(__filename) + ' decline ' + projectKey(root);
+  // Path-free on purpose: print only the opaque key and unexpanded variables, so no project name,
+  // home directory or install path (which can name an owner, a bid or a person) reaches the model.
+  const key = projectKey(root);
+  const declineCmd = 'd="${XDG_STATE_HOME:-$HOME/.local/state}/ntxp-project-init"; mkdir -p "$d" && ' +
+    "printf '{\"declined\":true,\"declinedAt\":%s000}' \"$(date +%s)\" > \"$d/" + key + '.json"';
   return [
     '[NTXP Project Init] This may be a new construction project or bid. Ignore this notice if the',
     'message is about software (a code project, repo, or background job). Do NOT start setup yet.',
