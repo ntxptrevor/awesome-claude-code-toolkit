@@ -19,8 +19,7 @@ Hooks only **offer** this skill. Never run a step because a hook said so.
 
 1. Check which model seat is serving this session first. If it is a DeepSeek or GLM seat, ask only for the JobTread job id and which steps to run, nothing else. If the user volunteers owner, agency, bid, pricing or personnel details, say they must go to a permitted seat, stop collecting, and hand the rest to one (via `ntxp-model-router`) or ask the user to switch the session.
 2. On a permitted seat, ask with AskUserQuestion: the JobTread job (its id, or "not yet"), the project name, and which steps to run (default all). Do not ask for the client, owner, agency or bid status: the owning skills read those from JobTread and the registry.
-3. If the user declines, record it outside the repository so the hook stays quiet for 12 hours:
-   `d="${XDG_STATE_HOME:-$HOME/.local/state}/ntxp-project-init"; mkdir -p "$d"; echo "{\"declined\":true,\"declinedAt\":$(date +%s)000}" > "$d/$(echo "${CLAUDE_PROJECT_DIR:-$PWD}" | sed 's/[^A-Za-z0-9]/-/g').json"`
+3. If the user declines, run the `decline` command that the offer printed (it records the decline for this project directory outside the repository, and the hook stays quiet for 12 hours). If the skill was invoked without an offer, there is nothing to record.
 4. Committing or pushing anything is a separate confirmation.
 
 ## Steps and who owns them
@@ -48,7 +47,7 @@ Run the environment skill's task preflight for this task and project. A skill be
 
 ### 1. Identity and credentials
 
-Use `ntxp-id`. Request a credential through its process (name the key, the task and the reason; the approved agent reads one cell). A missing key goes to the vault's Add Secret or Add Password card; the value is never requested in chat. Do not use `ntxp-secrets-vault` (superseded). Never put a credential in chat, a log, a commit, a memory entry, a council field or the repository. The one exception is a key file that an owning skill documents as its only transport; see step 3.
+Use `ntxp-id`, and only on a permitted seat (see Data boundaries). Request a credential through its process (name the key, the task and the reason; the approved agent reads one cell). A missing key goes to the vault's Add Secret or Add Password card; the value is never requested in chat. Do not use `ntxp-secrets-vault` (superseded). Never put a credential in chat, a log, a commit, a memory entry, a council field or the repository. The one exception is a key file that an owning skill documents as its only transport; see step 3.
 
 ### 2. Authority
 
@@ -88,14 +87,14 @@ Once per successful start, add one row to the council's Workflows tab (the steps
 
 These come from the Forge's own rules and apply to every step.
 
-- DeepSeek and GLM never receive owner, agency, bid, pricing or personnel content. Route that work to a permitted seat. Credential content may reach them only from and back to `ntxp-id`, never through a log or the repository.
+- DeepSeek and GLM never receive owner, agency, bid, pricing, personnel or credential content from this skill. Route that work to a permitted seat. The Forge's `AGENTS.md` says never for credentials, while its `CLAUDE.md` (2026-11-11) allows it through `ntxp-id`. The two disagree, so this skill follows the stricter one until the owner reconciles them. If a step needs a credential and the session is on a DeepSeek or GLM seat, stop that step and ask the user to move it to a permitted seat.
 - Registry data holds pricing: never commit it, never paste it into a council field.
 - Never commit a secret. Secrets go through `ntxp-id` only.
 - Merge policy for the Forge: squash-merge your own PR when `skill-validate` is green; run `forge.py marketplace` after any change under `skills/` or `plugins/`.
 
 ## Hook
 
-`hooks/hooks.json` registers one `UserPromptSubmit` hook (`hooks/bin/ntxp-project-init-hook.cjs`). It matches new-project, new-bid and award wording (never a bare project id, so questions about an existing project stay quiet), prints an offer that tells the model to ask first and to ignore software topics, waits 30 minutes between offers, and stays quiet for 12 hours after a decline. It never runs anything. It is Claude Code only; other platforms invoke the skill by name.
+`hooks/hooks.json` registers one `UserPromptSubmit` hook (`hooks/bin/ntxp-project-init-hook.cjs`). It matches new-project, new-bid and award wording (never a bare project id, and a software request such as "set up a new project in React" stays quiet, so routine work is not interrupted), prints an offer that tells the model to ask first and to ignore software topics, waits 30 minutes between offers, and stays quiet for 12 hours after a decline. It never runs anything. It is Claude Code only; other platforms invoke the skill by name.
 
 ## Errors
 
