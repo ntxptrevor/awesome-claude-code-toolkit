@@ -1,0 +1,124 @@
+# Google Workspace Cloud MCP: tests on every change, deploy only by hand.
+# The deploy uses Workload Identity Federation. No key is stored in GitHub.
+# Setup: skills/google-workspace-cloud-mcp/references/setup.md
+name: gws-cloud-mcp
+on:
+  pull_request:
+    paths: ["skills/google-workspace-cloud-mcp/**", ".github/workflows/gws-cloud-mcp.yml"]
+  push:
+    branches: [main]
+    paths: ["skills/google-workspace-cloud-mcp/**", ".github/workflows/gws-cloud-mcp.yml"]
+  workflow_dispatch:
+    inputs:
+      deploy_harvester:
+        description: "Also create or update the knowledge-base harvester job"
+        type: boolean
+        default: false
+concurrency:
+  group: gws-cloud-mcp-${{ github.ref }}
+  cancel-in-progress: false
+permissions:
+  contents: read
+env:
+  APP_DIR: skills/google-workspace-cloud-mcp/assets/mcp-server
+  SERVICE: gws-cloud-mcp
+  JOB: gws-mcp-harvester
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: skills/google-workspace-cloud-mcp/assets/mcp-server/requirements.txt
+      - name: Install
+        working-directory: ${{ env.APP_DIR }}
+        run: pip install -r requirements.txt pytest pyflakes
+      - name: Lint
+        working-directory: ${{ env.APP_DIR }}
+        run: python -m pyflakes server.py auth.py policy.py workspace.py workspace_write.py
+      - name: Tests
+        working-directory: ${{ env.APP_DIR }}
+        run: python -m pytest tests -q
+
+  deploy:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy service
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          PROJECT: ${{ vars.GCP_PROJECT }}
+          REGION: ${{ vars.GCP_REGION }}
+          RUNTIME_SA: ${{ vars.GWS_RUNTIME_SA }}
+          PUBLIC_URL: ${{ vars.GWS_PUBLIC_URL }}
+          CLIENT_ID: ${{ vars.GWS_GOOGLE_CLIENT_ID }}
+          DOMAIN: ${{ vars.GWS_PRIMARY_DOMAIN }}
+          ADMINS: ${{ vars.GWS_ADMIN_EMAILS }}
+          SUBJECT: ${{ vars.GWS_DELEGATION_SUBJECT }}
+          TOKEN_EPOCH: ${{ vars.GWS_TOKEN_EPOCH }}
+          CF_ACCOUNT_ID: ${{ vars.GWS_CF_ACCOUNT_ID }}
+          CF_DATABASE_ID: ${{ vars.GWS_CF_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          # "^@^" makes "@" the separator, so the comma inside ADMIN_EMAILS is safe.
+          VARS="^@^PUBLIC_URL=${PUBLIC_URL}@GOOGLE_CLIENT_ID=${CLIENT_ID}@PRIMARY_DOMAIN=${DOMAIN}"
+          VARS="${VARS}@ADMIN_EMAILS=${ADMINS}@ADMIN_EMAIL=${SUBJECT}@TOKEN_EPOCH=${TOKEN_EPOCH:-0}"
+          SECRETS="GOOGLE_CLIENT_SECRET=gws-mcp-google-client-secret:latest,JWT_SIGNING_KEY=gws-mcp-jwt-key:latest"
+          if [ -n "${CF_DATABASE_ID}" ]; then
+            VARS="${VARS}@CF_ACCOUNT_ID=${CF_ACCOUNT_ID}@CF_DATABASE_ID=${CF_DATABASE_ID}"
+            SECRETS="${SECRETS},CF_API_TOKEN=gws-mcp-cf-token:latest"
+          fi
+          echo "VARS=${VARS}" >> "$GITHUB_ENV"
+          echo "SECRETS=${SECRETS}" >> "$GITHUB_ENV"
+          # Sign-in is enforced by the app (auth.py), so the URL itself is public.
+          gcloud run deploy "$SERVICE" --project "$PROJECT" --region "$REGION" \
+            --source . --service-account "$RUNTIME_SA" --allow-unauthenticated \
+            --port 8080 --memory 1Gi --cpu 1 --timeout 300 \
+            --min-instances 0 --max-instances 10 \
+            --set-env-vars "$VARS" --set-secrets "$SECRETS" \
+            --command python --args server.py
+          URL=$(gcloud run services describe "$SERVICE" --project "$PROJECT" \
+                --region "$REGION" --format='value(status.url)')
+          {
+            echo "### Service URL: ${URL}"
+            echo "- Connector URL: \`${URL}/mcp\`"
+            echo "- Redirect URI for the Google sign-in client: \`${URL}/auth/callback\`"
+            if [ "${PUBLIC_URL}" != "${URL}" ]; then
+              echo "- **Set the repository variable GWS_PUBLIC_URL to ${URL} and run again.**"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Deploy harvester job
+        if: inputs.deploy_harvester
+        env:
+          PROJECT: ${{ vars.GCP_PROJECT }}
+          REGION: ${{ vars.GCP_REGION }}
+          RUNTIME_SA: ${{ vars.GWS_RUNTIME_SA }}
+        run: |
+          set -euo pipefail
+          IMAGE=$(gcloud run services describe "$SERVICE" --project "$PROJECT" --region "$REGION" \
+                  --format='value(spec.template.spec.containers[0].image)')
+          VERB=create
+          if gcloud run jobs describe "$JOB" --project "$PROJECT" --region "$REGION" >/dev/null 2>&1; then
+            VERB=update
+          fi
+          gcloud run jobs "$VERB" "$JOB" --project "$PROJECT" --region "$REGION" \
+            --image "$IMAGE" --service-account "$RUNTIME_SA" \
+            --task-timeout 3600 --max-retries 1 --memory 1Gi \
+            --set-env-vars "$VARS" --set-secrets "$SECRETS" \
+            --command python --args harvester.py
