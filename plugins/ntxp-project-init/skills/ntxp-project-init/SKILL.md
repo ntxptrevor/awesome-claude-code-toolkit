@@ -30,7 +30,7 @@ Hooks only **offer** this skill. Never run a step because a hook said so.
 | 0 | Environment preflight | `ntxp-env-initialization` task preflight (`scripts/preflight.py --repo <forge> --json`) | Dependencies carry a status with evidence |
 | 1 | Identity and credentials | `ntxp-id` (`/id`, `/vault`, `vault-clerk`) | Identity is `authenticated`; every needed key is located without exposing it |
 | 2 | Authority | `ntxp-ipdm` (read only) | The user's role may start or approve this project, or the gap is stated |
-| 3 | Register the project | `ntxp-projects` (JobTread job id is the key) | Dry run reviewed, upsert pushed, read-back matches |
+| 3 | Register the project | `ntxp-projects` (JobTread job id is the key) | Dry run reviewed; upsert pushed and read back if the user supplies that skill's key file, otherwise `unavailable` with the reason |
 | 4 | Folder tree | `ntxp-folder-structure` v1.2 | Tree built from the template, `_PERMISSIONS.md` written, `12 - HUB / MBE` and `!Public Share` present |
 | 5 | Crosswalk | `ntxp-project-coda` | Coda persisted under `0 - Knowledge Base/0.2 Structured Data` |
 | 6 | Models and executors | `ntxp-model-council`, `ntxp-model-router`, `ntxp-highway` | Choices recorded; privacy rules respected |
@@ -48,7 +48,7 @@ Run the environment skill's task preflight for this task and project. A skill be
 
 ### 1. Identity and credentials
 
-Use `ntxp-id`. Request a credential through its process (name the key, the task and the reason; the approved agent reads one cell). A missing key goes to the vault's Add Secret or Add Password card; the value is never requested in chat. Do not use `ntxp-secrets-vault` (superseded). Never write a credential to a file, log, commit, memory entry or council field.
+Use `ntxp-id`. Request a credential through its process (name the key, the task and the reason; the approved agent reads one cell). A missing key goes to the vault's Add Secret or Add Password card; the value is never requested in chat. Do not use `ntxp-secrets-vault` (superseded). Never put a credential in chat, a log, a commit, a memory entry, a council field or the repository. The one exception is a key file that an owning skill documents as its only transport; see step 3.
 
 ### 2. Authority
 
@@ -57,6 +57,8 @@ Read `ntxp-ipdm` (the Integrated Project Delivery Method) for the method and dec
 ### 3. Register the project
 
 Use `ntxp-projects`. The JobTread job id is the project id. If no JobTread job exists yet, say so and ask; this skill does not create one. Follow that skill's pipeline (build, payload, `--dry-run` first, then push and read back). The data includes pricing: never commit it.
+
+`ntxp-projects` authenticates its push only through a key file (`NTXP_PROJECTS_WRITE_KEY_FILE`). The Forge's own rule says credentials are never written to a file, so the two conflict, and this skill does not settle that. The user supplies and owns that key file: outside any repository, owner-only permissions, deleted right after the call. Never create it by passing a value through chat or a log. If no key file is supplied, do the dry run, mark the push `unavailable`, say why, and continue with the other steps.
 
 ### 4. Folder tree
 
@@ -86,7 +88,7 @@ Once per successful start, add one row to the council's Workflows tab (the steps
 
 These come from the Forge's own rules and apply to every step.
 
-- DeepSeek and GLM never receive owner, agency, bid, pricing or personnel content. Route that work to a permitted seat. Credential content may reach them only from and back to `ntxp-id`, never through a file or log.
+- DeepSeek and GLM never receive owner, agency, bid, pricing or personnel content. Route that work to a permitted seat. Credential content may reach them only from and back to `ntxp-id`, never through a log or the repository.
 - Registry data holds pricing: never commit it, never paste it into a council field.
 - Never commit a secret. Secrets go through `ntxp-id` only.
 - Merge policy for the Forge: squash-merge your own PR when `skill-validate` is green; run `forge.py marketplace` after any change under `skills/` or `plugins/`.

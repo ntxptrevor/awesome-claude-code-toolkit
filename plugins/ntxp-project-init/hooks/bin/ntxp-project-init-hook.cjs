@@ -20,7 +20,7 @@ const COOLDOWN_MS = 30 * 60 * 1000;
 const DECLINE_MS = 12 * 60 * 60 * 1000;
 
 const INTENT = new RegExp(
-  [
+  '\\b(?:' + [
     'new (ntxp )?project',
     'new bid',
     'kick ?off (a |the |our )?(new )?(project|bid)',
@@ -29,7 +29,7 @@ const INTENT = new RegExp(
     'awarded (the )?(project|contract)',
     'set ?up (a |the )?new (project|bid)',
     'project init',
-  ].join('|'),
+  ].join('|') + ')\\b',
   'i'
 );
 
