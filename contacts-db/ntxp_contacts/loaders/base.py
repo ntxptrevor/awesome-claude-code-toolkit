@@ -83,6 +83,16 @@ def _rec_payload(rec: CanonicalRecord) -> dict:
 
 def _attach_comms(repo: Repository, rec: CanonicalRecord,
                   contact_id: int | None, org_id: int | None) -> None:
+    if contact_id is None:
+        # Organization-only record (e.g. a role address like info@): hang its comms on the org, never on nothing.
+        if org_id:
+            for e in rec.emails:
+                repo.add_email(e, None, org_id)
+            for p in rec.phones:
+                repo.add_phone(p, None, org_id)
+            for a in rec.addresses:
+                repo.add_address(a, None, org_id)
+        return
     for e in rec.emails:
         repo.add_email(e, contact_id, None)
     for p in rec.phones:

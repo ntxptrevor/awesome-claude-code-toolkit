@@ -66,3 +66,16 @@ def test_outbox_ack_baseline_and_connections(conn):
     Repository(conn).update_contact_fields(cid, {"title": "Director"}, origin="ui") if hasattr(Repository, "update_contact_fields") else None
     cons = {c["system"]: c for c in connections(conn)["connections"]}
     assert cons["lightfield"]["connected"] and cons["jobtread"]["connected"] and not cons["gcontacts"]["connected"]
+
+
+def test_org_only_record_does_not_crash(conn):
+    from ntxp_contacts.db.repository import Repository
+    from ntxp_contacts.loaders.base import _attach_comms
+    from ntxp_contacts.model import CanonicalRecord, Email
+    rec = CanonicalRecord(source="x", source_pk="1", raw={})
+    rec.emails.append(Email(email="info@acme.example", email_norm="info@acme.example"))
+    repo = Repository(conn)
+    oid = repo.conn.execute("INSERT INTO organizations(name,name_norm) VALUES ('Acme','acme')").lastrowid
+    _attach_comms(repo, rec, None, oid)         # used to violate the owner CHECK constraint
+    _attach_comms(repo, rec, None, None)        # nothing to attach to: a no-op, not an error
+    assert conn.execute("SELECT COUNT(*) n FROM emails WHERE org_id=?", (oid,)).fetchone()["n"] == 1
