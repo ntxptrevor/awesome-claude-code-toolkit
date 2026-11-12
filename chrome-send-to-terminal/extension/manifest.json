@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Send to Terminal",
+  "version": "1.0.0",
+  "description": "Right-click selected text, a link, or a page and send it to macOS Terminal to run as root after confirmation.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5zbd4atFrp+OpsfaIRTo+YZQ2sKVsthTkso6l3fgMOYLpidkNkRajpYRNlIbZ/rNpnXIU1qes1PGKqAQHPhtA5A1o+QNmH6XUzX1/4Si2aEosUb6mHhcrMJCfoT2DvkCr7B6+SkvpjTZALu7l6JloLBFHVt8sF3JvYIOTiPR7iUGUro7EYeqHtdDiPWsQEaOotY84SvVsutgOKiPSH8Fw1ALMKVTxE77bfB2EeNtW5XYUdpvkDwFCyA9uJCtcuC6euz8qCUMTcIEwtv6MV3p+ZVYHIYePNcHsbu0eGe9DaeLQeEuFRDymYjL1CkRUsUo9n53nzraTTbqRfSB+TdBcQIDAQAB",
+  "minimum_chrome_version": "116",
+  "permissions": ["contextMenus", "nativeMessaging", "notifications"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
