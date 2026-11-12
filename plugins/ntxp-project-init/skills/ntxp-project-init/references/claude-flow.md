@@ -70,8 +70,8 @@ Never hardcode keys or commit `.env`. Validate input at boundaries. Sanitize fil
 
 | Claude Flow piece | NTXP counterpart | Rule |
 |---|---|---|
-| `.claude-flow/` runtime state | `.ntxp/` project data | Runtime stays git-ignored; `.ntxp/` project data is committed |
-| Hybrid memory / HNSW | IPDM + Coda (project knowledge base) | Project facts live in `.ntxp/`; learned patterns live in Claude Flow memory |
-| 3-tier routing | `ntxp-model-router` + Model Council | Router picks the executor, Council settles disputed decisions |
-| Swarm of Task agents | NTXP skills | Agents invoke skills; skills never spawn swarms on their own |
-| Watchdog / `doctor` | `mcp-watchdog.cjs`, ntxp-autonomous-repair | Watchdog detects, repair skill acts |
+| `.claude-flow/` runtime state | none | Git-ignored; never committed |
+| Hybrid memory and HNSW | Project facts live in the `ntxp-projects` registry and Project Coda (`0 - Knowledge Base/0.2 Structured Data`) | Learned patterns stay in Claude Flow memory; project facts never go there |
+| 3-tier routing | `ntxp-model-router` and `ntxp-model-council` | The router picks the executor; the council settles disputed decisions |
+| Swarm of Task agents | NTXP skills | Agents call skills; skills do not spawn swarms |
+| Watchdog and `doctor` | `mcp-watchdog.cjs` (detect only) | Detect and report; repair only through an approved process |

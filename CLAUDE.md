@@ -184,13 +184,13 @@ npx @claude-flow/cli@3.75.3 doctor --fix
 
 ## NTXP Environment
 
-- **Project setup**: use the `ntxp-project-init` skill (plugin at `plugins/ntxp-project-init/`). Hooks only offer it when a new project, bid or award is mentioned; always ask the user before running any step. Never run `claude-flow init --force` where `.claude/settings.json` or `CLAUDE.md` already exist.
-- **Data layer**: `.ntxp/` holds the IPDM project record, identity, skill bindings, council config, and the Coda registry and crosswalk. It is committed. `.claude-flow/` is runtime state and stays git-ignored.
-- **Credentials**: NTXP ID, then the NTXP Secrets Vault. Never write a key, token or password into a file, chat, commit, log or council field. A missing key is filed through the vault's Add Secret card, never requested in chat.
-- **Model Council**: look up the council knowledge base before multi-step work; convene only for decisions. Owner, client, bid, pricing and personnel content never goes to the DeepSeek or GLM seats. Never write council tabs 10-13 by hand or claim a consensus that was not run.
-- **Forge**: skills and plugins are delivered through `NTXP-TX/ntxp-forge`. Hooks must ship as a plugin (a skill's own `hooks/` folder does not run). Verify with `forge.py verify`, `forge.py marketplace` and `skill_mesh.py` before the PR. Never export the vault token.
+- **Project setup**: the `ntxp-project-init` plugin (`plugins/ntxp-project-init/`) is a sequencer. A hook only offers it when a new project, bid or award is mentioned; always ask the user before any step. It calls the Forge skills that own each step: `ntxp-env-initialization`, `ntxp-id`, `ntxp-ipdm` (read only), `ntxp-projects`, `ntxp-folder-structure` v1.2, `ntxp-project-coda`, `ntxp-model-council`, `ntxp-model-router`. It keeps no project data of its own.
+- **IPDM** is NTXP's Integrated Project Delivery Method (company method, org and decision rights). Read it; change it only through `ntxp-change-gate`.
+- **Credentials**: `ntxp-id`. `ntxp-secrets-vault` is superseded. Never write a key, token or password into a file, chat, commit, log or council field. A missing key goes to the vault's Add Secret card, never requested in chat.
+- **Model Council**: look up the council knowledge base before multi-step work; convene only for decisions. Owner, agency, bid, pricing and personnel content never goes to the DeepSeek or GLM seats. Never write the council's Councils, Turns, Decisions or Gates tabs by hand or claim a consensus that was not run.
+- **Forge**: skills and plugins are delivered through `NTXP-TX/ntxp-forge`. Hooks must ship as a plugin with scripts under `hooks/bin/` (a skill's own `hooks/` folder does not run). Before the PR run `forge.py verify`, `forge.py marketplace`, `skill_mesh.py --deps-warn` and `scripts/check-confidentiality.mjs`; merge your own PR when `skill-validate` is green. Never export the vault token.
 - **Hook contract**: input arrives as JSON on stdin (`tool_input.command`, `tool_input.file_path`); a blocking guard must exit 2; `timeout` in `settings.json` is in seconds.
-- **Version pin**: the Claude Flow CLI is pinned to `@claude-flow/cli@3.75.3` in `.mcp.json` and in the commands above. Do not use `@latest` or widen the `npx` allow rules.
+- **Version pin**: the Claude Flow CLI is pinned to `@claude-flow/cli@3.75.3` in `.mcp.json` and in the commands above. Never run `init --force` where `.claude/settings.json` or `CLAUDE.md` exist. Do not use `@latest` or widen the `npx` allow rules.
 
 ## Support
 

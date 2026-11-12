@@ -3,7 +3,6 @@
  * NTXP Project Init offer hook.
  *
  *   node ntxp-project-init-hook.cjs prompt    UserPromptSubmit: offer on new-project intent
- *   node ntxp-project-init-hook.cjs session   SessionStart: offer when no project record exists
  *   node ntxp-project-init-hook.cjs reset     Clear offer/decline state
  *
  * This hook only prints an instruction into Claude's context. It never creates
@@ -14,7 +13,6 @@ const path = require('path');
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const STATE = path.join(ROOT, '.claude-flow', 'data', 'ntxp-init-state.json');
-const PROJECT = path.join(ROOT, '.ntxp', 'ipdm', 'project.yaml');
 const COOLDOWN_MS = 30 * 60 * 1000;
 
 const INTENT = new RegExp(
@@ -35,12 +33,11 @@ const INTENT = new RegExp(
 const OFFER = [
   '[NTXP Project Init] This may be a new construction project or bid. Ignore this notice if the',
   'message is about software (a code project, repo, or background job). Do NOT start setup yet.',
-  'Ask the user with AskUserQuestion whether they want to create a new NTXP project now.',
-  'If yes, use the "NTXP Project Init" skill and collect: project name, client/owner, contract type,',
-  'cooperative, status. Workflow steps it will run (user can deselect any):',
-  '  1 Claude Flow core   2 NTXP ID auth   3 IPDM project record   4 Drive folders 1-13 + !Public Share',
-  '  5 Project Coda registry + crosswalk   6 Knowledge-base wiring   7 Model Council + router setup',
-  '  8 Verify   9 Commit/push (separate confirmation)   10 Share back + report',
+  'Ask the user with AskUserQuestion whether they want to start a new NTXP project now.',
+  'If yes, use the "ntxp-project-init" skill. It asks first, then calls the skills that own each step:',
+  '  0 environment preflight   1 NTXP ID   2 IPDM authority   3 register in ntxp-projects',
+  '  4 Drive folders (ntxp-folder-structure v1.2)   5 Project Coda   6 models and executors',
+  '  7 Claude Flow (dev only)   8 verify   9 share back',
   'If the user declines, do not ask again this session.',
 ].join('\n');
 
@@ -59,13 +56,6 @@ function readStdin() {
     try { return JSON.parse(raw); } catch { return { prompt: raw }; }
   } catch { return {}; }
 }
-function hasProject() {
-  try {
-    const y = fs.readFileSync(PROJECT, 'utf8');
-    const m = y.match(/^\s*id:\s*"?([^"\n]*)"?\s*$/m);
-    return !!(m && m[1].trim());
-  } catch { return false; }
-}
 function suppressed(state, key) {
   if (state.declined) return true;
   return state[key] && Date.now() - state[key] < COOLDOWN_MS;
@@ -82,21 +72,10 @@ if (mode === 'prompt') {
     writeState(state);
     console.log(OFFER);
   }
-} else if (mode === 'session') {
-  readStdin();
-  delete state.declined;
-  if (!hasProject() && !suppressed(state, 'sessionOfferedAt')) {
-    state.sessionOfferedAt = Date.now();
-    writeState(state);
-    console.log(
-      '[NTXP Project Init] No project record found (.ntxp/ipdm/project.yaml). ' +
-      'If the user starts on a new project, offer the "NTXP Project Init" skill; do not run it unasked.'
-    );
-  }
 } else if (mode === 'reset') {
   writeState({});
   console.log('[NTXP Project Init] state reset');
 } else {
-  console.error('usage: ntxp-project-init-hook.cjs prompt|session|reset');
+  console.error('usage: ntxp-project-init-hook.cjs prompt|reset');
   process.exit(1);
 }

@@ -3,20 +3,15 @@ activation_manifest:
   description: "NTXP skill activation chain — defines triggers, handoffs, and consolidation map"
 
   # ============================================================
-  # CONSOLIDATED LOCAL SKILLS (33 → 15)
+  # CONSOLIDATED LOCAL SKILLS (33 → 14)
   # ============================================================
 
   local_skills:
-    # --- NTXP core (2): init absorbed auto-deploy and the Coda stub; the local Highway skill was retired (name collides with Forge ntxp-highway v3.0.0) ---
+    # --- NTXP: one sequencer, ntxp-project-init (replaces auto-deploy); local ipdm, highway and coda stubs retired because the Forge owns those names ---
     - name: ntxp-project-init
       replaces: ["auto-deploy-claude-flow", "ntxp-project-coda (local stub)"]
       triggers_on: ["new project", "new bid", "award", "project setup", "init", "bootstrap", "new repo", "access audit", "handoff", "crosswalk", "project links"]
-      hands_off_to: ["ntxp-ipdm"]
-      activation: automatic
-
-    - name: ntxp-ipdm
-      triggers_on: ["project data", "project record", "platform lookup", "IPDM"]
-      hands_off_to: ["ntxp-project-init"]
+      hands_off_to: []
       activation: automatic
 
     # --- Merged: AgentDB (5 → 1) ---
@@ -125,8 +120,8 @@ activation_manifest:
       target_count: 3
       groups:
         - name: "ntxp-folders"
-          merges: ["ntxp-folder-system", "ntxp-folder-structure"]
-          note: "Keep ntxp-folder-system, deprecate ntxp-folder-structure (duplicate)"
+          merges: ["ntxp-folder-structure"]
+          note: "Keep ntxp-folder-structure v1.2 (it supersedes ntxp-folder-system)"
         - name: "ntxp-dashboards"
           merges: ["ntxp-dashboard-bidcommand", "oac-dashboard", "project-kpi-dashboard", "project-command-center"]
           trigger: "dashboard|KPI|OAC|bid command"
@@ -153,21 +148,17 @@ activation_manifest:
           action: "Initialize claude-flow + NTXP stack"
         - skill: "ntxp-id (plugin)"
           action: "Authenticate session"
-        - skill: "ntxp-ipdm"
-          action: "Create project record"
-        - skill: "ntxp-folder-system (anthropic)"
+        - skill: "ntxp-folder-structure (Forge)"
           action: "Create Drive folders"
           parallel: true
         - skill: "ntxp-project-init"
           action: "Coda step: collect platform links + build crosswalk"
-        - skill: "ntxp-model-council (anthropic)"
+        - skill: "ntxp-model-council (Forge)"
           action: "Configure model routing"
 
     estimate_workflow:
       description: "End-to-end estimating pipeline"
       steps:
-        - skill: "ntxp-ipdm"
-          action: "Load project context (trades, contract type)"
         - skill: "ntxp-estimating (anthropic)"
           action: "Produce estimate"
         - skill: "ntxp-project-init"

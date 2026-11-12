@@ -1,179 +1,108 @@
 ---
-name: "ntxp-project-init"
-description: "Creates, audits and hands off an NTXP project end to end, after asking the user to confirm: Claude Flow orchestration, NTXP ID authentication, the IPDM project record, the numbered NTXP Drive folder tree (1-13 plus !Public Share), the Project Coda link registry and platform crosswalk, knowledge-base wiring, and Model Council and model-router setup. Hooks offer it when a new project, bid or award is mentioned or no project record exists. Use for new projects and bids, awards, platform access audits, project handoff packages, and cross-platform ID or link lookups."
-version: "2.0.0"
-owner: "claude-code"
-requires: ["ntxp-id", "ntxp-secrets-vault", "ntxp-model-council", "ntxp-folder-system"]
-provides: ["ntxp-project-init", "project-coda-registry"]
+name: ntxp-project-init
+description: "Sequences the start of a new NTXP project after asking the user to confirm: environment preflight, NTXP ID identity, authority check against IPDM, project registration, the v1.2 Drive folder tree, the Project Coda crosswalk, and model and executor choices, by calling the Forge skills that own each step. Hooks offer it when a new project, bid or award is mentioned. Use when someone says new project, new bid, award, kick off or set up a project. Not for questions about an existing project."
+version: 3.0.0
+owner: NTXP
+requires:
+  skills: [ntxp-id, ntxp-env-initialization, ntxp-ipdm, ntxp-projects, ntxp-folder-structure, ntxp-project-coda, ntxp-model-council, ntxp-model-router]
+  connectors: [jobtread, google-drive]
+provides: [project-start-sequencer]
 ---
 
 # NTXP Project Init
 
-One skill for the whole project lifecycle at the setup layer. It absorbs the old auto-deploy skill and the Project Coda workflow, and it is the writer for IPDM, the Coda registry and the crosswalk.
+A sequencer. It owns the question, the order and the evidence. It does not own project data, the folder layout, the crosswalk, identity or model choice: each of those belongs to a Forge skill, and this skill calls it. It writes no project data of its own.
 
-## Rule Zero: Ask First
+## Rule Zero: ask first
 
-Hooks only **offer** this skill. Never run a mode on a hook's say-so.
+Hooks only **offer** this skill. Never run a step because a hook said so.
 
-1. Ask with AskUserQuestion: which mode, then for `create` the project name, client/owner, contract type (JOC | CSP | Hard Bid | CM-at-Risk | Design-Build), cooperative (TIPS | BuyBoard | Sourcewell | Choice Partners | None), status (Pursuit | Pre-Con | Active), and which steps to run (default all).
-2. If the user declines, set `declined: true` in `.claude-flow/data/ntxp-init-state.json` and drop it for the session.
-3. Commit and push is its own confirmation (Step 9). Never push unasked.
+1. Ask with AskUserQuestion: project name; whether it already has a JobTread job (the registry key) or not yet; client or owner; bid or awarded; and which steps to run (default all).
+2. If the user declines, record it (`declined: true` in `.claude-flow/data/ntxp-init-state.json`) and do not ask again this session.
+3. Committing or pushing anything is a separate confirmation.
 
-## Modes
+## Steps and who owns them
 
-| Mode | Use when | Runs |
-|---|---|---|
-| `create` | New project, bid or award; or a workspace with no record | Steps 0-10 |
-| `audit` | Which platforms are connected or missing; access check | Coda audit (`references/coda.md`) |
-| `handoff` | Onboarding a person or exporting the project map | Coda handoff package |
-| `resolve` | Another skill needs a project URL or a cross-platform id | Coda lookup: read-only |
+| # | Step | Owner (call it, do not copy it) | Done when |
+|---|---|---|---|
+| 0 | Environment preflight | `ntxp-env-initialization` task preflight (`scripts/preflight.py --repo <forge> --json`) | Dependencies carry a status with evidence |
+| 1 | Identity and credentials | `ntxp-id` (`/id`, `/vault`, `vault-clerk`) | Identity is `authenticated`; every needed key is located without exposing it |
+| 2 | Authority | `ntxp-ipdm` (read only) | The user's role may start or approve this project, or the gap is stated |
+| 3 | Register the project | `ntxp-projects` (JobTread job id is the key) | Dry run reviewed, upsert pushed, read-back matches |
+| 4 | Folder tree | `ntxp-folder-structure` v1.2 | Tree built from the template, `_PERMISSIONS.md` written, `12 - HUB / MBE` and `!Public Share` present |
+| 5 | Crosswalk | `ntxp-project-coda` | Coda persisted under `0 - Knowledge Base/0.2 Structured Data` |
+| 6 | Models and executors | `ntxp-model-council`, `ntxp-model-router`, `ntxp-highway` | Choices recorded; privacy rules respected |
+| 7 | Claude Flow (optional) | `references/claude-flow.md` | Only for development workspaces |
+| 8 | Verify and report | this skill | Evidence table printed |
+| 9 | Share back | `ntxp-model-council` knowledge base | Workflow row posted once |
 
-## Create workflow
+Run steps in order. Steps that do not depend on each other may run in parallel.
 
-Run the confirmed steps in order; independent steps may run in parallel. After each step write its result to `.ntxp/ipdm/project.yaml` (source of truth) and log it.
+## Step details
 
-### Step 0 - Preflight
+### 0. Preflight
 
-1. Search the council knowledge base for an existing workflow before building (`council_kb_search "project init"` or read tabs 20, 21, 22 of the council sheet when the engine is absent). Reuse and cite its ID.
-2. Confirm identity (Step 2) and that the vault sheet is not publicly shared (vault rule 3).
+Run the environment skill's task preflight for this task and project. A skill being present is not proof its connector works: record each dependency as `located`, `installed`, `authenticated`, `live-read`, `live-write` or `unavailable`, with evidence and a time. Stop and report if a dependency this project needs is `unavailable`.
 
-### Step 1 - Claude Flow core
+### 1. Identity and credentials
 
-Architecture, config and optimization plan: `references/claude-flow.md`. Hierarchical-mesh swarm, 6-8 active agents, hybrid memory with HNSW, 3-tier routing.
+Use `ntxp-id`. Request a credential through its process (name the key, the task and the reason; the approved agent reads one cell). A missing key goes to the vault's Add Secret or Add Password card; the value is never requested in chat. Do not use `ntxp-secrets-vault` (superseded). Never write a credential to a file, log, commit, memory entry or council field.
 
-`--force` overwrites `.claude/settings.json`, `CLAUDE.md` and hooks. Never use it where they already exist.
+### 2. Authority
 
-```bash
-if [ -f .claude/settings.json ] || [ -f CLAUDE.md ]; then
-  echo "already initialized: skip init, verify only"   # ask first before any --force; back up first:
-  # cp -r .claude ".claude.bak-$(date +%s)" && cp CLAUDE.md "CLAUDE.md.bak-$(date +%s)"
-else
-  npx @claude-flow/cli@3.75.3 init
-fi
-test -f CLAUDE.md && test -f .mcp.json && test -d .claude && test -d .claude-flow && echo "claude-flow OK"
-```
+Read `ntxp-ipdm` (the Integrated Project Delivery Method) for the method and decision rights that apply to starting a project (for example the "bid opening / award posted" trigger and who awards or removes subcontractors). IPDM holds company method, not per-project data: read it, never write project data into it. A change to IPDM goes only through `ntxp-change-gate` by the Director. If the rights are unclear, ask the user.
 
-Pin the CLI version (`@claude-flow/cli@3.75.3`); do not use `@latest`, and do not widen `npx` allow rules.
+### 3. Register the project
 
-### Step 2 - NTXP ID
+Use `ntxp-projects`. The JobTread job id is the project id. If no JobTread job exists yet, say so and ask; this skill does not create one. Follow that skill's pipeline (build, payload, `--dry-run` first, then push and read back). The data includes pricing: never commit it.
 
-NTXP ID is the identity and credential layer for every later step.
+### 4. Folder tree
 
-1. Read `.ntxp/ipdm/identity.yaml`. If missing or expired, run the `ntxp-id` plugin (`/id`). This skill only **reads** identity; the plugin writes it. If the plugin is unavailable, log it, continue, and mark identity `unverified` in the report.
-2. Credentials resolve only through `anthropic-skills:ntxp-secrets-vault`: look up with `find_vault_entry` (masked, last 4 only). Treat `NO KEY`, `EXPIRED` or a placeholder as missing.
-3. A missing key is never requested in chat. Send the Add Secret card link, or the NTXP ID share-sheet shortcut (clipboard-only capture), wait for "filed", confirm with `find_vault_entry`, then continue.
-4. No key, token, password or secret value may appear in any file this skill writes, nor in a reply, commit, log or council field. Step 8 enforces it.
-5. Register the environment with the council (`council_env`, tab 31 Environments) when the engine is present.
+Use `ntxp-folder-structure` v1.2. Build from its template, never from a copy of another project. Write `_PERMISSIONS.md`, and confirm `12 - HUB / MBE` and `!Public Share` exist. Claude cannot change Drive sharing; flag it to a human with Drive admin rights and do not say it is applied. Do not use `ntxp-folder-system` (superseded). Creating folders only: no moves, renames or deletes here.
 
-### Step 3 - IPDM record
+### 5. Crosswalk
 
-Create `.ntxp/ipdm/project.yaml` from the answers: id `NTXP-{YYYY}-{SEQ}` (next free sequence), name, owner, contract type, cooperative, status, and the six platform keys. Template: `references/templates.md`.
+Use `ntxp-project-coda`. It fires whenever a project is named; run `coda.py new` for this project and follow its loop (environment, locate, harvest, crosswalk, confirm, persist). Names alone never confirm a link, and JEV confidence is capped. Its persistence, JobTread notes mirror and Lightfield step are its own.
 
-### Step 4 - Folder structure
+### 6. Models and executors
 
-Full numbered tree, CSI subfolders `4.3.1`-`4.3.33`, permissions and output map: `references/folder-structure.md`. Numbers are permanent and never reused.
+Executor choice and spend caps: `ntxp-model-router`. Decisions: `ntxp-model-council` (convene for decisions, not chores; never write the council's Councils, Turns, Decisions or Gates tabs by hand; record "council not convened" if the engine is absent). Handoffs and provider calls: `ntxp-highway`. This skill defines no routing table.
 
-1. Awarded projects go under `NTXP > !Active Projects`; bids under `NTXP PM > !Active Bids`. Root name: `[Client] [Project Name]`.
-2. Create the tree through the Google Drive connector when present (parents first). Otherwise write `.ntxp/ipdm/folder-manifest.yaml` listing every folder and number, and say it was not created.
-3. Write `_PERMISSIONS.md`: `!Public Share` public read-only, everything else NTXP-only read/write. Claude cannot change Drive sharing; flag it to a human with Drive admin rights and do not claim it is applied.
-4. Confirm folder 13 (HUB/MBE) and `!Public Share` exist before calling the tree live.
-5. Write the Drive folder URL to `platforms.google_drive`.
+### 7. Claude Flow (development workspaces only)
 
-Init only creates folders. It never moves, renames or deletes files (no triage here).
+See `references/claude-flow.md`. Pin the CLI (`@claude-flow/cli@3.75.3`). Never run `init --force` where `.claude/settings.json` or `CLAUDE.md` already exist, and ask before any overwrite.
 
-### Step 5 - Project Coda
+### 8. Verify and report
 
-Build the registry and crosswalk, validate links, produce the access card. Everything is in `references/coda.md`: registry schema, crosswalk, sync log, validation, summary card. If the Forge `ntxp-project-coda` skill is installed, delegate project biography, confidence grading and the Lightfield note/plan step to it; this step still owns the local registry.
+Print one table: each step, its owner, its status word from the vocabulary above, the evidence, and the time. List what a human must still do (Drive sharing, a missing key, an `unavailable` dependency). Never report a step as done without a call that returned it.
 
-### Step 6 - Knowledge-base wiring
+### 9. Share back
 
-Search-then-save for every NTXP skill: search `.ntxp/ipdm/project.yaml` and `.ntxp/coda/registry.yaml` before external calls, save outputs back to IPDM, register new links and ids in Coda and the crosswalk. Bindings live in `.ntxp/ipdm/skill-config.yaml` (template in `references/templates.md`).
+Once per successful start, add one row to the council's Workflows tab (the steps, the skills called, anything that failed and how). Check for an existing row first.
 
-### Step 7 - Model Council and routing
+## Data boundaries
 
-Read or create `.ntxp/ipdm/model-council.yaml` through `anthropic-skills:ntxp-model-council`. Executor choice, spend caps and task-aware model selection belong to the Forge `ntxp-model-router`; agent handoffs and provider calls belong to the Forge `ntxp-highway`. This skill does not define a routing table or duplicate either one. Record in the report which of them are installed.
+These come from the Forge's own rules and apply to every step.
 
-### Step 8 - Verify
+- DeepSeek and GLM never receive owner, agency, bid, pricing or personnel content. Route that work to a permitted seat. Credential content may reach them only from and back to `ntxp-id`, never through a file or log.
+- Registry data holds pricing: never commit it, never paste it into a council field.
+- Never commit a secret. Secrets go through `ntxp-id` only.
+- Merge policy for the Forge: squash-merge your own PR when `skill-validate` is green; run `forge.py marketplace` after any change under `skills/` or `plugins/`.
 
-- Every file from Steps 1-7 exists and parses.
-- Platform keys are exactly `google_drive`, `ebuilder`, `jobtread`, `building_connected`, `procore`, `hubspot`.
-- No secrets: `grep -rniE "(api[_-]?key|token|secret|password)[\"']?\s*[:=]\s*[\"']?[A-Za-z0-9_\-]{16,}" .ntxp/` returns nothing.
-- The folder tree has 1-13 and `!Public Share`.
-- Identity state is recorded (`verified` or `unverified`).
+## Hook
 
-### Step 9 - Commit (separate confirmation)
+`hooks/hooks.json` registers one `UserPromptSubmit` hook (`hooks/bin/ntxp-project-init-hook.cjs`). It matches new-project, new-bid and award wording, prints an offer that tells the model to ask first and to ignore software topics, waits 30 minutes between offers, and stops for the session after a decline. It never runs anything. It is Claude Code only; other platforms invoke the skill by name.
 
-Ask "Commit and push the setup?". Only on yes:
-
-```bash
-git add .claude-flow/ .claude/ .mcp.json CLAUDE.md .ntxp/
-git commit -m "Initialize NTXP project <id>"
-git push -u origin "$(git rev-parse --abbrev-ref HEAD)"
-```
-
-Retry a failed push up to 4 times (2s, 4s, 8s, 16s).
-
-### Step 10 - Share back and report
-
-Share what was learned with the council (see Council wiring), then print the project card: id, name, platform links and status, folder location, identity state, routing, skipped steps, and what a human must still do (Drive permissions, any `unreachable` link).
-
-## Council wiring
-
-The Model Council is the team's shared channel and knowledge base.
-
-- **Look first**: Step 0. Cite workflow IDs you reuse.
-- **Convene for decisions, not chores.** Use `council_run` when a user wants to deviate from the numbering or add a root folder, change the platform keys or the IPDM file layout, or pick a method that would change how NTXP works (`change_type: methodology`, which always gates for approval). Routine setup uses `council_route`, not a council.
-- **Confidentiality**: project owner, client, agency, bid, pricing and personnel content must never reach the Ledger (DeepSeek) or Mason (GLM) seats. Pass `confidential: true` for any subject that carries them.
-- **Hard rules** are enforced in code: at least 3 distinct providers, one short paragraph per turn, spend ceilings. Never put a secret in any council field.
-- **Gates**: show the gate text, wait for the user's direction, never pick an option on a methodology, classification, privacy or payment gate.
-- **No engine here** (cloud session, claude.ai, phone): read tabs 20-22 through the Google Sheets connector, append findings with the same columns, and record "council not convened" with the reason. Never write a row into 10 Councils, 11 Turns, 12 Decisions or 13 Gates by hand, and never claim a consensus that was not run.
-- **Share back** after a successful init: one row on 21 Workflows (this workflow, steps, tools), and a row on 23 Skills Crosswalk when the skill's packaging or version changed. Duplicates are checked before appending.
-
-## IPDM wiring
-
-IPDM is the source of truth; this skill is its writer. File ownership:
-
-| File | Writer | Readers |
-|---|---|---|
-| `.ntxp/ipdm/project.yaml` | this skill | all skills |
-| `.ntxp/ipdm/identity.yaml` | `ntxp-id` plugin | all skills |
-| `.ntxp/ipdm/skill-config.yaml` | this skill | all skills |
-| `.ntxp/ipdm/model-council.yaml` | `ntxp-model-council` | `ntxp-model-router`, this skill |
-| `.ntxp/coda/registry.yaml`, `crosswalk.yaml`, `sync-log.jsonl` | this skill | all skills |
-
-## Forge wiring
-
-This package is a plugin (`plugins/ntxp-project-init/`) so its hooks run: a skill's own `hooks/` folder does not execute when delivered through the Claude account channel, a plugin's `hooks/hooks.json` does. It ships no `bin/` (claude.ai rejects it); the hook script is in `scripts/`. Frontmatter carries the keys the Forge skill mesh requires: `version`, `owner`, `requires`, `provides`.
-
-To back it up to `NTXP-TX/ntxp-forge` (from a machine whose `gh` is signed in; never export the vault token): clone, branch `feat/ntxp-project-init` from latest `main`, copy `plugins/ntxp-project-init/`, then run:
-
-```bash
-python3 skills/ntxp-skill-forge/forge/forge.py verify --repo . --write-source
-python3 skills/ntxp-skill-forge/forge/forge.py marketplace --repo .
-python3 .github/ntxp/skill_mesh.py skills plugins --deps-warn
-```
-
-Open the PR, wait for `skill-validate`, squash-merge. Do not remove or change the existing Forge `ntxp-project-coda` (v1.0.0): this plugin delegates to it and does not replace it. Only the old local `auto-deploy-claude-flow` and local Coda stub were retired, and neither is in the Forge. Forge never rewrites skill wording; hooks and scripts are Claude Code only, other platforms use the manual trigger.
-
-## Error handling
+## Errors
 
 | Problem | Action |
 |---|---|
-| Plugin or skill not enabled | Log, continue, mark the step partial |
-| MCP server dropped | `node .claude/helpers/mcp-watchdog.cjs status`; proceed without it and say so |
-| No Drive connector | Write `folder-manifest.yaml`, flag not created |
-| Init partly failed | Re-run once on a fresh workspace; report exactly what is missing; never fake success |
-| Vault sheet publicly shared | Stop; run the vault's `remove_public_link_sharing` first |
-| User declines mid-way | Stop; keep completed steps; list what remains |
+| An owning skill is not installed | Report it as `unavailable`; do not recreate its work here |
+| No JobTread job | Stop at step 3 and ask |
+| No Drive connector | Say the tree was not created; do not fake it |
+| MCP server dropped | Run `node .claude/helpers/mcp-watchdog.cjs status` if present, continue without it, say so |
+| User declines mid-way | Stop; keep what was done; list what remains |
 
-## Superseded
+## Not owned here
 
-Replaces `auto-deploy-claude-flow` and the local `ntxp-project-coda` stub. `ntxp-ipdm` remains the data layer. Routing belongs to the Forge `ntxp-model-router` and handoffs to the Forge `ntxp-highway`; the local routing-table skill that shared the `ntxp-highway` name was retired to avoid a collision.
-
-## NTXP Interop
-
-- **Knowledge Base**: search `.ntxp/ipdm/project.yaml` and `.ntxp/coda/registry.yaml` before external calls; save outputs back to `.ntxp/ipdm/project.yaml`.
-- **Credentials**: `ntxp-id` then `anthropic-skills:ntxp-secrets-vault`; never hardcode.
-- **Model Routing**: read `.ntxp/ipdm/model-council.yaml`; call `ntxp-model-council` if missing.
-- **Skill Bindings**: `.ntxp/ipdm/skill-config.yaml`.
-- **Platform Keys**: `google_drive`, `ebuilder`, `jobtread`, `building_connected`, `procore`, `hubspot`; no aliases.
+Retired: `auto-deploy-claude-flow` and a local routing-table skill named `ntxp-highway` (it collided with the Forge's). A local `.ntxp/` data layer and an `identity.yaml` were never part of the Forge and are not used.

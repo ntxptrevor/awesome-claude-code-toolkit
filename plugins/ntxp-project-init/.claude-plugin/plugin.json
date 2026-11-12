@@ -1,6 +1,12 @@
 {
   "name": "ntxp-project-init",
-  "version": "2.0.0",
-  "description": "Create, audit and hand off an NTXP project: Claude Flow, NTXP ID, IPDM, numbered Drive folders, Project Coda registry and crosswalk, knowledge-base wiring, Model Council setup. Hooks offer it on new-project intent.",
-  "author": { "name": "NTXP" }
+  "displayName": "NTXP Project Init",
+  "version": "3.0.0",
+  "description": "Sequences the start of a new NTXP project after asking first: environment preflight, NTXP ID, IPDM authority check, project registration, the v1.2 Drive folder tree, the Project Coda crosswalk, and model and executor choices, by calling the Forge skills that own each step. A hook offers it when a new project, bid or award is mentioned.",
+  "author": {
+    "name": "NTXP LLC"
+  },
+  "license": "LicenseRef-NTXP-Internal",
+  "keywords": ["ntxp", "project", "initialization", "onboarding", "sequencer"],
+  "skills": ["./skills/ntxp-project-init"]
 }

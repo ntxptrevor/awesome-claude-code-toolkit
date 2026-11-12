@@ -5,18 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/ntxp-project-init-hook.cjs\" prompt",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/ntxp-project-init-hook.cjs\" session",
+            "command": "r=\"${GROK_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}\"; f=\"$r/hooks/bin/ntxp-project-init-hook.cjs\"; [ -f \"$f\" ] || exit 0; exec node \"$f\" prompt",
+            "shell": "bash",
             "timeout": 5
           }
         ]
