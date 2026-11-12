@@ -35,6 +35,7 @@ import mcp.types as types
 from mcp.server.lowlevel import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.applications import Starlette
+from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Mount, Route
@@ -557,9 +558,47 @@ async def lifespan(app: Starlette):
         yield
 
 
+SECURITY_HEADERS = [
+    # The approval page has an Approve button: it must never load in a frame.
+    (b"x-frame-options", b"DENY"),
+    (b"content-security-policy",
+     b"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
+     b"frame-ancestors 'none'; base-uri 'none'"),
+    (b"x-content-type-options", b"nosniff"),
+    # Review links carry a signed request in the query string. Never send it
+    # on to another site, and never keep a token page in a cache.
+    (b"referrer-policy", b"no-referrer"),
+    (b"cache-control", b"no-store"),
+    (b"strict-transport-security", b"max-age=31536000; includeSubDomains"),
+]
+
+
+class SecurityHeaders:
+    """Adds the headers above to every response. Raw ASGI, so it also covers
+    the MCP endpoint and the 401 replies."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.inner(scope, receive, send)
+            return
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                present = {name.lower() for name, _ in message.get("headers", [])}
+                message["headers"] = list(message.get("headers", [])) + [
+                    h for h in SECURITY_HEADERS if h[0] not in present]
+            await send(message)
+
+        await self.inner(scope, receive, send_with_headers)
+
+
 app = Starlette(
     debug=False,
     lifespan=lifespan,
+    middleware=[Middleware(SecurityHeaders)],
     routes=[
         Route("/healthz", healthz),
         Route("/readyz", readyz),

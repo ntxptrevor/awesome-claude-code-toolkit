@@ -398,7 +398,9 @@ async def token(request: Request) -> JSONResponse:
         return _token_response(email, role, str(client_id), str(form.get("refresh_token")))
 
     if grant_type != "authorization_code":
-        return _oauth_error("unsupported_grant_type", str(grant_type))
+        # A fixed message. The caller's own input is never echoed back.
+        return _oauth_error("unsupported_grant_type",
+                            "Use authorization_code or refresh_token.")
 
     try:
         code = unsign(str(form.get("code", "")), "code")

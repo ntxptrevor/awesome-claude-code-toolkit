@@ -484,3 +484,28 @@ def test_unreadable_form_body_is_a_clean_400(client):
                        ).status_code == 400
     assert client.post("/access/decide", content=b"not a multipart body", headers=broken
                        ).status_code == 400
+
+
+@pytest.mark.parametrize("method,path", [
+    ("GET", "/healthz"), ("GET", "/readyz"), ("POST", "/mcp/"),
+    ("GET", "/access/review?rt=bad"), ("POST", "/token"),
+    ("GET", "/.well-known/oauth-authorization-server"), ("GET", "/no-such-page"),
+])
+def test_every_response_carries_the_security_headers(client, method, path):
+    r = client.request(method, path)
+    assert r.headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["referrer-policy"] == "no-referrer"
+    assert r.headers["cache-control"] == "no-store"
+    assert "max-age=" in r.headers["strict-transport-security"]
+
+
+def test_error_pages_do_not_reflect_input_or_leak_internals(client):
+    probe = "<script>alert(1)</script>"
+    for r in (client.get("/access/review", params={"rt": probe}),
+              client.get("/authorize", params={"client_id": probe, "redirect_uri": probe}),
+              client.get("/auth/callback", params={"state": probe, "code": probe}),
+              client.post("/token", data={"grant_type": probe})):
+        assert r.status_code in (400, 401)
+        assert "<script>" not in r.text and "Traceback" not in r.text
