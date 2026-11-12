@@ -60,7 +60,8 @@ const INTENT = new RegExp(
 );
 // A software request ("set up a new project in React") must not trigger an offer or use up the cooldown.
 const SOFTWARE = /\b(react|vue|angular|svelte|next\.?js|node(\.?js)?|npm|yarn|pnpm|python|typescript|javascript|rust|golang|java|docker|kubernetes|repo|repository|git|github|api|database|sql|function|component|library|framework|package|cli|script|app|website|frontend|backend)\b/i;
-const CONSTRUCTION = /\b(bid|bids|award|awarded|contract|contractor|subcontract\w*|jobtread|rfp|joc|school|isd|building|construction|renovation|owner|architect|estimate|takeoff)\b/i;
+// Only unambiguous construction terms override the software check: "building", "contract", "owner" and "school" are common in software requests too.
+const CONSTRUCTION = /\b(bid|bids|award|awarded|jobtread|rfp|joc|isd|subcontract\w*|renovation|architect|takeoff)\b/i;
 
 function suppressed(state, key, file) {
   if (state.declined) {
