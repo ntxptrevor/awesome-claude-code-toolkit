@@ -117,69 +117,69 @@ class Rule:
     destroys: bool = False
 
 
-def R(*perms: str, target: Optional[str] = None, default: Optional[str] = None,
+def needs(*perms: str, target: Optional[str] = None, default: Optional[str] = None,
       destroys: bool = False) -> Rule:
     return Rule(tuple(perms), target, default, destroys)
 
 
 RULES: Dict[str, Rule] = {
     # access tools: open to every signed-in person
-    "access_whoami": R(),
-    "access_request": R(),
+    "access_whoami": needs(),
+    "access_request": needs(),
     # directory
-    "workspace_org_overview": R("directory.read"),
-    "workspace_directory_users": R("directory.read"),
-    "workspace_directory_groups": R("directory.read"),
-    "workspace_group_members": R("directory.read"),
-    "workspace_directory_orgunits": R("directory.read"),
+    "workspace_org_overview": needs("directory.read"),
+    "workspace_directory_users": needs("directory.read"),
+    "workspace_directory_groups": needs("directory.read"),
+    "workspace_group_members": needs("directory.read"),
+    "workspace_directory_orgunits": needs("directory.read"),
     # reports
-    "workspace_activity_report": R("reports.read", target="user_email", default="all"),
-    "workspace_usage_report": R("reports.read", target="user_email", default="all"),
+    "workspace_activity_report": needs("reports.read", target="user_email", default="all"),
+    "workspace_usage_report": needs("reports.read", target="user_email", default="all"),
     # per-person reads
-    "gmail_search": R("gmail.read", target="user_email"),
-    "gmail_get_message": R("gmail.read", target="user_email"),
-    "org_gmail_search": R("gmail.read", target="users", default="all"),
-    "calendar_list_events": R("calendar.read", target="user_email"),
-    "drive_list_files": R("drive.read", target="user_email"),
-    "drive_get_file_text": R("drive.read", target="user_email"),
-    "tasks_list": R("tasks.read", target="user_email"),
-    "contacts_list": R("contacts.read", target="user_email"),
-    "workspace_person_snapshot": R(
+    "gmail_search": needs("gmail.read", target="user_email"),
+    "gmail_get_message": needs("gmail.read", target="user_email"),
+    "org_gmail_search": needs("gmail.read", target="users", default="all"),
+    "calendar_list_events": needs("calendar.read", target="user_email"),
+    "drive_list_files": needs("drive.read", target="user_email"),
+    "drive_get_file_text": needs("drive.read", target="user_email"),
+    "tasks_list": needs("tasks.read", target="user_email"),
+    "contacts_list": needs("contacts.read", target="user_email"),
+    "workspace_person_snapshot": needs(
         "directory.read", "gmail.read", "calendar.read", "drive.read", "tasks.read",
         target="user_email"),
     # knowledge base reads
-    "kb_health": R("kb.read", target=ORG),
-    "kb_sql": R("kb.read", target=ORG),
-    "kb_search": R("kb.read", target=ORG),
-    "kb_person_timeline": R("kb.read", target="email"),
-    "kb_project_activity": R("kb.read", target=ORG),
-    "kb_flags_list": R("kb.read", target=ORG),
+    "kb_health": needs("kb.read", target=ORG),
+    "kb_sql": needs("kb.read", target=ORG),
+    "kb_search": needs("kb.read", target=ORG),
+    "kb_person_timeline": needs("kb.read", target="email"),
+    "kb_project_activity": needs("kb.read", target=ORG),
+    "kb_flags_list": needs("kb.read", target=ORG),
     # admin only below this line
-    "workspace_connection_check": R("admin.diagnostics"),
-    "kb_flag_update": R("kb.write"),
-    "kb_flag_create": R("kb.write"),
-    "kb_project_upsert": R("kb.write"),
-    "gmail_send": R("gmail.write", target="user_email", destroys=True),
-    "gmail_create_draft": R("gmail.write", target="user_email"),
-    "gmail_modify_labels": R("gmail.write", target="user_email"),
-    "gmail_trash": R("gmail.write", target="user_email", destroys=True),
-    "gmail_untrash": R("gmail.write", target="user_email"),
-    "calendar_create_event": R("calendar.write", target="user_email"),
-    "calendar_update_event": R("calendar.write", target="user_email"),
-    "calendar_delete_event": R("calendar.write", target="user_email", destroys=True),
-    "drive_create_folder": R("drive.write", target="user_email"),
-    "drive_update_file": R("drive.write", target="user_email"),
-    "drive_share": R("drive.write", target="user_email"),
-    "drive_unshare": R("drive.write", target="user_email", destroys=True),
-    "drive_trash": R("drive.write", target="user_email", destroys=True),
-    "drive_untrash": R("drive.write", target="user_email"),
-    "directory_create_user": R("directory.write"),
-    "directory_update_user": R("directory.write", target="user_email"),
-    "directory_delete_user": R("directory.write", target="user_email", destroys=True),
-    "directory_create_group": R("directory.write"),
-    "directory_delete_group": R("directory.write", destroys=True),
-    "directory_add_group_member": R("directory.write"),
-    "directory_remove_group_member": R("directory.write", destroys=True),
+    "workspace_connection_check": needs("admin.diagnostics"),
+    "kb_flag_update": needs("kb.write"),
+    "kb_flag_create": needs("kb.write"),
+    "kb_project_upsert": needs("kb.write"),
+    "gmail_send": needs("gmail.write", target="user_email", destroys=True),
+    "gmail_create_draft": needs("gmail.write", target="user_email"),
+    "gmail_modify_labels": needs("gmail.write", target="user_email"),
+    "gmail_trash": needs("gmail.write", target="user_email", destroys=True),
+    "gmail_untrash": needs("gmail.write", target="user_email"),
+    "calendar_create_event": needs("calendar.write", target="user_email"),
+    "calendar_update_event": needs("calendar.write", target="user_email"),
+    "calendar_delete_event": needs("calendar.write", target="user_email", destroys=True),
+    "drive_create_folder": needs("drive.write", target="user_email"),
+    "drive_update_file": needs("drive.write", target="user_email"),
+    "drive_share": needs("drive.write", target="user_email"),
+    "drive_unshare": needs("drive.write", target="user_email", destroys=True),
+    "drive_trash": needs("drive.write", target="user_email", destroys=True),
+    "drive_untrash": needs("drive.write", target="user_email"),
+    "directory_create_user": needs("directory.write"),
+    "directory_update_user": needs("directory.write", target="user_email"),
+    "directory_delete_user": needs("directory.write", target="user_email", destroys=True),
+    "directory_create_group": needs("directory.write"),
+    "directory_delete_group": needs("directory.write", destroys=True),
+    "directory_add_group_member": needs("directory.write"),
+    "directory_remove_group_member": needs("directory.write", destroys=True),
 }
 
 
@@ -296,6 +296,18 @@ def _clean(perms: Iterable[str], targets: Iterable[str]) -> tuple:
     return perms, targets
 
 
+async def _mail(to: str, subject: str, body: str) -> bool:
+    """Send system mail. A Gmail failure is logged and reported as False."""
+    import workspace_write
+    try:
+        await workspace_write.send_system_mail(to, subject, body)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        print(json.dumps({"audit": "mail_failed", "to": to, "subject": subject,
+                          "error": type(exc).__name__}), flush=True)
+        return False
+
+
 def mint_grant(email: str, perms: List[str], targets: List[str], task: str,
                ttl: int, approver: str) -> str:
     return auth.sign("grant", min(ttl, GRANT_TTL_MAX), sub=email, perms=perms,
@@ -342,9 +354,14 @@ async def request_access(claims: Dict[str, Any], task: str, perms: List[str],
         f"{link}\n\n"
         "An approved grant is read-only and expires 8 hours after approval.\n"
     )
-    import workspace_write
+    delivered = 0
     for admin in sorted(auth.ADMIN_EMAILS):
-        await workspace_write.send_system_mail(admin, f"Access request from {email}", body)
+        if await _mail(admin, f"Access request from {email}", body):
+            delivered += 1
+    if not delivered:
+        raise PolicyError(
+            "The request could not be emailed to an administrator, so nothing is "
+            "pending. Ask an administrator directly, or try again later.")
     return {
         "status": "pending_approval",
         "detail": "An administrator received the request by email. After approval "
@@ -434,20 +451,21 @@ async def decide(request: Request) -> HTMLResponse:
         return HTMLResponse(auth.page("This approval does not match the request."),
                             status_code=403)
 
-    import workspace_write
     person = req["sub"]
+    e = html.escape
     if form.get("decision") != "approve":
-        await workspace_write.send_system_mail(
+        told = await _mail(
             person, "Access request denied",
             f"Your request for {', '.join(req['perms'])} (task: {req['task']}) was denied "
             f"by {approver['sub']}.\n")
         print(json.dumps({"audit": "access_denied", "person": person,
                           "by": approver["sub"], "perms": req["perms"]}), flush=True)
-        return HTMLResponse(auth.page(f"Denied. {html.escape(person)} was told by email."))
+        note = "was told by email." if told else "could not be emailed. Tell them directly."
+        return HTMLResponse(auth.page(f"Denied. {e(person)} {note}"))
 
     grant = mint_grant(person, req["perms"], req["targets"], req["task"],
                        GRANT_TTL_DEFAULT, approver["sub"])
-    await workspace_write.send_system_mail(
+    told = await _mail(
         person, "Access request approved",
         f"{approver['sub']} approved your request.\n\n"
         f"Task:        {req['task']}\n"
@@ -456,6 +474,15 @@ async def decide(request: Request) -> HTMLResponse:
         "Give this grant to Claude. Say: use this grant for Workspace Cloud MCP.\n\n"
         f"{grant}\n")
     print(json.dumps({"audit": "access_approved", "person": person, "by": approver["sub"],
-                      "perms": req["perms"], "targets": req["targets"]}), flush=True)
+                      "perms": req["perms"], "targets": req["targets"],
+                      "mailed": told}), flush=True)
+    if told:
+        return HTMLResponse(auth.page(
+            f"Approved. The grant was emailed to {e(person)}. It expires in 8 hours."))
+    # The email failed. The grant works only for this person, so showing it to
+    # the approver to pass on gives nobody else any access.
     return HTMLResponse(auth.page(
-        f"Approved. The grant was emailed to {html.escape(person)}. It expires in 8 hours."))
+        f"Approved, but the email to {e(person)} failed. Send them this grant "
+        "yourself. It works only for their account and expires in 8 hours."
+        f"<textarea readonly style='width:100%;height:120px;margin-top:12px'>{e(grant)}"
+        "</textarea>"))

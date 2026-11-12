@@ -304,6 +304,11 @@ async def callback(request: Request) -> Any:
         info = await _google_identity(q.get("code", ""))
     except AuthError as exc:
         return HTMLResponse(page(html.escape(exc.description)), status_code=400)
+    except (httpx.HTTPError, ValueError, KeyError):
+        # Google unreachable, or its reply was not the JSON expected.
+        return HTMLResponse(
+            page("Google sign-in could not be completed. Try again in a minute."),
+            status_code=502)
 
     email = (info.get("email") or "").lower()
     role = role_for(email)

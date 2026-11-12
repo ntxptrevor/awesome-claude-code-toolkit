@@ -423,3 +423,29 @@ def test_target_list_limit():
     with pytest.raises(policy.PolicyError):
         policy._clean(["gmail.read"], many)
     assert policy._clean(["gmail.read"], many[:50])[1] == sorted(many[:50])
+
+
+# -- failures outside the server ---------------------------------------------
+
+def test_mail_failure_leaves_nothing_pending(client, monkeypatch):
+    async def broken(to, subject, body):
+        raise RuntimeError("gmail down")
+    monkeypatch.setattr(workspace_write, "send_system_mail", broken)
+    out = call(client, token_for(ALICE), "access_request", task="audit",
+               permissions=["kb.read"], reason="Review last month's response times.")
+    assert "could not be emailed" in out
+
+
+def test_google_outage_during_sign_in_is_a_clean_error(client, monkeypatch):
+    import httpx
+    reg = client.post("/register", json={"redirect_uris": [REDIRECT]}).json()
+    r = client.get("/authorize", params={
+        "client_id": reg["client_id"], "redirect_uri": REDIRECT,
+        "code_challenge": "c" * 43}, follow_redirects=False)
+    state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
+
+    async def down(code):
+        raise httpx.ConnectError("unreachable")
+    monkeypatch.setattr(auth, "_google_identity", down)
+    r = client.get("/auth/callback", params={"code": "g", "state": state})
+    assert r.status_code == 502 and "Try again" in r.text
