@@ -441,7 +441,7 @@ async def approval_page(rt: str, email: str, role: str) -> HTMLResponse:
 
 
 async def decide(request: Request) -> HTMLResponse:
-    form = await request.form()
+    form = await auth.read_form(request)
     try:
         req = auth.unsign(str(form.get("rt", "")), "access-request")
         approver = auth.unsign(str(form.get("approver", "")), "approver")

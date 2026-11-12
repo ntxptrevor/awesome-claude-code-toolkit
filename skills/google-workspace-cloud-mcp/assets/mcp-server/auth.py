@@ -369,8 +369,17 @@ async def _still_active(email: str) -> bool:
     return not user.get("suspended", False)
 
 
+async def read_form(request: Request) -> Dict[str, Any]:
+    """The posted form fields. A body that cannot be parsed reads as empty,
+    so the caller answers with its normal "invalid" reply and not a 500."""
+    try:
+        return dict(await request.form())
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 async def token(request: Request) -> JSONResponse:
-    form = await request.form()
+    form = await read_form(request)
     grant_type = form.get("grant_type", "")
     client_id = form.get("client_id", "")
     cid = hashlib.sha256(str(client_id).encode()).hexdigest()

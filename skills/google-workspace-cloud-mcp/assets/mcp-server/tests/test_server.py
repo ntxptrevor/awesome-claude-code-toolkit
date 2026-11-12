@@ -476,3 +476,11 @@ def test_google_outage_during_sign_in_is_a_clean_error(client, monkeypatch):
     monkeypatch.setattr(auth, "_google_identity", down)
     r = client.get("/auth/callback", params={"code": "g", "state": state})
     assert r.status_code == 502 and "Try again" in r.text
+
+
+def test_unreadable_form_body_is_a_clean_400(client):
+    broken = {"Content-Type": "multipart/form-data; boundary=x"}
+    assert client.post("/token", content=b"not a multipart body", headers=broken
+                       ).status_code == 400
+    assert client.post("/access/decide", content=b"not a multipart body", headers=broken
+                       ).status_code == 400
