@@ -3,7 +3,7 @@
  * NTXP Project Init offer hook.
  *
  *   node ntxp-project-init-hook.cjs prompt          UserPromptSubmit: offer on new-project intent
- *   node ntxp-project-init-hook.cjs decline [dir]   Record a decline for a project directory (12 hours)
+ *   node ntxp-project-init-hook.cjs decline [key|dir]  Record a decline (12 hours); the offer prints the key
  *   node ntxp-project-init-hook.cjs reset [dir]     Clear offer/decline state for a project directory
  *
  * This hook only prints an instruction into Claude's context. It never creates
@@ -22,11 +22,14 @@ const STATE_DIR = path.join(process.env.XDG_STATE_HOME || path.join(os.homedir()
 function projectRoot(dir) {
   return dir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 }
-// Hash of the canonical path: distinct directories never share a state file.
-function statePath(root) {
+// Hash of the canonical path: distinct directories never share a state file, and the key reveals nothing about the path.
+function projectKey(root) {
   let real = root;
   try { real = fs.realpathSync(root); } catch (e) { /* keep as given */ }
-  return path.join(STATE_DIR, crypto.createHash('sha256').update(real).digest('hex').slice(0, 16) + '.json');
+  return crypto.createHash('sha256').update(real).digest('hex').slice(0, 16);
+}
+function statePath(root) {
+  return path.join(STATE_DIR, projectKey(root) + '.json');
 }
 function readState(file) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { return {}; }
@@ -59,7 +62,7 @@ const INTENT = new RegExp(
   'i'
 );
 // A software request ("set up a new project in React") must not trigger an offer or use up the cooldown.
-const SOFTWARE = /\b(react|vue|angular|svelte|next\.?js|node(\.?js)?|npm|yarn|pnpm|python|typescript|javascript|rust|golang|java|docker|kubernetes|repo|repository|git|github|api|database|sql|function|component|library|framework|package|cli|script|app|website|frontend|backend)\b/i;
+const SOFTWARE = /\b(software|coding|programming|codebase|source code|devops|plugin|saas|ios|android|react|vue|angular|svelte|next\.?js|node(\.?js)?|npm|yarn|pnpm|python|typescript|javascript|rust|golang|java|docker|kubernetes|repo|repository|git|github|api|database|sql|function|component|library|framework|package|cli|script|app|website|frontend|backend)\b/i;
 // Only unambiguous construction terms override the software check: "building", "contract", "owner" and "school" are common in software requests too.
 const CONSTRUCTION = /\b(bid|bids|award|awarded|jobtread|rfp|joc|isd|subcontract\w*|renovation|architect|takeoff)\b/i;
 
@@ -75,7 +78,8 @@ function suppressed(state, key, file) {
 }
 
 function offerText(root) {
-  const declineCmd = 'node ' + shq(__filename) + ' decline ' + shq(root);
+  // Print only the opaque key, never the project path, which may name an owner or bid.
+  const declineCmd = 'node ' + shq(__filename) + ' decline ' + projectKey(root);
   return [
     '[NTXP Project Init] This may be a new construction project or bid. Ignore this notice if the',
     'message is about software (a code project, repo, or background job). Do NOT start setup yet.',
@@ -104,7 +108,8 @@ if (mode === 'prompt') {
     console.log(offerText(root));
   }
 } else if (mode === 'decline') {
-  const file = statePath(projectRoot(process.argv[3]));
+  const arg = process.argv[3] || '';
+  const file = /^[0-9a-f]{16}$/.test(arg) ? path.join(STATE_DIR, arg + '.json') : statePath(projectRoot(arg));
   const state = readState(file);
   state.declined = true;
   state.declinedAt = Date.now();
@@ -114,6 +119,6 @@ if (mode === 'prompt') {
   writeState(statePath(projectRoot(process.argv[3])), {});
   console.log('[NTXP Project Init] state reset');
 } else {
-  console.error('usage: ntxp-project-init-hook.cjs prompt|decline [dir]|reset [dir]');
+  console.error('usage: ntxp-project-init-hook.cjs prompt|decline [key|dir]|reset [dir]');
   process.exit(1);
 }
