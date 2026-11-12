@@ -9,10 +9,13 @@
  * anything. The skill itself asks the user before doing any work.
  */
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-const STATE = path.join(ROOT, '.claude-flow', 'data', 'ntxp-init-state.json');
+// Per-user state outside any repository, keyed by project directory, so offers never dirty a worktree.
+const STATE_DIR = path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'ntxp-project-init');
+const STATE = path.join(STATE_DIR, ROOT.replace(/[^A-Za-z0-9]/g, '-') + '.json');
 const COOLDOWN_MS = 30 * 60 * 1000;
 const DECLINE_MS = 12 * 60 * 60 * 1000;
 
@@ -26,7 +29,6 @@ const INTENT = new RegExp(
     'awarded (the )?(project|contract)',
     'set ?up (a |the )?new (project|bid)',
     'project init',
-    'ntxp-\\d{4}-\\d+',
   ].join('|'),
   'i'
 );
@@ -47,7 +49,7 @@ function readState() {
 }
 function writeState(s) {
   try {
-    fs.mkdirSync(path.dirname(STATE), { recursive: true });
+    fs.mkdirSync(STATE_DIR, { recursive: true });
     fs.writeFileSync(STATE, JSON.stringify(s, null, 2));
   } catch { /* non-fatal */ }
 }
