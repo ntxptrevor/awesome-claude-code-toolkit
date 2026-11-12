@@ -14,6 +14,7 @@ const path = require('path');
 const ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const STATE = path.join(ROOT, '.claude-flow', 'data', 'ntxp-init-state.json');
 const COOLDOWN_MS = 30 * 60 * 1000;
+const DECLINE_MS = 12 * 60 * 60 * 1000;
 
 const INTENT = new RegExp(
   [
@@ -38,7 +39,7 @@ const OFFER = [
   '  0 environment preflight   1 NTXP ID   2 IPDM authority   3 register in ntxp-projects',
   '  4 Drive folders (ntxp-folder-structure v1.2)   5 Project Coda   6 models and executors',
   '  7 Claude Flow (dev only)   8 verify   9 share back',
-  'If the user declines, do not ask again this session.',
+  'If the user declines, the skill records it and the offer stays quiet for 12 hours.',
 ].join('\n');
 
 function readState() {
@@ -57,7 +58,13 @@ function readStdin() {
   } catch { return {}; }
 }
 function suppressed(state, key) {
-  if (state.declined) return true;
+  if (state.declined) {
+    var at = state.declinedAt;
+    if (!at) { try { at = fs.statSync(STATE).mtimeMs; } catch (e) { at = 0; } }
+    if (Date.now() - at < DECLINE_MS) return true;
+    delete state.declined;
+    delete state.declinedAt;
+  }
   return state[key] && Date.now() - state[key] < COOLDOWN_MS;
 }
 

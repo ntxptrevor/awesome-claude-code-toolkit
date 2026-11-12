@@ -17,9 +17,10 @@ A sequencer. It owns the question, the order and the evidence. It does not own p
 
 Hooks only **offer** this skill. Never run a step because a hook said so.
 
-1. Ask with AskUserQuestion: project name; whether it already has a JobTread job (the registry key) or not yet; client or owner; bid or awarded; and which steps to run (default all).
-2. If the user declines, record it (`declined: true` in `.claude-flow/data/ntxp-init-state.json`) and do not ask again this session.
-3. Committing or pushing anything is a separate confirmation.
+1. Check which model seat is serving this session first. If it is a DeepSeek or GLM seat, ask only for the JobTread job id and which steps to run, nothing else. If the user volunteers owner, agency, bid, pricing or personnel details, say they must go to a permitted seat, stop collecting, and hand the rest to one (via `ntxp-model-router`) or ask the user to switch the session.
+2. On a permitted seat, ask with AskUserQuestion: the JobTread job (its id, or "not yet"), the project name, and which steps to run (default all). Do not ask for the client, owner, agency or bid status: the owning skills read those from JobTread and the registry.
+3. If the user declines, record `declined: true` and `declinedAt: <epoch ms>` in `.claude-flow/data/ntxp-init-state.json`. The hook then stays quiet for 12 hours.
+4. Committing or pushing anything is a separate confirmation.
 
 ## Steps and who owns them
 
@@ -91,7 +92,7 @@ These come from the Forge's own rules and apply to every step.
 
 ## Hook
 
-`hooks/hooks.json` registers one `UserPromptSubmit` hook (`hooks/bin/ntxp-project-init-hook.cjs`). It matches new-project, new-bid and award wording, prints an offer that tells the model to ask first and to ignore software topics, waits 30 minutes between offers, and stops for the session after a decline. It never runs anything. It is Claude Code only; other platforms invoke the skill by name.
+`hooks/hooks.json` registers one `UserPromptSubmit` hook (`hooks/bin/ntxp-project-init-hook.cjs`). It matches new-project, new-bid and award wording, prints an offer that tells the model to ask first and to ignore software topics, waits 30 minutes between offers, and stays quiet for 12 hours after a decline. It never runs anything. It is Claude Code only; other platforms invoke the skill by name.
 
 ## Errors
 
